@@ -1,0 +1,55 @@
+[
+  {
+    "id": "actor_001",
+    "name": "Phishing Campaign Alpha",
+    "type": "phishing",
+    "signatures": [
+      "urgent action required",
+      "verify your account",
+      "click here immediately"
+    ],
+    "target_platforms": ["email", "sms"],
+    "first_seen": "2024-01-01",
+    "risk_level": "high"
+  },
+  {
+    "id": "actor_002",
+    "name": "Disinformation Network Beta",
+    "type": "disinformation",
+    "signatures": [
+      "coordinated messaging",
+      "repetitive narratives",
+      "bot-like behavior"
+    ],
+    "target_platforms": ["twitter", "telegram", "reddit"],
+    "first_seen": "2024-01-05",
+    "risk_level": "critical"
+  },
+  {
+    "id": "actor_003",
+    "name": "AI Content Generator Gamma",
+    "type": "ai_generation",
+    "signatures": [
+      "low perplexity",
+      "high repetition",
+      "statistical anomalies"
+    ],
+    "target_platforms": ["twitter", "facebook"],
+    "first_seen": "2024-01-10",
+    "risk_level": "medium"
+  },
+  {
+    "id": "actor_004",
+    "name": "Propaganda Machine Delta",
+    "type": "propaganda",
+    "signatures": [
+      "emotional manipulation",
+      "false urgency",
+      "coordinated timing"
+    ],
+    "target_platforms": ["telegram", "whatsapp"],
+    "first_seen": "2024-01-12",
+    "risk_level": "high"
+  }
+]
+

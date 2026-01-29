@@ -1,0 +1,46 @@
+[
+  {
+    "id": 1,
+    "platform": "twitter",
+    "username": "user123",
+    "content": "Breaking: Major announcement coming soon! Stay tuned for updates.",
+    "timestamp": "2024-01-15T10:30:00Z",
+    "likes": 150,
+    "retweets": 45
+  },
+  {
+    "id": 2,
+    "platform": "telegram",
+    "username": "channel_alpha",
+    "content": "Important information about current events. Share with your network.",
+    "timestamp": "2024-01-15T11:00:00Z",
+    "views": 1200
+  },
+  {
+    "id": 3,
+    "platform": "twitter",
+    "username": "bot_account_1",
+    "content": "This is clearly AI-generated content with repetitive patterns and low burstiness.",
+    "timestamp": "2024-01-15T11:30:00Z",
+    "likes": 5,
+    "retweets": 1
+  },
+  {
+    "id": 4,
+    "platform": "reddit",
+    "username": "suspicious_user",
+    "content": "I've noticed some interesting patterns in recent discussions. What do you all think?",
+    "timestamp": "2024-01-15T12:00:00Z",
+    "upvotes": 23,
+    "comments": 5
+  },
+  {
+    "id": 5,
+    "platform": "telegram",
+    "username": "propaganda_bot",
+    "content": "Multiple coordinated messages with similar structure and vocabulary detected.",
+    "timestamp": "2024-01-15T12:30:00Z",
+    "views": 500
+  }
+]
+
