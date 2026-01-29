@@ -4,6 +4,7 @@ Google GenAI SDK wrapper for detection and analysis
 """
 import google.generativeai as genai
 from app.config import settings
+from app.services.gemini.prompts import DETECTION_PROMPT, FORENSIC_PROMPT, PRIVACY_REDACTION_PROMPT
 from typing import Dict, Any, Optional
 
 
@@ -21,22 +22,10 @@ class GeminiClient:
         Evaluates perplexity, burstiness, and repetitive n-grams
         """
         prompt = f"""
-        Analyze the following text and determine if it is AI-generated.
-        Evaluate:
-        1. Perplexity (unpredictability)
-        2. Burstiness (variation in sentence length)
-        3. Repetitive n-grams
+        {DETECTION_PROMPT}
         
-        Text: {content}
-        
-        Respond with JSON:
-        {{
-            "is_ai_generated": true/false,
-            "confidence": 0.0-1.0,
-            "risk_score": 0.0-1.0,
-            "detected_model": "model_name or null",
-            "reasoning": "brief explanation"
-        }}
+        Text to analyze:
+        {content}
         """
         
         try:
@@ -63,14 +52,12 @@ class GeminiClient:
         Checks image-text consistency, extracts entities, suggests attribution
         """
         prompt = f"""
-        Perform deep forensic analysis on threat ID {threat_id}.
-        Tasks:
-        1. Check image-text consistency (if image provided)
-        2. Extract entities (Who/Where/What)
-        3. Suggest attribution based on writing style
-        4. Identify potential threat actors
+        {FORENSIC_PROMPT}
         
-        Provide detailed analysis.
+        Threat ID: {threat_id}
+        Image provided: {include_image}
+        
+        Please perform the forensic analysis as specified above.
         """
         
         try:
