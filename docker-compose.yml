@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  # 🐍 The Brain (FastAPI)
+  backend:
+    build: 
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: aegis_backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./app:/app
+    environment:
+      - DATABASE_URL=postgresql://user:password@db:5432/aegis_db
+    depends_on:
+      - db
+
+  # 💻 The Face (Next.js)
+  frontend:
+    build: 
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: aegis_frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    depends_on:
+      - backend
+
+  # 🗄️ The Memory (Postgres)
+  db:
+    image: postgres:15-alpine
+    container_name: aegis_db
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=aegis_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
+
