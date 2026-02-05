@@ -2,7 +2,6 @@
 import React, { useState } from 'react';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
-import { Input } from '../ui/Input';
 
 interface Message {
   id: string;
@@ -19,7 +18,7 @@ export const AIManager: React.FC = () => {
     {
       id: '1',
       role: 'assistant',
-      content: 'Hello! I\'m your AI Security Manager. I can help you analyze threats, generate reports, and provide insights. How can I assist you today?',
+      content: 'Hello! I\'m your AI Security Assistant. I can help you analyze threats, generate reports, and provide insights. How can I assist you today?',
       timestamp: new Date(),
     },
   ]);
@@ -47,8 +46,8 @@ export const AIManager: React.FC = () => {
         content: 'I understand you want to analyze the recent threats. Based on the current data, I\'ve identified 12 critical threats that require immediate attention. Would you like me to generate a detailed report?',
         timestamp: new Date(),
         actions: [
-          { label: '📊 Generate Report', onClick: () => console.log('Generate report') },
-          { label: '🔍 View Threats', onClick: () => console.log('View threats') },
+          { label: 'Generate Report', onClick: () => console.log('Generate report') },
+          { label: 'View Threats', onClick: () => console.log('View threats') },
         ],
       };
       setMessages(prev => [...prev, aiMessage]);
@@ -68,10 +67,11 @@ export const AIManager: React.FC = () => {
       {/* Floating Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-gradient-to-r from-secondary to-primary text-white shadow-glow-purple hover:scale-110 transition-transform flex items-center justify-center text-2xl"
-        title="AI Manager (⌘M)"
+        className="fixed bottom-6 right-6 z-50 px-4 py-3 rounded bg-primary text-white shadow-lg hover:bg-blue-600 hover:shadow-glow-blue transition-all flex items-center gap-2 font-medium text-sm"
+        title="AI Assistant (⌘M)"
       >
-        {isOpen ? '✕' : '🤖'}
+        <span>AI Assistant</span>
+        {!isOpen && <kbd className="px-1.5 py-0.5 bg-white/20 rounded text-xs">⌘M</kbd>}
       </button>
 
       {/* Chat Panel */}
@@ -79,18 +79,22 @@ export const AIManager: React.FC = () => {
         <div className="fixed bottom-24 right-6 z-50 w-96 h-[600px] animate-slide-up">
           <Card className="h-full flex flex-col p-0 overflow-hidden shadow-modal">
             {/* Header */}
-            <div className="bg-gradient-to-r from-secondary to-primary p-4 flex items-center justify-between">
+            <div className="bg-primary p-4 flex items-center justify-between border-b border-primary/20">
               <div className="flex items-center gap-3">
-                <span className="text-2xl">🤖</span>
+                <div className="w-2 h-2 bg-success rounded-full animate-pulse"></div>
                 <div>
-                  <h3 className="font-semibold text-white">AI Manager</h3>
-                  <div className="flex items-center gap-2 text-xs text-white/80">
-                    <span className="w-2 h-2 bg-success rounded-full animate-pulse"></span>
-                    <span>Online</span>
-                  </div>
+                  <h3 className="font-semibold text-white text-sm">AI Security Assistant</h3>
+                  <div className="text-xs text-white/80">Online</div>
                 </div>
               </div>
-              <kbd className="px-2 py-1 bg-white/20 rounded text-xs text-white">⌘M</kbd>
+              <button 
+                onClick={() => setIsOpen(false)}
+                className="text-white/80 hover:text-white transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
 
             {/* Messages */}
@@ -101,16 +105,15 @@ export const AIManager: React.FC = () => {
                   className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
                   <div
-                    className={`max-w-[80%] rounded-lg p-3 ${
+                    className={`max-w-[80%] rounded p-3 ${
                       msg.role === 'user'
                         ? 'bg-primary text-white'
-                        : 'bg-bg-secondary text-text-primary'
+                        : 'bg-bg-secondary text-text-primary border border-border-subtle'
                     }`}
                   >
                     {msg.role === 'assistant' && (
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-lg">🤖</span>
-                        <span className="text-xs text-text-muted">AI Manager</span>
+                      <div className="flex items-center gap-2 mb-2 text-xs text-primary font-semibold uppercase tracking-wider">
+                        AI ASSISTANT
                       </div>
                     )}
                     <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
@@ -120,7 +123,7 @@ export const AIManager: React.FC = () => {
                           <button
                             key={idx}
                             onClick={action.onClick}
-                            className="text-xs px-3 py-1.5 bg-bg-primary hover:bg-bg-tertiary rounded transition-colors"
+                            className="text-xs px-3 py-1.5 bg-primary/10 hover:bg-primary/20 rounded transition-colors border border-primary/30 text-primary font-medium"
                           >
                             {action.label}
                           </button>
@@ -135,7 +138,7 @@ export const AIManager: React.FC = () => {
               ))}
               {isTyping && (
                 <div className="flex justify-start">
-                  <div className="bg-bg-secondary rounded-lg p-3">
+                  <div className="bg-bg-secondary rounded p-3 border border-border-subtle">
                     <div className="flex gap-1">
                       <span className="w-2 h-2 bg-text-muted rounded-full animate-bounce"></span>
                       <span className="w-2 h-2 bg-text-muted rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></span>
@@ -148,6 +151,17 @@ export const AIManager: React.FC = () => {
 
             {/* Input */}
             <div className="p-4 border-t border-border-subtle bg-bg-secondary">
+              <div className="flex gap-2 mb-2">
+                <button className="text-xs px-3 py-1 bg-bg-tertiary hover:bg-bg-primary rounded transition-colors text-text-secondary">
+                  Show threats
+                </button>
+                <button className="text-xs px-3 py-1 bg-bg-tertiary hover:bg-bg-primary rounded transition-colors text-text-secondary">
+                  Generate report
+                </button>
+                <button className="text-xs px-3 py-1 bg-bg-tertiary hover:bg-bg-primary rounded transition-colors text-text-secondary">
+                  System status
+                </button>
+              </div>
               <div className="flex gap-2">
                 <input
                   type="text"
@@ -163,19 +177,8 @@ export const AIManager: React.FC = () => {
                   disabled={!message.trim()}
                   className="px-4"
                 >
-                  ↑
+                  Send
                 </Button>
-              </div>
-              <div className="flex gap-2 mt-2">
-                <button className="text-xs px-3 py-1 bg-bg-tertiary hover:bg-bg-primary rounded transition-colors">
-                  Show threats
-                </button>
-                <button className="text-xs px-3 py-1 bg-bg-tertiary hover:bg-bg-primary rounded transition-colors">
-                  Generate report
-                </button>
-                <button className="text-xs px-3 py-1 bg-bg-tertiary hover:bg-bg-primary rounded transition-colors">
-                  System status
-                </button>
               </div>
             </div>
           </Card>
@@ -184,4 +187,3 @@ export const AIManager: React.FC = () => {
     </>
   );
 };
-

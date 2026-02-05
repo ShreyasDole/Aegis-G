@@ -23,41 +23,24 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden">
-      {/* Animated Background */}
-      <div className="absolute inset-0 opacity-10">
+      {/* Animated Background Grid */}
+      <div className="absolute inset-0 opacity-5">
         <div className="absolute inset-0" style={{
           backgroundImage: 'linear-gradient(#334155 1px, transparent 1px), linear-gradient(90deg, #334155 1px, transparent 1px)',
-          backgroundSize: '50px 50px',
-          animation: 'slide 20s linear infinite',
+          backgroundSize: '50px 50px'
         }}></div>
-      </div>
-
-      {/* Particle Effect */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {[...Array(20)].map((_, i) => (
-          <div
-            key={i}
-            className="absolute w-1 h-1 bg-primary rounded-full opacity-50"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              animation: `float ${5 + Math.random() * 10}s ease-in-out infinite`,
-              animationDelay: `${Math.random() * 5}s`,
-            }}
-          />
-        ))}
       </div>
 
       {/* Login Card */}
       <Card className="w-full max-w-md z-10 relative">
         {/* Logo & Title */}
         <div className="text-center mb-8">
-          <div className="text-6xl mb-4 animate-pulse-slow">🛡️</div>
-          <h1 className="text-4xl font-bold font-display mb-2 text-glow-blue">
+          <div className="font-display text-4xl font-bold tracking-wider text-primary mb-2">
             AEGIS-G
-          </h1>
-          <p className="text-text-secondary">
-            Secure Access to Command Center
+          </div>
+          <div className="h-px w-16 bg-primary mx-auto mb-4"></div>
+          <p className="text-text-secondary text-sm">
+            Secure Access Portal
           </p>
         </div>
 
@@ -69,7 +52,6 @@ export default function LoginPage() {
             placeholder="analyst@agency.gov"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            icon={<span>📧</span>}
             required
           />
 
@@ -79,7 +61,6 @@ export default function LoginPage() {
             placeholder="••••••••"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            icon={<span>🔒</span>}
             required
           />
 
@@ -102,14 +83,7 @@ export default function LoginPage() {
             className="w-full py-3 text-base"
             disabled={isLoading}
           >
-            {isLoading ? (
-              <span className="flex items-center gap-2">
-                <span className="animate-spin">⚙️</span>
-                Authenticating...
-              </span>
-            ) : (
-              'Sign In'
-            )}
+            {isLoading ? 'Authenticating...' : 'Sign In'}
           </Button>
         </form>
 
@@ -126,11 +100,9 @@ export default function LoginPage() {
         {/* SSO Options */}
         <div className="space-y-2">
           <Button variant="secondary" className="w-full">
-            <span className="mr-2">🔐</span>
             Sign in with CAC/PIV
           </Button>
           <Button variant="secondary" className="w-full">
-            <span className="mr-2">🏛️</span>
             Sign in with Agency SSO
           </Button>
         </div>
@@ -144,11 +116,13 @@ export default function LoginPage() {
         </div>
 
         {/* Security Notice */}
-        <div className="mt-6 p-3 bg-warning/10 border border-warning/30 rounded-lg">
-          <div className="flex items-start gap-2 text-xs text-warning">
-            <span className="text-lg">⚠️</span>
+        <div className="mt-6 p-3 bg-warning/10 border border-warning/30 rounded">
+          <div className="flex items-start gap-2 text-xs">
+            <svg className="w-5 h-5 text-warning flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+            </svg>
             <div>
-              <div className="font-semibold mb-1">CLASSIFIED SYSTEM</div>
+              <div className="font-semibold text-warning mb-1">CLASSIFIED SYSTEM</div>
               <div className="text-text-secondary">
                 Unauthorized access is prohibited. All activities are monitored and logged.
               </div>
@@ -160,29 +134,8 @@ export default function LoginPage() {
       {/* Footer */}
       <div className="absolute bottom-4 left-0 right-0 text-center text-text-muted text-xs z-10">
         <p>National Security Operations Platform</p>
-        <p className="mt-1">Contact: security@agency.gov | Support: +1 (800) 555-0123</p>
+        <p className="mt-1">Contact: security@agency.gov</p>
       </div>
-
-      <style jsx>{`
-        @keyframes slide {
-          0% {
-            transform: translate(0, 0);
-          }
-          100% {
-            transform: translate(50px, 50px);
-          }
-        }
-
-        @keyframes float {
-          0%, 100% {
-            transform: translateY(0) translateX(0);
-          }
-          50% {
-            transform: translateY(-20px) translateX(10px);
-          }
-        }
-      `}</style>
     </div>
   );
 }
-

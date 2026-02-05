@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
 import { ThreatCard } from '@/components/threats/ThreatCard';
-import { Badge } from '@/components/ui/Badge';
 
 export default function ThreatsPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -86,10 +85,10 @@ export default function ThreatsPage() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-3xl font-bold font-display text-glow-blue mb-2">
-            🚨 Threat Intelligence
+          <h1 className="text-2xl font-bold tracking-wider uppercase mb-2">
+            Threat Intelligence
           </h1>
-          <p className="text-text-secondary">
+          <p className="text-text-secondary text-sm">
             Monitor and manage security threats in real-time
           </p>
         </div>
@@ -101,7 +100,6 @@ export default function ThreatsPage() {
             <div className="flex-1">
               <Input
                 placeholder="Search threats..."
-                icon={<span>🔍</span>}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -111,7 +109,7 @@ export default function ThreatsPage() {
             <div className="flex gap-2">
               <button
                 onClick={() => setFilterSeverity('all')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                className={`px-4 py-2 rounded text-sm font-medium transition-all ${
                   filterSeverity === 'all'
                     ? 'bg-primary text-white'
                     : 'bg-bg-tertiary text-text-secondary hover:bg-bg-primary'
@@ -121,7 +119,7 @@ export default function ThreatsPage() {
               </button>
               <button
                 onClick={() => setFilterSeverity('critical')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                className={`px-4 py-2 rounded text-sm font-medium transition-all ${
                   filterSeverity === 'critical'
                     ? 'bg-danger text-white'
                     : 'bg-bg-tertiary text-text-secondary hover:bg-bg-primary'
@@ -131,7 +129,7 @@ export default function ThreatsPage() {
               </button>
               <button
                 onClick={() => setFilterSeverity('high')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                className={`px-4 py-2 rounded text-sm font-medium transition-all ${
                   filterSeverity === 'high'
                     ? 'bg-warning text-white'
                     : 'bg-bg-tertiary text-text-secondary hover:bg-bg-primary'
@@ -141,7 +139,7 @@ export default function ThreatsPage() {
               </button>
               <button
                 onClick={() => setFilterSeverity('medium')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                className={`px-4 py-2 rounded text-sm font-medium transition-all ${
                   filterSeverity === 'medium'
                     ? 'bg-yellow-500 text-white'
                     : 'bg-bg-tertiary text-text-secondary hover:bg-bg-primary'
@@ -151,7 +149,7 @@ export default function ThreatsPage() {
               </button>
               <button
                 onClick={() => setFilterSeverity('low')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                className={`px-4 py-2 rounded text-sm font-medium transition-all ${
                   filterSeverity === 'low'
                     ? 'bg-success text-white'
                     : 'bg-bg-tertiary text-text-secondary hover:bg-bg-primary'
@@ -165,61 +163,65 @@ export default function ThreatsPage() {
             <div className="flex gap-2">
               <button
                 onClick={() => setViewMode('grid')}
-                className={`p-2 rounded-md transition-all ${
+                className={`p-2 rounded transition-all ${
                   viewMode === 'grid'
                     ? 'bg-primary text-white'
                     : 'bg-bg-tertiary text-text-secondary hover:bg-bg-primary'
                 }`}
                 title="Grid View"
               >
-                <span className="text-lg">▦</span>
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                </svg>
               </button>
               <button
                 onClick={() => setViewMode('list')}
-                className={`p-2 rounded-md transition-all ${
+                className={`p-2 rounded transition-all ${
                   viewMode === 'list'
                     ? 'bg-primary text-white'
                     : 'bg-bg-tertiary text-text-secondary hover:bg-bg-primary'
                 }`}
                 title="List View"
               >
-                <span className="text-lg">☰</span>
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
+                </svg>
               </button>
             </div>
 
             {/* Actions */}
             <div className="flex gap-2">
-              <Button variant="secondary" icon="📥">Export</Button>
-              <Button variant="primary" icon="🔄">Refresh</Button>
+              <Button variant="secondary">Export</Button>
+              <Button variant="primary">Refresh</Button>
             </div>
           </div>
         </Card>
 
         {/* Stats Summary */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <Card className="text-center">
+          <Card className="text-center border-l-4 border-l-danger">
             <div className="text-3xl font-bold text-danger mb-1">
               {threats.filter(t => t.severity === 'critical').length}
             </div>
-            <div className="text-sm text-text-secondary">Critical</div>
+            <div className="text-sm text-text-secondary uppercase tracking-wider">Critical</div>
           </Card>
-          <Card className="text-center">
+          <Card className="text-center border-l-4 border-l-warning">
             <div className="text-3xl font-bold text-warning mb-1">
               {threats.filter(t => t.severity === 'high').length}
             </div>
-            <div className="text-sm text-text-secondary">High</div>
+            <div className="text-sm text-text-secondary uppercase tracking-wider">High</div>
           </Card>
-          <Card className="text-center">
+          <Card className="text-center border-l-4 border-l-yellow-500">
             <div className="text-3xl font-bold text-yellow-500 mb-1">
               {threats.filter(t => t.severity === 'medium').length}
             </div>
-            <div className="text-sm text-text-secondary">Medium</div>
+            <div className="text-sm text-text-secondary uppercase tracking-wider">Medium</div>
           </Card>
-          <Card className="text-center">
+          <Card className="text-center border-l-4 border-l-success">
             <div className="text-3xl font-bold text-success mb-1">
               {threats.filter(t => t.severity === 'low').length}
             </div>
-            <div className="text-sm text-text-secondary">Low</div>
+            <div className="text-sm text-text-secondary uppercase tracking-wider">Low</div>
           </Card>
         </div>
 
@@ -235,7 +237,7 @@ export default function ThreatsPage() {
             ))
           ) : (
             <Card className="col-span-full text-center py-12">
-              <div className="text-6xl mb-4">🔍</div>
+              <div className="text-6xl mb-4 text-text-muted">⚠</div>
               <h3 className="text-xl font-semibold mb-2">No threats found</h3>
               <p className="text-text-secondary">
                 Try adjusting your filters or search query
@@ -247,4 +249,3 @@ export default function ThreatsPage() {
     </div>
   );
 }
-
