@@ -79,18 +79,20 @@ def verify_token(token: str) -> TokenData:
     
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        logger.warning(f"JWT decoded successfully. Payload keys: {payload.keys()}")
-        logger.warning(f"JWT payload: {payload}")
         
-        user_id: int = payload.get("sub")
+        # JWT sub must be a string, but we need int for user_id
+        sub = payload.get("sub")
+        if sub is None:
+            raise credentials_exception
+        
+        # Convert string sub back to int
+        try:
+            user_id = int(sub)
+        except (ValueError, TypeError):
+            raise credentials_exception
+        
         email: str = payload.get("email")
         role: str = payload.get("role")
-        
-        logger.warning(f"Extracted: user_id={user_id} (type={type(user_id)}), email={email}, role={role}")
-        
-        if user_id is None:
-            logger.error("user_id is None! Raising credentials_exception")
-            raise credentials_exception
             
         return TokenData(user_id=user_id, email=email, role=role)
         

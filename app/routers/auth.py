@@ -113,7 +113,7 @@ async def login(credentials: UserLogin, db: Session = Depends(get_db)):
     # Create access token
     access_token = create_access_token(
         data={
-            "sub": user.id,
+            "sub": str(user.id),  # JWT requires sub to be a string
             "email": user.email,
             "role": user.role
         },
