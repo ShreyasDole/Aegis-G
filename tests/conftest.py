@@ -15,7 +15,8 @@ from sqlalchemy.pool import StaticPool
 os.environ["ENVIRONMENT"] = "testing"
 # Use SECRET_KEY from environment if set (for CI), otherwise use default
 os.environ.setdefault("SECRET_KEY", "test-secret-key-not-for-production")
-os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
+# Force SQLite for tests (override CI's PostgreSQL setting)
+os.environ["DATABASE_URL"] = "sqlite:///:memory:"
 os.environ.setdefault("NEO4J_URI", "bolt://localhost:7687")
 os.environ.setdefault("NEO4J_PASSWORD", "test")
 os.environ.setdefault("GEMINI_API_KEY", "test-key")
