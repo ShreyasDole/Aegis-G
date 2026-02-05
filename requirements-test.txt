@@ -2,6 +2,7 @@
 # 🧪 Aegis-G Test Dependencies
 # ============================================
 # Install with: pip install -r requirements-test.txt
+# Updated: 2026-02-05 - Fixed starlette conflict
 
 -r requirements.txt
 
