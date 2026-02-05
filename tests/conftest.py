@@ -13,11 +13,12 @@ from sqlalchemy.pool import StaticPool
 
 # Set test environment before importing app
 os.environ["ENVIRONMENT"] = "testing"
-os.environ["SECRET_KEY"] = "test-secret-key-not-for-production"
-os.environ["DATABASE_URL"] = "sqlite:///:memory:"
-os.environ["NEO4J_URI"] = "bolt://localhost:7687"
-os.environ["NEO4J_PASSWORD"] = "test"
-os.environ["GEMINI_API_KEY"] = "test-key"
+# Use SECRET_KEY from environment if set (for CI), otherwise use default
+os.environ.setdefault("SECRET_KEY", "test-secret-key-not-for-production")
+os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
+os.environ.setdefault("NEO4J_URI", "bolt://localhost:7687")
+os.environ.setdefault("NEO4J_PASSWORD", "test")
+os.environ.setdefault("GEMINI_API_KEY", "test-key")
 
 # Import all models to register them with Base.metadata
 import app.models  # This imports all models via __init__.py
