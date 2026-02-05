@@ -1,6 +1,7 @@
 """
 Pytest Fixtures and Configuration
 Shared test fixtures for Aegis-G test suite
+Updated: 2026-02-05 - Fixed email validation for tests
 """
 import os
 import pytest
