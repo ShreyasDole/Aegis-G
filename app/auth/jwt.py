@@ -68,6 +68,9 @@ def verify_token(token: str) -> TokenData:
     Raises:
         HTTPException: If token is invalid
     """
+    import logging
+    logger = logging.getLogger(__name__)
+    
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -76,16 +79,23 @@ def verify_token(token: str) -> TokenData:
     
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        logger.warning(f"JWT decoded successfully. Payload keys: {payload.keys()}")
+        logger.warning(f"JWT payload: {payload}")
+        
         user_id: int = payload.get("sub")
         email: str = payload.get("email")
         role: str = payload.get("role")
         
+        logger.warning(f"Extracted: user_id={user_id} (type={type(user_id)}), email={email}, role={role}")
+        
         if user_id is None:
+            logger.error("user_id is None! Raising credentials_exception")
             raise credentials_exception
             
         return TokenData(user_id=user_id, email=email, role=role)
         
-    except JWTError:
+    except JWTError as e:
+        logger.error(f"JWTError during decode: {type(e).__name__}: {str(e)}")
         raise credentials_exception
 
 
