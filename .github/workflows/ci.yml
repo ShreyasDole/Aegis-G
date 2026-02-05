@@ -197,16 +197,51 @@ jobs:
 
       - name: Start services
         run: |
-          cp env.example .env
+          cp env.example .env || echo "# No env.example found" > .env
           echo "GEMINI_API_KEY=test-key" >> .env
           echo "SECRET_KEY=integration-test-secret" >> .env
+          echo "DATABASE_URL=postgresql://user:password@db:5432/aegis_db" >> .env
+          echo "REDIS_HOST=redis" >> .env
+          echo "REDIS_PORT=6379" >> .env
+          echo "NEO4J_URI=bolt://localhost:7687" >> .env
+          echo "NEO4J_PASSWORD=test" >> .env
           docker compose -f docker-compose.yml up -d --build
-          sleep 30
+          
+      - name: Wait for services
+        run: |
+          echo "Waiting for services to be ready..."
+          timeout 60 bash -c 'until docker compose -f docker-compose.yml ps | grep -q "Up"; do sleep 2; done' || true
+          sleep 10
+
+      - name: Check container status and logs
+        if: always()
+        run: |
+          echo "=== Container Status ==="
+          docker compose -f docker-compose.yml ps
+          echo ""
+          echo "=== Backend logs (last 50 lines) ==="
+          docker compose -f docker-compose.yml logs --tail=50 backend || true
+          echo ""
+          echo "=== Frontend logs (last 50 lines) ==="
+          docker compose -f docker-compose.yml logs --tail=50 frontend || true
+          echo ""
+          echo "=== Database logs (last 20 lines) ==="
+          docker compose -f docker-compose.yml logs --tail=20 db || true
 
       - name: Health check
         run: |
-          curl -f http://localhost:8000/health || exit 1
-          curl -f http://localhost:3000 || exit 1
+          echo "Checking backend health endpoint..."
+          for i in {1..10}; do
+            if curl -f http://localhost:8000/health; then
+              echo "Backend is healthy!"
+              break
+            fi
+            echo "Attempt $i failed, waiting 3 seconds..."
+            sleep 3
+          done || (echo "Backend health check failed after 10 attempts"; docker compose -f docker-compose.yml logs backend; exit 1)
+          
+          echo "Checking frontend..."
+          curl -f http://localhost:3000 || (echo "Frontend health check failed"; docker compose -f docker-compose.yml logs frontend; exit 1)
 
       - name: Stop services
         if: always()
