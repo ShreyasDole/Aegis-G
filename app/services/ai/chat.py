@@ -125,8 +125,8 @@ class ChatService:
         """
         Chat with tool execution capability
         """
-        # Define available tools
-        tools = [
+        # Available tools for reference (not used in demo implementation)
+        _tools = [
             {
                 "name": "search_threats",
                 "description": "Search for threats in the database",
