@@ -1,6 +1,7 @@
 """
 Authorization Middleware
 Automatically checks permissions for all API requests
+Cache bust: 2026-02-05-v2
 """
 from fastapi import Request, HTTPException, status
 from fastapi.responses import JSONResponse
