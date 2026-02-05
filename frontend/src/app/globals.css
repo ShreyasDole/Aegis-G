@@ -1,13 +1,149 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Rajdhani:wght@500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+@layer base {
+  * {
+    @apply border-border-subtle;
+  }
+  
+  body {
+    @apply bg-bg-primary text-text-primary font-sans;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
 }
 
+@layer components {
+  /* Button Styles */
+  .btn {
+    @apply px-6 py-2.5 rounded-md font-semibold text-sm transition-all duration-200 inline-flex items-center justify-center gap-2;
+  }
+  
+  .btn-primary {
+    @apply btn bg-primary text-white hover:bg-blue-600 hover:shadow-glow-blue active:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  
+  .btn-secondary {
+    @apply btn bg-transparent border border-border-medium text-text-secondary hover:border-primary hover:text-primary hover:bg-primary/10;
+  }
+  
+  .btn-danger {
+    @apply btn bg-danger text-white hover:bg-red-600 hover:shadow-glow-red active:bg-red-700;
+  }
+  
+  .btn-ai {
+    @apply btn bg-gradient-to-r from-secondary to-primary text-white hover:shadow-glow-purple;
+  }
+  
+  /* Card Styles */
+  .card {
+    @apply bg-bg-secondary rounded-lg border border-border-subtle p-6 shadow-card transition-all duration-200;
+  }
+  
+  .card-hover {
+    @apply card hover:-translate-y-1 hover:shadow-xl;
+  }
+  
+  /* Stat Card Styles */
+  .stat-card {
+    @apply card-hover relative overflow-hidden;
+  }
+  
+  .stat-card-safe {
+    @apply stat-card bg-gradient-to-br from-bg-secondary to-emerald-950/20 border-success/30;
+  }
+  
+  .stat-card-warning {
+    @apply stat-card bg-gradient-to-br from-bg-secondary to-amber-950/20 border-warning/30;
+  }
+  
+  .stat-card-critical {
+    @apply stat-card bg-gradient-to-br from-bg-secondary to-red-950/20 border-danger/30;
+  }
+  
+  /* Input Styles */
+  .input {
+    @apply bg-bg-primary border border-border-medium rounded-md px-4 py-2.5 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/50 transition-all;
+  }
+  
+  /* Badge Styles */
+  .badge {
+    @apply px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide inline-flex items-center gap-1;
+  }
+  
+  .badge-critical {
+    @apply badge bg-danger/20 text-danger border border-danger/50;
+  }
+  
+  .badge-high {
+    @apply badge bg-warning/20 text-warning border border-warning/50;
+  }
+  
+  .badge-medium {
+    @apply badge bg-yellow-500/20 text-yellow-400 border border-yellow-500/50;
+  }
+  
+  .badge-low {
+    @apply badge bg-success/20 text-success border border-success/50;
+  }
+  
+  .badge-info {
+    @apply badge bg-info/20 text-info border border-info/50;
+  }
+  
+  /* Threat Card */
+  .threat-card {
+    @apply card relative border-l-4 hover:shadow-xl;
+  }
+  
+  .threat-card-critical {
+    @apply threat-card border-l-danger hover:shadow-glow-red;
+  }
+  
+  .threat-card-high {
+    @apply threat-card border-l-warning hover:shadow-glow-blue;
+  }
+  
+  .threat-card-medium {
+    @apply threat-card border-l-yellow-500;
+  }
+  
+  .threat-card-low {
+    @apply threat-card border-l-success;
+  }
+}
+
+@layer utilities {
+  .text-glow-blue {
+    text-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+  }
+  
+  .text-glow-purple {
+    text-shadow: 0 0 10px rgba(139, 92, 246, 0.5);
+  }
+  
+  .text-glow-red {
+    text-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: #0a0e1a;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: #334155;
+    border-radius: 4px;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: #475569;
+  }
+}

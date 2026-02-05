@@ -1,73 +1,211 @@
-/**
- * Main Threat Heatmap Dashboard
- * Aegis-G Command Center
- */
 'use client';
-
-import { ThreatMap } from '@/components/visual/ThreatMap';
-import { ThreatContext } from '@/context/ThreatContext';
-import { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { StatCard } from '@/components/ui/StatCard';
+import { Card } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { ThreatCard } from '@/components/threats/ThreatCard';
+import { ThreatMapGlobe } from '@/components/visual/ThreatMapGlobe';
+import { Sidebar } from '@/components/layout/Sidebar';
 
 export default function DashboardPage() {
-  const [threats, setThreats] = useState([]);
-  const [stats, setStats] = useState({
-    total: 0,
-    critical: 0,
-    high: 0,
-    medium: 0,
-    low: 0
+  const [stats] = useState({
+    activeThreats: 85,
+    criticalAlerts: 12,
+    highRisk: 47,
+    totalEvents: 326,
+    uptime: 98.2,
   });
 
-  useEffect(() => {
-    // Fetch threat data from API
-    fetch('/api/scan')
-      .then(res => res.json())
-      .then(data => {
-        setThreats(data);
-        // Calculate stats
-        const critical = data.filter((t: any) => t.risk_score > 0.8).length;
-        const high = data.filter((t: any) => t.risk_score > 0.6 && t.risk_score <= 0.8).length;
-        const medium = data.filter((t: any) => t.risk_score > 0.4 && t.risk_score <= 0.6).length;
-        const low = data.filter((t: any) => t.risk_score <= 0.4).length;
-        
-        setStats({
-          total: data.length,
-          critical,
-          high,
-          medium,
-          low
-        });
-      })
-      .catch(err => console.error('Failed to fetch threats:', err));
-  }, []);
+  const [topThreats] = useState([
+    {
+      id: 1,
+      title: 'APT29 - Phishing Campaign Detected',
+      description: 'Targeting government emails with malware attachments',
+      severity: 'critical' as const,
+      source: '193.201.45.22 (Russia)',
+      firstSeen: '2 hours ago',
+      affectedSystems: 12,
+      riskScore: 8.7,
+    },
+    {
+      id: 2,
+      title: 'Lazarus Group - Cryptocurrency Theft',
+      description: 'Attempting to compromise exchange wallets',
+      severity: 'critical' as const,
+      source: '210.52.109.88 (North Korea)',
+      firstSeen: '4 hours ago',
+      affectedSystems: 8,
+      riskScore: 9.1,
+    },
+    {
+      id: 3,
+      title: 'APT41 - Supply Chain Attack',
+      description: 'Compromised software update mechanism detected',
+      severity: 'high' as const,
+      source: '118.26.34.12 (China)',
+      firstSeen: '6 hours ago',
+      affectedSystems: 23,
+      riskScore: 7.9,
+    },
+  ]);
+
+  const [threatActors] = useState([
+    { name: 'APT29 (Cozy Bear)', incidents: 42, trend: 'up' },
+    { name: 'Lazarus Group', incidents: 38, trend: 'up' },
+    { name: 'APT41', incidents: 31, trend: 'stable' },
+    { name: 'FIN7', incidents: 27, trend: 'down' },
+    { name: 'APT28 (Fancy Bear)', incidents: 24, trend: 'up' },
+  ]);
 
   return (
-    <ThreatContext.Provider value={{ threats, stats }}>
-      <div className="container mx-auto p-6">
-        <h1 className="text-3xl font-bold mb-6">🛡️ Aegis-G Command Dashboard</h1>
-        
-        <div className="grid grid-cols-4 gap-4 mb-6">
-          <div className="bg-red-100 p-4 rounded">
-            <div className="text-2xl font-bold text-red-700">{stats.critical}</div>
-            <div className="text-sm text-red-600">Critical Threats</div>
+    <div className="flex">
+      {/* Sidebar */}
+      <Sidebar />
+
+      {/* Main Content */}
+      <div className="flex-1 ml-80 p-6 min-h-screen">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-3xl font-bold font-display text-glow-blue mb-2">
+              🛡️ Command Dashboard
+            </h1>
+            <p className="text-text-secondary">
+              Real-time threat intelligence and system monitoring
+            </p>
           </div>
-          <div className="bg-orange-100 p-4 rounded">
-            <div className="text-2xl font-bold text-orange-700">{stats.high}</div>
-            <div className="text-sm text-orange-600">High Risk</div>
-          </div>
-          <div className="bg-yellow-100 p-4 rounded">
-            <div className="text-2xl font-bold text-yellow-700">{stats.medium}</div>
-            <div className="text-sm text-yellow-600">Medium Risk</div>
-          </div>
-          <div className="bg-green-100 p-4 rounded">
-            <div className="text-2xl font-bold text-green-700">{stats.low}</div>
-            <div className="text-sm text-green-600">Low Risk</div>
+          <div className="flex gap-3">
+            <Button variant="secondary" icon="🔍">Filter</Button>
+            <Button variant="secondary" icon="📥">Export</Button>
+            <Button variant="primary" icon="🔄">Refresh</Button>
           </div>
         </div>
 
-        <ThreatMap threats={threats} />
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+          <StatCard
+            value={stats.activeThreats}
+            label="Active Threats"
+            icon="🚨"
+            variant="warning"
+            trend={{ value: 12, isPositive: false }}
+          />
+          <StatCard
+            value={stats.criticalAlerts}
+            label="Critical Alerts"
+            icon="🔴"
+            variant="critical"
+            trend={{ value: 8, isPositive: false }}
+          />
+          <StatCard
+            value={stats.highRisk}
+            label="High Risk"
+            icon="🟠"
+            variant="warning"
+          />
+          <StatCard
+            value={stats.totalEvents}
+            label="Total Events"
+            icon="📊"
+            variant="default"
+            trend={{ value: 15, isPositive: true }}
+          />
+          <StatCard
+            value={`${stats.uptime}%`}
+            label="System Uptime"
+            icon="✅"
+            variant="safe"
+          />
+        </div>
+
+        {/* Threat Map & Top Actors */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+          {/* Global Threat Map */}
+          <Card className="lg:col-span-2">
+            <h2 className="text-xl font-semibold mb-4">🌍 Global Threat Map</h2>
+            <ThreatMapGlobe />
+          </Card>
+
+          {/* Top Threat Actors */}
+          <Card>
+            <h2 className="text-xl font-semibold mb-4">👤 Top Threat Actors</h2>
+            <div className="space-y-3">
+              {threatActors.map((actor, idx) => (
+                <div
+                  key={idx}
+                  className="flex items-center justify-between p-3 bg-bg-primary rounded-lg hover:bg-bg-tertiary transition-colors cursor-pointer"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl font-bold text-text-muted">
+                      {idx + 1}
+                    </span>
+                    <div>
+                      <div className="text-sm font-medium text-text-primary">
+                        {actor.name}
+                      </div>
+                      <div className="text-xs text-text-muted">
+                        {actor.incidents} incidents
+                      </div>
+                    </div>
+                  </div>
+                  <span
+                    className={`text-lg ${
+                      actor.trend === 'up'
+                        ? 'text-danger'
+                        : actor.trend === 'down'
+                        ? 'text-success'
+                        : 'text-text-muted'
+                    }`}
+                  >
+                    {actor.trend === 'up' ? '↑' : actor.trend === 'down' ? '↓' : '→'}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <Button variant="secondary" className="w-full mt-4 text-sm">
+              View All Actors →
+            </Button>
+          </Card>
+        </div>
+
+        {/* Recent Critical Threats */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold">🔴 Recent Critical Threats</h2>
+            <Button variant="secondary" className="text-sm">View All →</Button>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+            {topThreats.map((threat) => (
+              <ThreatCard key={threat.id} {...threat} />
+            ))}
+          </div>
+        </div>
+
+        {/* Quick Actions */}
+        <Card>
+          <h2 className="text-xl font-semibold mb-4">⚡ Quick Actions</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <Button variant="primary" className="flex-col h-20">
+              <span className="text-2xl mb-1">🔍</span>
+              <span className="text-sm">Scan Network</span>
+            </Button>
+            <Button variant="primary" className="flex-col h-20">
+              <span className="text-2xl mb-1">📊</span>
+              <span className="text-sm">Generate Report</span>
+            </Button>
+            <Button variant="ai" className="flex-col h-20">
+              <span className="text-2xl mb-1">🤖</span>
+              <span className="text-sm">AI Insights</span>
+            </Button>
+            <Button variant="secondary" className="flex-col h-20">
+              <span className="text-2xl mb-1">🔗</span>
+              <span className="text-sm">Share Intel</span>
+            </Button>
+          </div>
+        </Card>
       </div>
-    </ThreatContext.Provider>
+    </div>
   );
 }
+
 

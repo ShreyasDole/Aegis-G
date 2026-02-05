@@ -1,0 +1,287 @@
+'use client';
+import React, { useEffect, useRef, useState } from 'react';
+import { Card } from '../ui/Card';
+
+interface Node {
+  id: string;
+  label: string;
+  type: 'threat' | 'ip' | 'actor' | 'system';
+  severity?: 'critical' | 'high' | 'medium' | 'low';
+  x?: number;
+  y?: number;
+}
+
+interface Edge {
+  source: string;
+  target: string;
+  strength: number;
+}
+
+export const NetworkGraph: React.FC = () => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [selectedNode, setSelectedNode] = useState<Node | null>(null);
+  const [hoveredNode, setHoveredNode] = useState<string | null>(null);
+
+  const nodes: Node[] = [
+    { id: '1', label: 'APT29', type: 'actor', severity: 'critical' },
+    { id: '2', label: '193.201.45.22', type: 'ip', severity: 'critical' },
+    { id: '3', label: 'Mail Server', type: 'system', severity: 'high' },
+    { id: '4', label: 'APT41', type: 'actor', severity: 'high' },
+    { id: '5', label: '118.26.34.12', type: 'ip', severity: 'high' },
+    { id: '6', label: 'Web Server', type: 'system', severity: 'medium' },
+    { id: '7', label: 'Lazarus', type: 'actor', severity: 'critical' },
+    { id: '8', label: '210.52.109.88', type: 'ip', severity: 'critical' },
+    { id: '9', label: 'Database', type: 'system', severity: 'low' },
+    { id: '10', label: 'Unknown', type: 'threat', severity: 'medium' },
+  ];
+
+  const edges: Edge[] = [
+    { source: '1', target: '2', strength: 0.9 },
+    { source: '2', target: '3', strength: 0.8 },
+    { source: '4', target: '5', strength: 0.85 },
+    { source: '5', target: '6', strength: 0.7 },
+    { source: '7', target: '8', strength: 0.95 },
+    { source: '8', target: '9', strength: 0.6 },
+    { source: '1', target: '7', strength: 0.5 },
+    { source: '4', target: '10', strength: 0.4 },
+    { source: '10', target: '6', strength: 0.3 },
+  ];
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    canvas.width = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight;
+
+    // Initialize node positions (simple circular layout)
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const radius = Math.min(canvas.width, canvas.height) * 0.35;
+
+    nodes.forEach((node, i) => {
+      const angle = (i / nodes.length) * Math.PI * 2;
+      node.x = centerX + Math.cos(angle) * radius;
+      node.y = centerY + Math.sin(angle) * radius;
+    });
+
+    // Node colors
+    const nodeColors = {
+      actor: '#ef4444',
+      ip: '#f59e0b',
+      system: '#3b82f6',
+      threat: '#8b5cf6',
+    };
+
+    const severityColors = {
+      critical: '#ef4444',
+      high: '#f59e0b',
+      medium: '#eab308',
+      low: '#10b981',
+    };
+
+    // Drawing function
+    const draw = () => {
+      ctx.fillStyle = '#0a0e1a';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Draw edges
+      edges.forEach(edge => {
+        const sourceNode = nodes.find(n => n.id === edge.source);
+        const targetNode = nodes.find(n => n.id === edge.target);
+        
+        if (sourceNode && targetNode && sourceNode.x && sourceNode.y && targetNode.x && targetNode.y) {
+          ctx.beginPath();
+          ctx.moveTo(sourceNode.x, sourceNode.y);
+          ctx.lineTo(targetNode.x, targetNode.y);
+          ctx.strokeStyle = `rgba(59, 130, 246, ${edge.strength * 0.5})`;
+          ctx.lineWidth = edge.strength * 3;
+          ctx.stroke();
+        }
+      });
+
+      // Draw nodes
+      nodes.forEach(node => {
+        if (!node.x || !node.y) return;
+
+        const isHovered = hoveredNode === node.id;
+        const isSelected = selectedNode?.id === node.id;
+        const nodeSize = isHovered || isSelected ? 12 : 10;
+
+        // Node glow
+        if (isHovered || isSelected) {
+          const gradient = ctx.createRadialGradient(node.x, node.y, 0, node.x, node.y, nodeSize * 3);
+          gradient.addColorStop(0, nodeColors[node.type] + '40');
+          gradient.addColorStop(1, nodeColors[node.type] + '00');
+          ctx.fillStyle = gradient;
+          ctx.beginPath();
+          ctx.arc(node.x, node.y, nodeSize * 3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Node circle
+        ctx.fillStyle = nodeColors[node.type];
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, nodeSize, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Node border (severity)
+        if (node.severity) {
+          ctx.strokeStyle = severityColors[node.severity];
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
+
+        // Node label
+        ctx.fillStyle = '#f1f5f9';
+        ctx.font = isHovered || isSelected ? 'bold 12px Inter' : '11px Inter';
+        ctx.textAlign = 'center';
+        ctx.fillText(node.label, node.x, node.y + nodeSize + 15);
+      });
+    };
+
+    // Mouse interaction
+    const handleMouseMove = (e: MouseEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+
+      let foundNode = false;
+      for (const node of nodes) {
+        if (!node.x || !node.y) continue;
+        const distance = Math.sqrt(
+          Math.pow(mouseX - node.x, 2) + Math.pow(mouseY - node.y, 2)
+        );
+        if (distance < 15) {
+          setHoveredNode(node.id);
+          canvas.style.cursor = 'pointer';
+          foundNode = true;
+          break;
+        }
+      }
+      if (!foundNode) {
+        setHoveredNode(null);
+        canvas.style.cursor = 'default';
+      }
+    };
+
+    const handleClick = (e: MouseEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+
+      for (const node of nodes) {
+        if (!node.x || !node.y) continue;
+        const distance = Math.sqrt(
+          Math.pow(mouseX - node.x, 2) + Math.pow(mouseY - node.y, 2)
+        );
+        if (distance < 15) {
+          setSelectedNode(node);
+          return;
+        }
+      }
+      setSelectedNode(null);
+    };
+
+    canvas.addEventListener('mousemove', handleMouseMove);
+    canvas.addEventListener('click', handleClick);
+
+    // Animation loop
+    let animationFrame: number;
+    const animate = () => {
+      draw();
+      animationFrame = requestAnimationFrame(animate);
+    };
+
+    animate();
+
+    return () => {
+      canvas.removeEventListener('mousemove', handleMouseMove);
+      canvas.removeEventListener('click', handleClick);
+      cancelAnimationFrame(animationFrame);
+    };
+  }, [hoveredNode, selectedNode]);
+
+  return (
+    <div className="relative w-full h-full">
+      <canvas ref={canvasRef} className="w-full h-full" />
+      
+      {/* Legend */}
+      <Card className="absolute bottom-4 left-4 p-3">
+        <div className="text-xs font-semibold text-text-secondary mb-2">Node Types</div>
+        <div className="space-y-1 text-xs">
+          <div className="flex items-center gap-2">
+            <span className="w-3 h-3 bg-danger rounded-full"></span>
+            <span className="text-text-secondary">Threat Actor</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-3 h-3 bg-warning rounded-full"></span>
+            <span className="text-text-secondary">IP Address</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-3 h-3 bg-primary rounded-full"></span>
+            <span className="text-text-secondary">System</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-3 h-3 bg-secondary rounded-full"></span>
+            <span className="text-text-secondary">Unknown Threat</span>
+          </div>
+        </div>
+      </Card>
+
+      {/* Node Detail Panel */}
+      {selectedNode && (
+        <Card className="absolute top-4 right-4 w-64 p-4 animate-slide-in">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-lg font-semibold">Node Details</h3>
+            <button
+              onClick={() => setSelectedNode(null)}
+              className="text-text-muted hover:text-text-primary"
+            >
+              ✕
+            </button>
+          </div>
+          <div className="space-y-2 text-sm">
+            <div>
+              <span className="text-text-muted">Label:</span>
+              <span className="text-text-primary ml-2 font-semibold">
+                {selectedNode.label}
+              </span>
+            </div>
+            <div>
+              <span className="text-text-muted">Type:</span>
+              <span className="text-text-primary ml-2 capitalize">
+                {selectedNode.type}
+              </span>
+            </div>
+            {selectedNode.severity && (
+              <div>
+                <span className="text-text-muted">Severity:</span>
+                <span className={`ml-2 capitalize font-semibold ${
+                  selectedNode.severity === 'critical' ? 'text-danger' :
+                  selectedNode.severity === 'high' ? 'text-warning' :
+                  selectedNode.severity === 'medium' ? 'text-yellow-500' :
+                  'text-success'
+                }`}>
+                  {selectedNode.severity}
+                </span>
+              </div>
+            )}
+          </div>
+          <div className="mt-4 space-y-2">
+            <button className="btn-primary w-full text-xs py-1.5">
+              View Details
+            </button>
+            <button className="btn-secondary w-full text-xs py-1.5">
+              Investigate
+            </button>
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+};
+
