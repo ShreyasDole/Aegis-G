@@ -3,11 +3,9 @@ Threat Model - SQLAlchemy
 Stores threat reports and analysis results
 """
 from sqlalchemy import Column, Integer, String, Float, DateTime, Text, ForeignKey
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from datetime import datetime
-
-Base = declarative_base()
+from app.models.database import Base
 
 
 class Threat(Base):
