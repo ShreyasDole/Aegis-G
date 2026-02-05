@@ -36,18 +36,32 @@ class AuthorizationMiddleware(BaseHTTPMiddleware):
         
         if auth_header and auth_header.startswith("Bearer "):
             token = auth_header.split(" ")[1]
-            logger.debug(f"Token extracted: {token[:20]}...")
+            logger.warning(f"Token extracted (first 30 chars): {token[:30]}")
             try:
                 token_data = verify_token(token)
-                logger.debug(f"Token verified: user_id={token_data.user_id}, email={token_data.email}, role={token_data.role}")
+                logger.warning(f"Token verified successfully: user_id={token_data.user_id}, email={token_data.email}, role={token_data.role}")
                 user = {
                     "id": token_data.user_id,
                     "email": token_data.email,
                     "role": token_data.role
                 }
-            except (JWTError, HTTPException) as e:
+            except HTTPException as e:
                 # Invalid token - return 401 response
-                logger.warning(f"Token verification failed: {e}")
+                logger.warning(f"Token verification failed (HTTPException): status={e.status_code}, detail={e.detail}")
+                return JSONResponse(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    content={"detail": "Invalid authentication token"}
+                )
+            except JWTError as e:
+                # Invalid token - return 401 response
+                logger.warning(f"Token verification failed (JWTError): {type(e).__name__}: {str(e)}")
+                return JSONResponse(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    content={"detail": "Invalid authentication token"}
+                )
+            except Exception as e:
+                # Catch any other exception
+                logger.error(f"Unexpected error during token verification: {type(e).__name__}: {str(e)}")
                 return JSONResponse(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     content={"detail": "Invalid authentication token"}
