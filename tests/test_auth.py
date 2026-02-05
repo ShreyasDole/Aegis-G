@@ -99,7 +99,11 @@ class TestProtectedEndpoints:
     @pytest.mark.unit
     def test_access_protected_with_valid_token(self, client, auth_headers, test_user_data):
         """Test accessing protected endpoint with valid token succeeds"""
+        # Debug: print token to see if it exists
+        print(f"\n=== DEBUG: auth_headers = {auth_headers}")
         response = client.get("/api/auth/me", headers=auth_headers)
+        print(f"=== DEBUG: response status = {response.status_code}")
+        print(f"=== DEBUG: response body = {response.text}")
         
         assert response.status_code == 200
         data = response.json()

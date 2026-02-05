@@ -32,21 +32,28 @@ class AuthorizationMiddleware(BaseHTTPMiddleware):
         user = None
         auth_header = request.headers.get("Authorization")
         
+        logger.debug(f"Authorization header: {auth_header}")
+        
         if auth_header and auth_header.startswith("Bearer "):
             token = auth_header.split(" ")[1]
+            logger.debug(f"Token extracted: {token[:20]}...")
             try:
                 token_data = verify_token(token)
+                logger.debug(f"Token verified: user_id={token_data.user_id}, email={token_data.email}, role={token_data.role}")
                 user = {
                     "id": token_data.user_id,
                     "email": token_data.email,
                     "role": token_data.role
                 }
-            except (JWTError, HTTPException):
+            except (JWTError, HTTPException) as e:
                 # Invalid token - return 401 response
+                logger.warning(f"Token verification failed: {e}")
                 return JSONResponse(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     content={"detail": "Invalid authentication token"}
                 )
+        
+        logger.debug(f"User object before permission check: {user}")
         
         # Check permission
         try:
