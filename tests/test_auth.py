@@ -77,7 +77,7 @@ class TestUserLogin:
     def test_login_nonexistent_user(self, client):
         """Test login with non-existent email fails"""
         response = client.post("/api/auth/login", json={
-            "email": "nonexistent@aegis.local",
+            "email": "nonexistent@aegis.com",
             "password": "SomePassword123!"
         })
         

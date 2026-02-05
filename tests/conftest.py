@@ -18,6 +18,8 @@ os.environ["NEO4J_URI"] = "bolt://localhost:7687"
 os.environ["NEO4J_PASSWORD"] = "test"
 os.environ["GEMINI_API_KEY"] = "test-key"
 
+# Import all models to register them with Base.metadata
+import app.models  # This imports all models via __init__.py
 from app.models.database import Base, get_db
 from app.main import app
 
@@ -83,7 +85,7 @@ def client(db_session) -> Generator:
 def test_user_data():
     """Standard test user data"""
     return {
-        "email": "test@aegis.local",
+        "email": "test@aegis.com",
         "password": "TestPassword123!",
         "full_name": "Test User"
     }
@@ -93,7 +95,7 @@ def test_user_data():
 def test_admin_data():
     """Admin user data"""
     return {
-        "email": "admin@aegis.local",
+        "email": "admin@aegis.com",
         "password": "AdminPassword123!",
         "full_name": "Admin User"
     }
