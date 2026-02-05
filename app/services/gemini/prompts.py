@@ -2,7 +2,6 @@
 Gemini Prompts Loader
 Loads system instructions from text files for easy AI personality tweaking
 """
-import os
 from pathlib import Path
 
 

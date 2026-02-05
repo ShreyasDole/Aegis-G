@@ -3,7 +3,6 @@ Authorization Engine
 JSON-based RBAC/ABAC system for fine-grained access control
 """
 import json
-import os
 from typing import Dict, List, Optional, Any
 from pathlib import Path
 from fastapi import HTTPException, status

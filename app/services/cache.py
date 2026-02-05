@@ -6,7 +6,6 @@ import os
 import json
 import redis
 from typing import Optional, Any
-from datetime import timedelta
 import logging
 
 logger = logging.getLogger(__name__)

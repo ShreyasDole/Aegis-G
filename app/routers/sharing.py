@@ -5,7 +5,6 @@ Federated intelligence sharing with PII redaction
 from fastapi import APIRouter, HTTPException
 from app.services.gemini.privacy import PrivacyService
 from app.core.blockchain import add_to_ledger
-from typing import Optional
 
 router = APIRouter()
 

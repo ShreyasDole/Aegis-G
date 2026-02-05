@@ -5,7 +5,6 @@ Hashing & verification logic for audit trail
 import hashlib
 from datetime import datetime
 from typing import Optional
-from app.models.ledger import LedgerEntry
 
 
 def generate_hash(content: str, previous_hash: Optional[str] = None) -> str:

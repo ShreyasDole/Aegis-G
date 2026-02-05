@@ -3,9 +3,8 @@ Graph Router
 Neo4j graph queries and network analysis
 """
 from fastapi import APIRouter, HTTPException
-from app.schemas.graph import GraphResponse, NetworkQuery, GraphNode, GraphEdge
+from app.schemas.graph import GraphResponse, NetworkQuery, GraphNode
 from app.services.graph.neo4j import Neo4jService
-from typing import List
 
 router = APIRouter()
 

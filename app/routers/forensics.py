@@ -3,9 +3,7 @@ Forensics Router
 Deep dive analysis using Gemini 1.5 Pro
 """
 from fastapi import APIRouter, HTTPException
-from app.schemas.detection import ScanResponse
 from app.services.gemini.client import GeminiClient
-from typing import Optional
 
 router = APIRouter()
 

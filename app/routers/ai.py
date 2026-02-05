@@ -14,7 +14,7 @@ from app.models.user import User
 from app.models.ai import AIPolicy, AIInsight
 from app.schemas.ai import (
     PolicyCreate, PolicyResponse, PolicyTranslation,
-    InsightResponse, InsightCreate,
+    InsightResponse,
     ChatRequest, ChatResponse
 )
 from app.services.ai import policy_service, insight_service, chat_service
@@ -181,7 +181,7 @@ async def get_insights(
     if viewed is not None:
         query = query.filter(AIInsight.viewed == viewed)
     
-    query = query.filter(AIInsight.dismissed == False)
+    query = query.filter(~AIInsight.dismissed)
     
     insights = query.order_by(AIInsight.created_at.desc()).limit(50).all()
     

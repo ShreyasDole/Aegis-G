@@ -4,7 +4,7 @@ Translates natural language policies to DSL using Gemini
 """
 import os
 import json
-from typing import Dict, List, Optional
+from typing import Dict, List
 import google.generativeai as genai
 
 # Configure Gemini

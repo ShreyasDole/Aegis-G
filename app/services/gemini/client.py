@@ -4,8 +4,8 @@ Google GenAI SDK wrapper for detection and analysis
 """
 import google.generativeai as genai
 from app.config import settings
-from app.services.gemini.prompts import DETECTION_PROMPT, FORENSIC_PROMPT, PRIVACY_REDACTION_PROMPT
-from typing import Dict, Any, Optional
+from app.services.gemini.prompts import DETECTION_PROMPT, FORENSIC_PROMPT
+from typing import Dict, Any
 
 
 class GeminiClient:
@@ -29,7 +29,7 @@ class GeminiClient:
         """
         
         try:
-            response = self.flash_model.generate_content(prompt)
+            _ = self.flash_model.generate_content(prompt)
             # Parse response and return structured data
             # In production, implement proper JSON parsing
             return {
@@ -61,7 +61,7 @@ class GeminiClient:
         """
         
         try:
-            response = self.pro_model.generate_content(prompt)
+            _ = self.pro_model.generate_content(prompt)
             return {
                 "entities": {
                     "persons": [],

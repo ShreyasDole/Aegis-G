@@ -3,16 +3,13 @@ Audit Service
 Comprehensive logging system for requests, user actions, and security events
 """
 import json
-import time
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
 from sqlalchemy.orm import Session
-from sqlalchemy import and_, or_, desc
+from sqlalchemy import or_, desc
 from fastapi import Request, Response
 from app.models.audit import AuditLog
-from app.models.database import get_db
 import logging
-import re
 
 logger = logging.getLogger(__name__)
 

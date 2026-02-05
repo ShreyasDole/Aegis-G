@@ -4,9 +4,8 @@ Abstract storage layer supporting local and cloud storage
 """
 import os
 import uuid
-import shutil
 from pathlib import Path
-from typing import Optional, BinaryIO
+from typing import Optional
 from fastapi import UploadFile
 from datetime import datetime
 import logging

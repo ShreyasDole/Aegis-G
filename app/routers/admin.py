@@ -4,14 +4,13 @@ Admin-only endpoints for user management, system config, and audit logs
 """
 from fastapi import APIRouter, Depends, HTTPException, status, Response
 from sqlalchemy.orm import Session
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
 
-from app.auth import get_current_active_user, require_role
+from app.auth import require_role
 from app.models.database import get_db
 from app.models.user import User
-from app.models.audit import AuditLog
 from app.services.audit import audit
 from app.authz import authz
 

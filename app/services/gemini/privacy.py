@@ -4,7 +4,6 @@ PII redaction logic for federated sharing
 """
 from app.services.gemini.client import GeminiClient
 from app.services.gemini.prompts import PRIVACY_REDACTION_PROMPT
-from typing import Optional
 
 
 class PrivacyService:

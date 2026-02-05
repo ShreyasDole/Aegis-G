@@ -3,7 +3,6 @@ Audit Logging Middleware
 Automatically logs all API requests
 """
 import time
-import json
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 from app.services.audit import audit

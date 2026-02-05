@@ -2,10 +2,9 @@
 Detection Router
 Real-time content scanning endpoint
 """
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException
 from app.schemas.detection import ScanRequest, ScanResponse, BatchScanRequest
 from app.services.gemini.client import GeminiClient
-from app.core.blockchain import generate_hash
 from datetime import datetime
 import hashlib
 

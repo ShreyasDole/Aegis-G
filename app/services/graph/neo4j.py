@@ -4,7 +4,7 @@ Cypher query builder and graph operations
 """
 from neo4j import AsyncGraphDatabase
 from app.config import settings
-from app.schemas.graph import GraphNode, GraphEdge
+from app.schemas.graph import GraphNode
 from typing import List, Dict, Any
 
 
@@ -67,7 +67,7 @@ class Neo4jService:
     
     async def get_subgraph(self, node_id: str, depth: int = 2, limit: int = 100) -> Dict[str, Any]:
         """Get subgraph around specific node"""
-        query = f"""
+        _ = f"""
         MATCH path = (start)-[*1..{depth}]-(connected)
         WHERE id(start) = $node_id
         RETURN path
@@ -79,7 +79,7 @@ class Neo4jService:
     
     async def detect_clusters(self) -> List[Dict[str, Any]]:
         """Detect bot clusters in the network"""
-        query = """
+        _ = """
         CALL gds.graph.project('user-graph', 'User', {
             INTERACTED_WITH: {type: 'INTERACTED_WITH', orientation: 'UNDIRECTED'}
         })
@@ -112,6 +112,6 @@ class Neo4jService:
                 id=node.id,
                 label=node.label
             )
-            record = await result.single()
+            _ = await result.single()
             return {"node_id": node.id, "status": "created"}
 

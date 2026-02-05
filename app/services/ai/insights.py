@@ -4,7 +4,6 @@ Generates proactive insights and recommendations
 """
 import os
 import json
-import random
 from typing import List, Dict
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session

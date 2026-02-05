@@ -3,9 +3,8 @@ AI Chat Service (AI Manager)
 Context-aware chatbot with tool execution capabilities
 """
 import os
-import json
 import uuid
-from typing import List, Dict, Optional, Any
+from typing import List, Dict, Optional
 import google.generativeai as genai
 from sqlalchemy.orm import Session
 

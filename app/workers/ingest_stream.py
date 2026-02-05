@@ -5,12 +5,10 @@ Uses asyncio for concurrent processing to keep the API responsive
 """
 import asyncio
 import json
-import aiohttp
 from typing import List, Dict, Any
 from datetime import datetime
 from app.services.gemini.client import GeminiClient
 from app.services.graph.neo4j import Neo4jService
-from app.core.blockchain import generate_hash
 import hashlib
 
 
@@ -147,7 +145,7 @@ async def main():
     
     # Print summary
     high_risk = [r for r in results if r.get("analysis", {}).get("risk_score", 0) > 0.7]
-    print(f"\n📊 Summary:")
+    print("\n📊 Summary:")
     print(f"   Total processed: {len(results)}")
     print(f"   High-risk items: {len(high_risk)}")
 
