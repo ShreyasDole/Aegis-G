@@ -3,6 +3,7 @@ Authorization Middleware
 Automatically checks permissions for all API requests
 """
 from fastapi import Request, HTTPException, status
+from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from app.authz import authz
 from app.auth.jwt import verify_token
@@ -40,10 +41,10 @@ class AuthorizationMiddleware(BaseHTTPMiddleware):
                     "role": token_data.role
                 }
             except (JWTError, HTTPException):
-                # Invalid token
-                raise HTTPException(
+                # Invalid token - return 401 response
+                return JSONResponse(
                     status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Invalid authentication token"
+                    content={"detail": "Invalid authentication token"}
                 )
         
         # Check permission
@@ -54,8 +55,11 @@ class AuthorizationMiddleware(BaseHTTPMiddleware):
             logger.warning(
                 f"Authorization denied: {method} {path} - User: {user.get('email') if user else 'anonymous'} - Role: {user.get('role') if user else 'none'}"
             )
-            # Re-raise to return error to client
-            raise e
+            # Return error response instead of raising
+            return JSONResponse(
+                status_code=e.status_code,
+                content={"detail": e.detail}
+            )
         
         # Continue to endpoint
         response = await call_next(request)
