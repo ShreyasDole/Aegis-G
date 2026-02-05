@@ -1,0 +1,12 @@
+[
+  "/",
+  "/health",
+  "/api/system/health",
+  "/api/auth/login",
+  "/api/auth/register",
+  "/docs",
+  "/redoc",
+  "/openapi.json",
+  "/favicon.ico"
+]
+

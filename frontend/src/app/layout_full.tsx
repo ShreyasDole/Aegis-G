@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Aegis-G Command Center',
-  description: 'Base Scaffold for Infrastructure Testing',
+  title: 'Aegis-G: Cognitive Shield',
+  description: 'National Security Defense against AI-driven Malign Information Operations',
 };
 
 export default function RootLayout({

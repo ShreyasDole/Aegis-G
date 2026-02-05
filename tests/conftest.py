@@ -1,0 +1,152 @@
+"""
+Pytest Fixtures and Configuration
+Shared test fixtures for Aegis-G test suite
+"""
+import os
+import pytest
+from typing import Generator
+from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
+
+# Set test environment before importing app
+os.environ["ENVIRONMENT"] = "testing"
+os.environ["SECRET_KEY"] = "test-secret-key-not-for-production"
+os.environ["DATABASE_URL"] = "sqlite:///:memory:"
+os.environ["NEO4J_URI"] = "bolt://localhost:7687"
+os.environ["NEO4J_PASSWORD"] = "test"
+os.environ["GEMINI_API_KEY"] = "test-key"
+
+from app.models.database import Base, get_db
+from app.main import app
+
+
+# ============================================
+# Database Fixtures
+# ============================================
+
+# In-memory SQLite for testing
+SQLALCHEMY_TEST_DATABASE_URL = "sqlite:///:memory:"
+
+engine = create_engine(
+    SQLALCHEMY_TEST_DATABASE_URL,
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
+)
+
+TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+
+@pytest.fixture(scope="function")
+def db_session() -> Generator:
+    """
+    Creates a fresh database session for each test
+    Tables are created before and dropped after each test
+    """
+    # Create all tables
+    Base.metadata.create_all(bind=engine)
+    
+    session = TestingSessionLocal()
+    try:
+        yield session
+    finally:
+        session.close()
+        # Drop all tables after test
+        Base.metadata.drop_all(bind=engine)
+
+
+@pytest.fixture(scope="function")
+def client(db_session) -> Generator:
+    """
+    Test client with database dependency override
+    """
+    def override_get_db():
+        try:
+            yield db_session
+        finally:
+            pass
+    
+    app.dependency_overrides[get_db] = override_get_db
+    
+    with TestClient(app) as test_client:
+        yield test_client
+    
+    app.dependency_overrides.clear()
+
+
+# ============================================
+# User Fixtures
+# ============================================
+
+@pytest.fixture
+def test_user_data():
+    """Standard test user data"""
+    return {
+        "email": "test@aegis.local",
+        "password": "TestPassword123!",
+        "full_name": "Test User"
+    }
+
+
+@pytest.fixture
+def test_admin_data():
+    """Admin user data"""
+    return {
+        "email": "admin@aegis.local",
+        "password": "AdminPassword123!",
+        "full_name": "Admin User"
+    }
+
+
+@pytest.fixture
+def registered_user(client, test_user_data):
+    """Create and return a registered user"""
+    response = client.post("/api/auth/register", json=test_user_data)
+    assert response.status_code == 201
+    return response.json()
+
+
+@pytest.fixture
+def auth_headers(client, test_user_data, registered_user):
+    """Get authentication headers for a registered user"""
+    response = client.post("/api/auth/login", json={
+        "email": test_user_data["email"],
+        "password": test_user_data["password"]
+    })
+    assert response.status_code == 200
+    token = response.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
+
+
+# ============================================
+# Threat Fixtures
+# ============================================
+
+@pytest.fixture
+def sample_threat_data():
+    """Sample threat data for testing"""
+    return {
+        "content": "Suspicious activity detected from IP 192.168.1.1",
+        "source_platform": "network_monitor",
+        "risk_score": 7.5
+    }
+
+
+# ============================================
+# Utility Fixtures
+# ============================================
+
+@pytest.fixture
+def mock_gemini_response():
+    """Mock response from Gemini API"""
+    return {
+        "analysis": "This appears to be a potential reconnaissance attempt.",
+        "risk_level": "medium",
+        "recommendations": [
+            "Monitor source IP for additional activity",
+            "Review firewall logs",
+            "Consider temporary IP block"
+        ]
+    }
+

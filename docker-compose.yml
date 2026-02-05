@@ -1,4 +1,4 @@
-version: '3.8'
+name: aegis-g-base
 
 services:
   # 🐍 The Brain (FastAPI)
@@ -13,8 +13,11 @@ services:
       - ./app:/app
     environment:
       - DATABASE_URL=postgresql://user:password@db:5432/aegis_db
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
     depends_on:
       - db
+      - redis
 
   # 💻 The Face (Next.js)
   frontend:
@@ -45,6 +48,17 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  # 🔄 The Cache (Redis)
+  redis:
+    image: redis:7-alpine
+    container_name: aegis_redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+
 volumes:
   postgres_data:
+  redis_data:
 
