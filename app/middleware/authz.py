@@ -41,7 +41,7 @@ class AuthorizationMiddleware(BaseHTTPMiddleware):
                 }
             except (JWTError, HTTPException):
                 # Invalid token
-                return HTTPException(
+                raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="Invalid authentication token"
                 )
