@@ -1,16 +1,25 @@
 "use client";
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 
 export default function Home() {
+  const router = useRouter();
   const [status, setStatus] = useState<string>("Connecting...");
   const [backendData, setBackendData] = useState<any>(null);
 
   useEffect(() => {
+    // Check if user is already logged in
+    const token = localStorage.getItem('token');
+    if (token) {
+      router.push('/dashboard');
+      return;
+    }
+
     // Attempt to hit the backend
-    fetch('http://localhost:8000/')
+    fetch('http://127.0.0.1:8000/')
       .then(res => res.json())
       .then(data => {
         setStatus("Connected");
@@ -20,7 +29,7 @@ export default function Home() {
         setStatus("Connection Failed");
         console.error(err);
       });
-  }, []);
+  }, [router]);
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-8 bg-bg-primary relative overflow-hidden">
@@ -82,12 +91,12 @@ export default function Home() {
 
       {/* Action Buttons */}
       <div className="flex gap-4 z-10 mb-16">
-        <Link href="/dashboard">
+        <Link href="/login">
           <Button variant="primary" className="text-base px-8 py-3">
-            Enter Command Center
+            Sign In to Command Center
           </Button>
         </Link>
-        <Link href="http://localhost:8000/docs" target="_blank">
+        <Link href="http://127.0.0.1:8000/docs" target="_blank">
           <Button variant="secondary" className="text-base px-8 py-3">
             API Documentation
           </Button>

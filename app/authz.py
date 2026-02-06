@@ -28,7 +28,7 @@ class AuthorizationEngine:
                 with open(self.authz_map_path, 'r') as f:
                     self.authz_rules = json.load(f)
             else:
-                print(f"⚠️  Warning: {self.authz_map_path} not found. Creating default rules.")
+                print(f"Warning: {self.authz_map_path} not found. Creating default rules.")
                 self.create_default_rules()
             
             if self.public_map_path.exists():
@@ -38,7 +38,7 @@ class AuthorizationEngine:
                 self.create_default_public_endpoints()
                 
         except Exception as e:
-            print(f"❌ Error loading authorization rules: {e}")
+            print(f"Error loading authorization rules: {e}")
             self.authz_rules = {}
             self.public_endpoints = []
     
@@ -222,7 +222,7 @@ class AuthorizationEngine:
             with open(self.authz_map_path, 'w') as f:
                 json.dump(self.authz_rules, f, indent=2)
         except Exception as e:
-            print(f"❌ Error saving authorization rules: {e}")
+            print(f"Error saving authorization rules: {e}")
     
     def get_all_rules(self) -> Dict[str, Any]:
         """Get all authorization rules"""

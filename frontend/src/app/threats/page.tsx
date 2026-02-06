@@ -10,68 +10,7 @@ export default function ThreatsPage() {
   const [filterSeverity, setFilterSeverity] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const threats = [
-    {
-      id: 1,
-      title: 'APT29 - Phishing Campaign Detected',
-      description: 'Targeting government emails with malware attachments',
-      severity: 'critical' as const,
-      source: '193.201.45.22 (Russia)',
-      firstSeen: '2 hours ago',
-      affectedSystems: 12,
-      riskScore: 8.7,
-    },
-    {
-      id: 2,
-      title: 'Lazarus Group - Cryptocurrency Theft',
-      description: 'Attempting to compromise exchange wallets',
-      severity: 'critical' as const,
-      source: '210.52.109.88 (North Korea)',
-      firstSeen: '4 hours ago',
-      affectedSystems: 8,
-      riskScore: 9.1,
-    },
-    {
-      id: 3,
-      title: 'APT41 - Supply Chain Attack',
-      description: 'Compromised software update mechanism detected',
-      severity: 'high' as const,
-      source: '118.26.34.12 (China)',
-      firstSeen: '6 hours ago',
-      affectedSystems: 23,
-      riskScore: 7.9,
-    },
-    {
-      id: 4,
-      title: 'FIN7 - Point of Sale Malware',
-      description: 'Retail payment systems targeted',
-      severity: 'high' as const,
-      source: '45.142.212.61 (Unknown)',
-      firstSeen: '8 hours ago',
-      affectedSystems: 15,
-      riskScore: 7.2,
-    },
-    {
-      id: 5,
-      title: 'Suspicious Login Activity',
-      description: 'Multiple failed authentication attempts',
-      severity: 'medium' as const,
-      source: '172.58.34.90 (USA)',
-      firstSeen: '12 hours ago',
-      affectedSystems: 3,
-      riskScore: 5.4,
-    },
-    {
-      id: 6,
-      title: 'Port Scan Detected',
-      description: 'Automated reconnaissance activity observed',
-      severity: 'low' as const,
-      source: '89.23.145.67 (Germany)',
-      firstSeen: '1 day ago',
-      affectedSystems: 1,
-      riskScore: 3.2,
-    },
-  ];
+  const threats: any[] = [];
 
   const filteredThreats = threats.filter(threat => {
     const matchesSeverity = filterSeverity === 'all' || threat.severity === filterSeverity;
@@ -191,8 +130,8 @@ export default function ThreatsPage() {
 
             {/* Actions */}
             <div className="flex gap-2">
-              <Button variant="secondary">Export</Button>
-              <Button variant="primary">Refresh</Button>
+              <Button variant="secondary" onClick={() => console.log('Export clicked')}>Export</Button>
+              <Button variant="primary" onClick={() => console.log('Refresh clicked')}>Refresh</Button>
             </div>
           </div>
         </Card>

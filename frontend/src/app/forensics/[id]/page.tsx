@@ -9,86 +9,11 @@ export default function ForensicsDetailPage() {
   const params = useParams();
   const id = params?.id || '1';
 
-  const forensicData = {
-    id: id,
-    title: 'APT29 Phishing Campaign Analysis',
-    severity: 'critical' as const,
-    status: 'investigating',
-    createdAt: '2024-02-05 14:23:00',
-    analyst: 'Sarah Chen',
-    description: 'Detailed forensic analysis of APT29 phishing campaign targeting government agencies',
-  };
-
-  const timeline = [
-    {
-      time: '14:23:00',
-      event: 'Threat detected',
-      description: 'Malicious email detected by mail filter',
-      type: 'detection',
-    },
-    {
-      time: '14:25:30',
-      event: 'Initial analysis',
-      description: 'Email contains malicious attachment (document.pdf.exe)',
-      type: 'analysis',
-    },
-    {
-      time: '14:28:15',
-      event: 'C2 communication',
-      description: 'Attempted connection to 193.201.45.22:443',
-      type: 'network',
-    },
-    {
-      time: '14:30:00',
-      event: 'Containment',
-      description: 'Blocked IP address and quarantined affected system',
-      type: 'response',
-    },
-    {
-      time: '14:35:20',
-      event: 'Deep scan',
-      description: 'Full system scan initiated, no additional infections found',
-      type: 'analysis',
-    },
-  ];
-
-  const artifacts = [
-    {
-      name: 'malicious_email.eml',
-      type: 'Email',
-      hash: 'sha256:a3d4f5...',
-      size: '145 KB',
-      risk: 'high',
-    },
-    {
-      name: 'document.pdf.exe',
-      type: 'Executable',
-      hash: 'sha256:7b8c9d...',
-      size: '2.3 MB',
-      risk: 'critical',
-    },
-    {
-      name: 'network_capture.pcap',
-      type: 'Network Capture',
-      hash: 'sha256:e1f2g3...',
-      size: '512 KB',
-      risk: 'medium',
-    },
-    {
-      name: 'system_logs.txt',
-      type: 'Logs',
-      hash: 'sha256:h4i5j6...',
-      size: '89 KB',
-      risk: 'low',
-    },
-  ];
-
-  const indicators = [
-    { type: 'IP Address', value: '193.201.45.22', confidence: 'High' },
-    { type: 'Domain', value: 'secure-gov-login.xyz', confidence: 'High' },
-    { type: 'Email', value: 'admin@gov-security.com', confidence: 'Medium' },
-    { type: 'File Hash', value: 'a3d4f5e6b7c8d9...', confidence: 'High' },
-  ];
+  const [forensicData] = useState<any>(null);
+  const [timeline] = useState<any[]>([]);
+  const [artifacts] = useState<any[]>([]);
+  const [indicators] = useState<any[]>([]);
+  const [relatedThreats] = useState<any[]>([]);
 
   return (
     <div className="min-h-screen p-6">
@@ -100,21 +25,31 @@ export default function ForensicsDetailPage() {
               <h1 className="text-3xl font-bold font-display">
                 🔍 Forensic Analysis #{id}
               </h1>
-              <Badge variant={forensicData.severity}>
-                {forensicData.severity.toUpperCase()}
-              </Badge>
-              <Badge variant="info">{forensicData.status}</Badge>
+              {forensicData && (
+                <>
+                  <Badge variant={forensicData.severity}>
+                    {forensicData.severity.toUpperCase()}
+                  </Badge>
+                  <Badge variant="info">{forensicData.status}</Badge>
+                </>
+              )}
             </div>
-            <p className="text-text-secondary">{forensicData.title}</p>
-            <div className="flex items-center gap-4 mt-2 text-sm text-text-muted">
-              <span>Created: {forensicData.createdAt}</span>
-              <span>•</span>
-              <span>Analyst: {forensicData.analyst}</span>
-            </div>
+            {forensicData ? (
+              <>
+                <p className="text-text-secondary">{forensicData.title}</p>
+                <div className="flex items-center gap-4 mt-2 text-sm text-text-muted">
+                  <span>Created: {forensicData.createdAt}</span>
+                  <span>•</span>
+                  <span>Analyst: {forensicData.analyst}</span>
+                </div>
+              </>
+            ) : (
+              <p className="text-text-secondary">No forensic data available for this analysis</p>
+            )}
           </div>
           <div className="flex gap-2">
-            <Button variant="secondary" icon="📥">Export Report</Button>
-            <Button variant="ai" icon="🤖">AI Analysis</Button>
+            <Button variant="secondary" icon="📥" onClick={() => console.log('Export Report clicked', id)}>Export Report</Button>
+            <Button variant="ai" icon="🤖" onClick={() => console.log('AI Analysis clicked', id)}>AI Analysis</Button>
           </div>
         </div>
 
@@ -125,7 +60,14 @@ export default function ForensicsDetailPage() {
             <Card>
               <h2 className="text-xl font-semibold mb-4">📅 Attack Timeline</h2>
               <div className="space-y-4">
-                {timeline.map((item, idx) => {
+                {timeline.length === 0 ? (
+                  <div className="text-center py-12 text-text-secondary">
+                    <div className="text-4xl mb-4">📅</div>
+                    <h3 className="text-lg font-semibold mb-2">No timeline data available</h3>
+                    <p className="text-sm">Timeline events will appear here when available</p>
+                  </div>
+                ) : (
+                  timeline.map((item, idx) => {
                   const typeColors = {
                     detection: 'border-warning',
                     analysis: 'border-info',
@@ -151,7 +93,8 @@ export default function ForensicsDetailPage() {
                       </div>
                     </div>
                   );
-                })}
+                  })
+                )}
               </div>
             </Card>
 
@@ -159,7 +102,14 @@ export default function ForensicsDetailPage() {
             <Card>
               <h2 className="text-xl font-semibold mb-4">📦 Evidence & Artifacts</h2>
               <div className="space-y-3">
-                {artifacts.map((artifact, idx) => (
+                {artifacts.length === 0 ? (
+                  <div className="text-center py-12 text-text-secondary">
+                    <div className="text-4xl mb-4">📦</div>
+                    <h3 className="text-lg font-semibold mb-2">No artifacts available</h3>
+                    <p className="text-sm">Evidence and artifacts will appear here when available</p>
+                  </div>
+                ) : (
+                  artifacts.map((artifact, idx) => (
                   <div
                     key={idx}
                     className="flex items-center justify-between p-4 bg-bg-primary rounded-lg hover:bg-bg-tertiary transition-colors"
@@ -185,12 +135,13 @@ export default function ForensicsDetailPage() {
                       >
                         {artifact.risk}
                       </Badge>
-                      <Button variant="secondary" className="text-xs py-1 px-3">
+                      <Button variant="secondary" className="text-xs py-1 px-3" onClick={() => console.log('Download artifact clicked', artifact.name)}>
                         Download
                       </Button>
                     </div>
                   </div>
-                ))}
+                  ))
+                )}
               </div>
             </Card>
 
@@ -198,11 +149,13 @@ export default function ForensicsDetailPage() {
             <Card>
               <h2 className="text-xl font-semibold mb-4">🌐 Network Activity</h2>
               <div className="bg-bg-primary p-4 rounded-lg font-mono text-sm text-text-secondary overflow-x-auto">
-                <div className="text-warning mb-2">### Connection Attempts ###</div>
-                <div>14:28:15 | OUTBOUND | 192.168.1.105:54321 → 193.201.45.22:443 | BLOCKED</div>
-                <div>14:28:16 | DNS      | Query: secure-gov-login.xyz | BLOCKED</div>
-                <div>14:28:17 | OUTBOUND | 192.168.1.105:54322 → 45.142.212.61:8080 | BLOCKED</div>
-                <div className="text-success mt-2">### All threats contained ###</div>
+                {timeline.length === 0 ? (
+                  <div className="text-center py-8 text-text-muted">
+                    No network activity data available
+                  </div>
+                ) : (
+                  <div className="text-text-muted">Network activity will appear here when available</div>
+                )}
               </div>
             </Card>
           </div>
@@ -215,26 +168,19 @@ export default function ForensicsDetailPage() {
                 <span>🤖</span> AI Insights
               </h3>
               <div className="space-y-3 text-sm">
-                <div className="p-3 bg-bg-primary/50 rounded">
-                  <div className="font-medium text-warning mb-1">⚠️ High Confidence Match</div>
-                  <div className="text-text-secondary">
-                    Techniques match known APT29 TTPs (MITRE ATT&CK: T1566.001)
+                {forensicData ? (
+                  <div className="text-text-secondary text-center py-8">
+                    AI insights will appear here when analysis is available
                   </div>
-                </div>
-                <div className="p-3 bg-bg-primary/50 rounded">
-                  <div className="font-medium text-info mb-1">💡 Recommendation</div>
-                  <div className="text-text-secondary">
-                    Review similar emails from past 7 days for additional victims
+                ) : (
+                  <div className="text-center py-8 text-text-secondary">
+                    <div className="text-4xl mb-4">🤖</div>
+                    <h3 className="text-lg font-semibold mb-2">No AI insights available</h3>
+                    <p className="text-sm">AI analysis will appear here when available</p>
                   </div>
-                </div>
-                <div className="p-3 bg-bg-primary/50 rounded">
-                  <div className="font-medium text-success mb-1">✅ Good Response</div>
-                  <div className="text-text-secondary">
-                    Quick containment prevented lateral movement
-                  </div>
-                </div>
+                )}
               </div>
-              <Button variant="ai" className="w-full mt-4 text-sm">
+              <Button variant="ai" className="w-full mt-4 text-sm" onClick={() => console.log('Generate Full Report clicked', id)}>
                 Generate Full Report
               </Button>
             </Card>
@@ -243,7 +189,14 @@ export default function ForensicsDetailPage() {
             <Card>
               <h3 className="text-lg font-semibold mb-3">🎯 IOCs</h3>
               <div className="space-y-3">
-                {indicators.map((ioc, idx) => (
+                {indicators.length === 0 ? (
+                  <div className="text-center py-8 text-text-secondary">
+                    <div className="text-4xl mb-4">🎯</div>
+                    <h3 className="text-lg font-semibold mb-2">No IOCs available</h3>
+                    <p className="text-sm">Indicators of compromise will appear here when available</p>
+                  </div>
+                ) : (
+                  indicators.map((ioc, idx) => (
                   <div key={idx} className="text-sm">
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-text-muted">{ioc.type}</span>
@@ -255,9 +208,10 @@ export default function ForensicsDetailPage() {
                       {ioc.value}
                     </div>
                   </div>
-                ))}
+                  ))
+                )}
               </div>
-              <Button variant="secondary" className="w-full mt-4 text-sm">
+              <Button variant="secondary" className="w-full mt-4 text-sm" onClick={() => console.log('Export IOCs clicked', id)}>
                 Export IOCs
               </Button>
             </Card>
@@ -266,18 +220,24 @@ export default function ForensicsDetailPage() {
             <Card>
               <h3 className="text-lg font-semibold mb-3">🔗 Related Threats</h3>
               <div className="space-y-2 text-sm">
-                <div className="p-2 bg-bg-primary rounded hover:bg-bg-tertiary cursor-pointer transition-colors">
-                  <div className="font-medium text-text-primary">APT29 Campaign #847</div>
-                  <div className="text-xs text-text-muted">2 days ago</div>
-                </div>
-                <div className="p-2 bg-bg-primary rounded hover:bg-bg-tertiary cursor-pointer transition-colors">
-                  <div className="font-medium text-text-primary">Similar Phishing #923</div>
-                  <div className="text-xs text-text-muted">5 days ago</div>
-                </div>
-                <div className="p-2 bg-bg-primary rounded hover:bg-bg-tertiary cursor-pointer transition-colors">
-                  <div className="font-medium text-text-primary">APT29 Infrastructure</div>
-                  <div className="text-xs text-text-muted">1 week ago</div>
-                </div>
+                {relatedThreats.length === 0 ? (
+                  <div className="text-center py-8 text-text-secondary">
+                    <div className="text-4xl mb-4">🔗</div>
+                    <h3 className="text-lg font-semibold mb-2">No related threats</h3>
+                    <p className="text-sm">Related threats will appear here when available</p>
+                  </div>
+                ) : (
+                  relatedThreats.map((threat, idx) => (
+                    <div 
+                      key={idx}
+                      className="p-2 bg-bg-primary rounded hover:bg-bg-tertiary cursor-pointer transition-colors"
+                      onClick={() => console.log('Related threat clicked', threat)}
+                    >
+                      <div className="font-medium text-text-primary">{threat.title || `Threat #${threat.id}`}</div>
+                      <div className="text-xs text-text-muted">{threat.date || 'Unknown date'}</div>
+                    </div>
+                  ))
+                )}
               </div>
             </Card>
           </div>

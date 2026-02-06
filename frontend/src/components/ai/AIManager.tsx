@@ -14,15 +14,31 @@ interface Message {
 export const AIManager: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState('');
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      role: 'assistant',
-      content: 'Hello! I\'m your AI Security Assistant. I can help you analyze threats, generate reports, and provide insights. How can I assist you today?',
-      timestamp: new Date(),
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
+
+  // Listen for custom event from Navbar
+  React.useEffect(() => {
+    const handleOpenAI = () => {
+      setIsOpen(true);
+    };
+
+    window.addEventListener('openAIAssistant', handleOpenAI);
+    return () => window.removeEventListener('openAIAssistant', handleOpenAI);
+  }, []);
+
+  // Keyboard shortcut (Ctrl+M or Cmd+M)
+  React.useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'm') {
+        e.preventDefault();
+        setIsOpen(!isOpen);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [isOpen]);
 
   const handleSend = () => {
     if (!message.trim()) return;
@@ -152,13 +168,22 @@ export const AIManager: React.FC = () => {
             {/* Input */}
             <div className="p-4 border-t border-border-subtle bg-bg-secondary">
               <div className="flex gap-2 mb-2">
-                <button className="text-xs px-3 py-1 bg-bg-tertiary hover:bg-bg-primary rounded transition-colors text-text-secondary">
+                <button 
+                  className="text-xs px-3 py-1 bg-bg-tertiary hover:bg-bg-primary rounded transition-colors text-text-secondary"
+                  onClick={() => console.log('Show threats clicked')}
+                >
                   Show threats
                 </button>
-                <button className="text-xs px-3 py-1 bg-bg-tertiary hover:bg-bg-primary rounded transition-colors text-text-secondary">
+                <button 
+                  className="text-xs px-3 py-1 bg-bg-tertiary hover:bg-bg-primary rounded transition-colors text-text-secondary"
+                  onClick={() => console.log('Generate report clicked')}
+                >
                   Generate report
                 </button>
-                <button className="text-xs px-3 py-1 bg-bg-tertiary hover:bg-bg-primary rounded transition-colors text-text-secondary">
+                <button 
+                  className="text-xs px-3 py-1 bg-bg-tertiary hover:bg-bg-primary rounded transition-colors text-text-secondary"
+                  onClick={() => console.log('System status clicked')}
+                >
                   System status
                 </button>
               </div>

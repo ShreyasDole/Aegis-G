@@ -1,22 +1,11 @@
 'use client';
-import React from 'react';
+import React, { useState } from 'react';
 import { Card } from '../ui/Card';
 
 export const Sidebar: React.FC = () => {
-  const activities = [
-    { text: 'New threat detected from Russia', time: '2m ago', type: 'critical', label: 'CRITICAL' },
-    { text: 'User login from China', time: '5m ago', type: 'warning', label: 'WARNING' },
-    { text: 'AI insight ready', time: '10m ago', type: 'info', label: 'INFO' },
-    { text: 'System backup completed', time: '15m ago', type: 'success', label: 'SUCCESS' },
-    { text: 'Failed login attempt', time: '20m ago', type: 'critical', label: 'CRITICAL' },
-  ];
-
-  const systemHealth = [
-    { label: 'Backend', status: 'online', value: 99.9 },
-    { label: 'Database', status: 'online', value: 100 },
-    { label: 'Redis Cache', status: 'online', value: 100 },
-    { label: 'Neo4j Graph', status: 'warning', value: 85 },
-  ];
+  const [activities] = useState<any[]>([]);
+  const [systemHealth] = useState<any[]>([]);
+  const [aiInsights] = useState<any[]>([]);
 
   const getActivityColor = (type: string) => {
     switch(type) {
@@ -48,20 +37,27 @@ export const Sidebar: React.FC = () => {
           </span>
         </div>
         <div className="space-y-2">
-          {activities.map((activity, idx) => (
-            <div 
-              key={idx}
-              className={`flex items-start gap-3 p-2 rounded hover:bg-bg-tertiary transition-colors cursor-pointer border-l-2 ${getActivityColor(activity.type)}`}
-            >
-              <div className="flex-1 min-w-0">
-                <div className={`text-xs font-semibold uppercase tracking-wide mb-1 ${getLabelColor(activity.type)}`}>
-                  {activity.label}
-                </div>
-                <p className="text-sm text-text-primary truncate">{activity.text}</p>
-                <p className="text-xs text-text-muted mt-1">{activity.time}</p>
-              </div>
+          {activities.length === 0 ? (
+            <div className="text-center py-8 text-text-secondary text-sm">
+              No recent activity
             </div>
-          ))}
+          ) : (
+            activities.map((activity, idx) => (
+              <div 
+                key={idx}
+                className={`flex items-start gap-3 p-2 rounded hover:bg-bg-tertiary transition-colors cursor-pointer border-l-2 ${getActivityColor(activity.type)}`}
+                onClick={() => console.log('Activity clicked', activity)}
+              >
+                <div className="flex-1 min-w-0">
+                  <div className={`text-xs font-semibold uppercase tracking-wide mb-1 ${getLabelColor(activity.type)}`}>
+                    {activity.label}
+                  </div>
+                  <p className="text-sm text-text-primary truncate">{activity.text}</p>
+                  <p className="text-xs text-text-muted mt-1">{activity.time}</p>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </Card>
 
@@ -69,7 +65,12 @@ export const Sidebar: React.FC = () => {
       <Card>
         <h3 className="text-sm font-semibold uppercase tracking-wider text-text-primary mb-4">System Status</h3>
         <div className="space-y-3">
-          {systemHealth.map((system, idx) => (
+          {systemHealth.length === 0 ? (
+            <div className="text-center py-8 text-text-secondary text-sm">
+              No system health data available
+            </div>
+          ) : (
+            systemHealth.map((system, idx) => (
             <div key={idx}>
               <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-2">
@@ -89,7 +90,8 @@ export const Sidebar: React.FC = () => {
                 />
               </div>
             </div>
-          ))}
+            ))
+          )}
         </div>
       </Card>
 
@@ -97,20 +99,31 @@ export const Sidebar: React.FC = () => {
       <Card className="mt-4 bg-primary/5 border-primary/30">
         <div className="flex items-center gap-2 mb-3">
           <h3 className="text-sm font-semibold uppercase tracking-wider text-text-primary">AI Insights</h3>
-          <span className="ml-auto badge-info text-xs px-2 py-0.5">3 NEW</span>
+          {aiInsights.length > 0 && (
+            <span className="ml-auto badge-info text-xs px-2 py-0.5">{aiInsights.length} NEW</span>
+          )}
         </div>
         <div className="space-y-2">
-          <div className="p-2 bg-bg-primary/50 rounded text-xs text-text-secondary border-l-2 border-warning">
-            <span className="text-warning font-semibold">WARNING:</span> Pattern detected - Increased login attempts from Asia
-          </div>
-          <div className="p-2 bg-bg-primary/50 rounded text-xs text-text-secondary border-l-2 border-warning">
-            <span className="text-warning font-semibold">ANOMALY:</span> Unusual traffic spike at 3 AM
-          </div>
-          <div className="p-2 bg-bg-primary/50 rounded text-xs text-text-secondary border-l-2 border-info">
-            <span className="text-info font-semibold">RECOMMEND:</span> Update firewall rules
-          </div>
+          {aiInsights.length === 0 ? (
+            <div className="text-center py-8 text-text-secondary text-sm">
+              No AI insights available
+            </div>
+          ) : (
+            aiInsights.map((insight, idx) => (
+              <div 
+                key={idx}
+                className="p-2 bg-bg-primary/50 rounded text-xs text-text-secondary border-l-2 border-warning"
+                onClick={() => console.log('AI insight clicked', insight)}
+              >
+                <span className="text-warning font-semibold">{insight.type}:</span> {insight.message}
+              </div>
+            ))
+          )}
         </div>
-        <button className="mt-3 w-full btn-primary text-sm py-1.5">
+        <button 
+          className="mt-3 w-full btn-primary text-sm py-1.5"
+          onClick={() => console.log('View All Insights clicked')}
+        >
           View All Insights
         </button>
       </Card>

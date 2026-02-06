@@ -53,10 +53,10 @@ app.include_router(ai.router, prefix="/api/ai", tags=["AI"])
 @app.on_event("startup")
 async def startup():
     """Run on application startup"""
-    logger.info("🛡️  Aegis-G Starting Up...")
-    logger.info("✅ Authorization Engine: Loaded")
-    logger.info("✅ Audit Logging: Active")
-    logger.info("✅ AI Services: Ready")
+    logger.info("Aegis-G Starting Up...")
+    logger.info("Authorization Engine: Loaded")
+    logger.info("Audit Logging: Active")
+    logger.info("AI Services: Ready")
 
 
 @app.get("/")

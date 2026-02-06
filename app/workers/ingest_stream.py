@@ -98,15 +98,15 @@ class StreamIngestWorker:
             with open(file_path, 'r') as f:
                 items = json.load(f)
             
-            print(f"📥 Ingesting {len(items)} items from {file_path}")
+            print(f"Ingesting {len(items)} items from {file_path}")
             results = await self.process_batch(items)
             
             success_count = sum(1 for r in results if r.get("status") == "success")
-            print(f"✅ Processed {success_count}/{len(items)} items successfully")
+            print(f"Processed {success_count}/{len(items)} items successfully")
             
             return results
         except Exception as e:
-            print(f"❌ Error ingesting from file: {str(e)}")
+            print(f"Error ingesting from file: {str(e)}")
             return []
     
     async def start_stream_processing(self, stream_source: Any):
@@ -115,7 +115,7 @@ class StreamIngestWorker:
         Can be connected to real-time social media APIs
         """
         self.is_running = True
-        print("🚀 Stream ingest worker started")
+        print("Stream ingest worker started")
         
         while self.is_running:
             try:
@@ -127,7 +127,7 @@ class StreamIngestWorker:
                 else:
                     await asyncio.sleep(1)  # Wait before checking again
             except Exception as e:
-                print(f"❌ Error in stream processing: {str(e)}")
+                print(f"Error in stream processing: {str(e)}")
                 await asyncio.sleep(5)  # Back off on error
     
     def stop(self):

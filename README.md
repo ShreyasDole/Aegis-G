@@ -169,7 +169,9 @@ CyberSec/
 
 | Tool | Required | Purpose |
 |------|----------|---------|
-| [Docker Desktop](https://www.docker.com/get-started) | ✅ Yes | Runs all services |
+| [Docker Desktop](https://www.docker.com/get-started) | ✅ Yes (for Docker) | Runs all services |
+| Python 3.11+ | ✅ Yes (for local dev) | Backend runtime |
+| Node.js 18+ | ✅ Yes (for local dev) | Frontend runtime |
 | `make` | ✅ Yes | Dev commands (built-in on macOS/Linux) |
 | [Google Cloud SDK](https://cloud.google.com/sdk/docs/install) | ❌ Optional | For cloud deployment |
 
@@ -197,6 +199,12 @@ python -c "import secrets; print(secrets.token_hex(32))"
 GEMINI_API_KEY=your-api-key-here
 ```
 
+---
+
+## 🏃 Running the Command Center (Local Development)
+
+### Option 1: Using Docker (Recommended for Full Stack)
+
 4. **Start services**
 ```bash
 make up
@@ -211,6 +219,129 @@ make migrate
 - Frontend: http://localhost:3000
 - API Docs: http://localhost:8000/docs
 - Redis: localhost:6379
+
+### Option 2: Running Locally with Uvicorn and npm
+
+This method runs the backend and frontend directly on your machine without Docker.
+
+#### Step 1: Install Backend Dependencies
+
+```powershell
+# Windows PowerShell
+cd "C:\CyberSec Project"
+pip install -r requirements.txt
+```
+
+```bash
+# macOS/Linux
+cd CyberSec
+pip install -r requirements.txt
+```
+
+#### Step 2: Start the Backend Server (FastAPI with Uvicorn)
+
+**Windows PowerShell:**
+```powershell
+cd "C:\CyberSec Project"
+$env:PYTHONPATH="C:\CyberSec Project"
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+```
+
+**macOS/Linux:**
+```bash
+cd CyberSec
+export PYTHONPATH=$(pwd)
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+```
+
+**What this does:**
+- Starts the FastAPI backend server
+- Runs on `http://127.0.0.1:8000`
+- `--reload` enables auto-reload on code changes
+- API documentation available at `http://127.0.0.1:8000/docs`
+
+#### Step 3: Start the Frontend Server (Next.js)
+
+Open a **new terminal window** and run:
+
+**Windows PowerShell:**
+```powershell
+cd "C:\CyberSec Project\frontend"
+npm install  # First time only
+npm run dev
+```
+
+**macOS/Linux:**
+```bash
+cd CyberSec/frontend
+npm install  # First time only
+npm run dev
+```
+
+**What this does:**
+- Starts the Next.js development server
+- Runs on `http://localhost:3000`
+- Auto-reloads on code changes
+- Frontend will automatically connect to backend at `http://127.0.0.1:8000`
+
+#### Step 4: Access the Command Center
+
+1. **Open your browser** and navigate to: **http://localhost:3000**
+2. You will be **redirected to the login page** (`/login`)
+3. **Enter your credentials** (or register a new account)
+4. After successful login, you'll be redirected to the **Dashboard**
+
+#### Quick Start Script (PowerShell)
+
+For convenience, you can use the provided script:
+
+```powershell
+.\start-dev.ps1
+```
+
+This script starts both servers and shows their logs in one terminal.
+
+#### Verification
+
+✅ **Backend is running** if you see:
+```
+INFO:     Uvicorn running on http://127.0.0.1:8000
+INFO:     Application startup complete.
+```
+
+✅ **Frontend is running** if you see:
+```
+▲ Next.js 14.1.0
+- Local:        http://localhost:3000
+✓ Ready in X seconds
+```
+
+✅ **Test the connection:**
+- Visit: http://127.0.0.1:8000/health (should return `{"status": "healthy"}`)
+- Visit: http://127.0.0.1:8000/docs (should show API documentation)
+- Visit: http://localhost:3000 (should show login page)
+
+#### Stopping the Servers
+
+- **Backend**: Press `Ctrl+C` in the backend terminal
+- **Frontend**: Press `Ctrl+C` in the frontend terminal
+
+---
+
+### Database Setup (For Local Development)
+
+If running locally without Docker, you'll need to set up databases manually:
+
+1. **PostgreSQL**: Install and create database
+2. **Neo4j**: Install and start Neo4j service
+3. **Redis**: Install and start Redis server
+
+Or use Docker just for databases:
+```bash
+docker-compose up db neo4j redis
+```
+
+Then run backend/frontend locally as described above.
 
 ---
 

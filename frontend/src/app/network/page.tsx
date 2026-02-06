@@ -10,10 +10,10 @@ export default function NetworkPage() {
   const [selectedFilter, setSelectedFilter] = useState('all');
 
   const stats = [
-    { label: 'Total Nodes', value: '147', icon: '⚪' },
-    { label: 'Threat Actors', value: '23', icon: '🔴' },
-    { label: 'IP Addresses', value: '89', icon: '🟠' },
-    { label: 'Systems', value: '35', icon: '🔵' },
+    { label: 'Total Nodes', value: '0', icon: '⚪' },
+    { label: 'Threat Actors', value: '0', icon: '🔴' },
+    { label: 'IP Addresses', value: '0', icon: '🟠' },
+    { label: 'Systems', value: '0', icon: '🔵' },
   ];
 
   return (
@@ -78,8 +78,8 @@ export default function NetworkPage() {
 
             {/* Actions */}
             <div className="flex gap-2">
-              <Button variant="secondary" icon="📸">Snapshot</Button>
-              <Button variant="primary" icon="🔄">Refresh</Button>
+              <Button variant="secondary" icon="📸" onClick={() => console.log('Snapshot clicked')}>Snapshot</Button>
+              <Button variant="primary" icon="🔄" onClick={() => console.log('Refresh clicked')}>Refresh</Button>
             </div>
           </div>
         </Card>

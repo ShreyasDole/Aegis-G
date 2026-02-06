@@ -41,10 +41,10 @@ export const ThreatCard: React.FC<ThreatCardProps> = ({
           {config.label}
         </Badge>
         <div className="flex gap-2">
-          <Button variant="secondary" className="text-xs py-1 px-3">
+          <Button variant="secondary" className="text-xs py-1 px-3" onClick={() => console.log('View Details clicked', id)}>
             View Details
           </Button>
-          <Button variant="secondary" className="text-xs py-1 px-3">
+          <Button variant="secondary" className="text-xs py-1 px-3" onClick={() => console.log('Dismiss clicked', id)}>
             Dismiss
           </Button>
         </div>
@@ -90,13 +90,13 @@ export const ThreatCard: React.FC<ThreatCardProps> = ({
 
       {/* Actions */}
       <div className="flex gap-2 pt-3 border-t border-border-subtle">
-        <Button variant="ai" className="text-xs py-1.5 px-3 flex-1">
+        <Button variant="ai" className="text-xs py-1.5 px-3 flex-1" onClick={() => console.log('AI Analysis clicked', id)}>
           AI Analysis
         </Button>
-        <Button variant="secondary" className="text-xs py-1.5 px-3">
+        <Button variant="secondary" className="text-xs py-1.5 px-3" onClick={() => console.log('Graph View clicked', id)}>
           Graph View
         </Button>
-        <Button variant="secondary" className="text-xs py-1.5 px-3">
+        <Button variant="secondary" className="text-xs py-1.5 px-3" onClick={() => console.log('Forensics clicked', id)}>
           Forensics
         </Button>
       </div>

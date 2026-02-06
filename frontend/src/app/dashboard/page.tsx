@@ -9,53 +9,16 @@ import { Sidebar } from '@/components/layout/Sidebar';
 
 export default function DashboardPage() {
   const [stats] = useState({
-    activeThreats: 85,
-    criticalAlerts: 12,
-    highRisk: 47,
-    totalEvents: 326,
-    uptime: 98.2,
+    activeThreats: 0,
+    criticalAlerts: 0,
+    highRisk: 0,
+    totalEvents: 0,
+    uptime: 0,
   });
 
-  const [topThreats] = useState([
-    {
-      id: 1,
-      title: 'APT29 - Phishing Campaign Detected',
-      description: 'Targeting government emails with malware attachments',
-      severity: 'critical' as const,
-      source: '193.201.45.22 (Russia)',
-      firstSeen: '2 hours ago',
-      affectedSystems: 12,
-      riskScore: 8.7,
-    },
-    {
-      id: 2,
-      title: 'Lazarus Group - Cryptocurrency Theft',
-      description: 'Attempting to compromise exchange wallets',
-      severity: 'critical' as const,
-      source: '210.52.109.88 (North Korea)',
-      firstSeen: '4 hours ago',
-      affectedSystems: 8,
-      riskScore: 9.1,
-    },
-    {
-      id: 3,
-      title: 'APT41 - Supply Chain Attack',
-      description: 'Compromised software update mechanism detected',
-      severity: 'high' as const,
-      source: '118.26.34.12 (China)',
-      firstSeen: '6 hours ago',
-      affectedSystems: 23,
-      riskScore: 7.9,
-    },
-  ]);
+  const [topThreats] = useState<any[]>([]);
 
-  const [threatActors] = useState([
-    { name: 'APT29 (Cozy Bear)', incidents: 42, trend: 'up' },
-    { name: 'Lazarus Group', incidents: 38, trend: 'up' },
-    { name: 'APT41', incidents: 31, trend: 'stable' },
-    { name: 'FIN7', incidents: 27, trend: 'down' },
-    { name: 'APT28 (Fancy Bear)', incidents: 24, trend: 'up' },
-  ]);
+  const [threatActors] = useState<any[]>([]);
 
   return (
     <div className="flex">
@@ -75,9 +38,9 @@ export default function DashboardPage() {
             </p>
           </div>
           <div className="flex gap-3">
-            <Button variant="secondary">Filter</Button>
-            <Button variant="secondary">Export</Button>
-            <Button variant="primary">Refresh</Button>
+            <Button variant="secondary" onClick={() => console.log('Filter clicked')}>Filter</Button>
+            <Button variant="secondary" onClick={() => console.log('Export clicked')}>Export</Button>
+            <Button variant="primary" onClick={() => console.log('Refresh clicked')}>Refresh</Button>
           </div>
         </div>
 
@@ -154,7 +117,12 @@ export default function DashboardPage() {
           <Card>
             <h2 className="text-sm font-semibold uppercase tracking-wider mb-4">Top Threat Actors</h2>
             <div className="space-y-3">
-              {threatActors.map((actor, idx) => (
+              {threatActors.length === 0 ? (
+                <div className="text-center py-8 text-text-secondary text-sm">
+                  No threat actors data available
+                </div>
+              ) : (
+                threatActors.map((actor, idx) => (
                 <div
                   key={idx}
                   className="flex items-center justify-between p-3 bg-bg-primary rounded hover:bg-bg-tertiary transition-colors cursor-pointer"
@@ -184,9 +152,10 @@ export default function DashboardPage() {
                     {actor.trend === 'up' ? '↑' : actor.trend === 'down' ? '↓' : '→'}
                   </span>
                 </div>
-              ))}
+                ))
+              )}
             </div>
-            <Button variant="secondary" className="w-full mt-4 text-sm">
+            <Button variant="secondary" className="w-full mt-4 text-sm" onClick={() => console.log('View All Actors clicked')}>
               View All Actors
             </Button>
           </Card>
@@ -196,12 +165,22 @@ export default function DashboardPage() {
         <div className="mb-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-semibold uppercase tracking-wider">Recent Critical Threats</h2>
-            <Button variant="secondary" className="text-sm">View All</Button>
+            <Button variant="secondary" className="text-sm" onClick={() => console.log('View All clicked')}>View All</Button>
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-            {topThreats.map((threat) => (
-              <ThreatCard key={threat.id} {...threat} />
-            ))}
+            {topThreats.length === 0 ? (
+              <Card className="col-span-full text-center py-12">
+                <div className="text-6xl mb-4 text-text-muted">⚠</div>
+                <h3 className="text-xl font-semibold mb-2">No threats available</h3>
+                <p className="text-text-secondary">
+                  No critical threats detected at this time
+                </p>
+              </Card>
+            ) : (
+              topThreats.map((threat) => (
+                <ThreatCard key={threat.id} {...threat} />
+              ))
+            )}
           </div>
         </div>
 
@@ -209,16 +188,16 @@ export default function DashboardPage() {
         <Card>
           <h2 className="text-sm font-semibold uppercase tracking-wider mb-4">Quick Actions</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <Button variant="primary" className="flex-col h-20 justify-center">
+            <Button variant="primary" className="flex-col h-20 justify-center" onClick={() => console.log('Scan Network clicked')}>
               <span className="text-sm">Scan Network</span>
             </Button>
-            <Button variant="primary" className="flex-col h-20 justify-center">
+            <Button variant="primary" className="flex-col h-20 justify-center" onClick={() => console.log('Generate Report clicked')}>
               <span className="text-sm">Generate Report</span>
             </Button>
-            <Button variant="ai" className="flex-col h-20 justify-center">
+            <Button variant="ai" className="flex-col h-20 justify-center" onClick={() => console.log('AI Insights clicked')}>
               <span className="text-sm">AI Insights</span>
             </Button>
-            <Button variant="secondary" className="flex-col h-20 justify-center">
+            <Button variant="secondary" className="flex-col h-20 justify-center" onClick={() => console.log('Share Intel clicked')}>
               <span className="text-sm">Share Intel</span>
             </Button>
           </div>

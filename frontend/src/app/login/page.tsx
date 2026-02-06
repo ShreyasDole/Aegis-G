@@ -14,11 +14,26 @@ export default function LoginPage() {
     e.preventDefault();
     setIsLoading(true);
     
-    // Simulate login
-    setTimeout(() => {
+    try {
+      // TODO: Replace with actual API call
+      // const response = await fetch('/api/auth/login', {
+      //   method: 'POST',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify({ email, password }),
+      // });
+      
+      // Simulate login for now
+      setTimeout(() => {
+        setIsLoading(false);
+        // Store auth token (in real app, get from API response)
+        localStorage.setItem('token', 'mock-token');
+        localStorage.setItem('user', JSON.stringify({ email, name: 'Admin User', role: 'Administrator' }));
+        window.location.href = '/dashboard';
+      }, 1500);
+    } catch (error) {
       setIsLoading(false);
-      window.location.href = '/dashboard';
-    }, 1500);
+      console.error('Login error:', error);
+    }
   };
 
   return (
