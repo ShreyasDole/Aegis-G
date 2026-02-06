@@ -15,6 +15,7 @@ interface ThreatCardProps {
 }
 
 export const ThreatCard: React.FC<ThreatCardProps> = ({
+  id,
   title,
   description,
   severity,
