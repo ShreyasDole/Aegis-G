@@ -214,7 +214,7 @@ def generate_digest_cli(
             "Thumbs.db",
             "ehthumbs.db",
             "Desktop.ini",
-            "$RECYCLE.BIN",
+            # Note: $RECYCLE.BIN excluded - gitingest doesn't support $ in patterns
             # Alembic cache
             "*.pyc",
             "alembic/__pycache__",
