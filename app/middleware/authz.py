@@ -20,10 +20,13 @@ class AuthorizationMiddleware(BaseHTTPMiddleware):
     """
     
     async def dispatch(self, request: Request, call_next):
-        # Get path and method
         path = request.url.path
         method = request.method
-        
+
+        # CORS preflight never sends Authorization; allow OPTIONS through so the actual request can run with the token
+        if method == "OPTIONS":
+            return await call_next(request)
+
         # Skip authorization for public endpoints
         if authz.is_public_endpoint(path):
             return await call_next(request)

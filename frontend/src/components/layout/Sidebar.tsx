@@ -34,24 +34,29 @@ export const Sidebar: React.FC = () => {
   ];
 
   return (
-    <aside className="fixed left-0 top-16 bottom-0 w-80 bg-bg-secondary border-r border-border-subtle overflow-y-auto scrollbar-thin p-4">
-      <Card>
-        <h3 className="text-sm font-semibold uppercase tracking-wider text-text-primary mb-4">System Status</h3>
-        <div className="space-y-3">
+    <aside className="fixed left-0 top-16 bottom-0 w-80 bg-bg-secondary border-r border-border-subtle overflow-y-auto scrollbar-thin p-5">
+      <Card className="p-5">
+        <h3 className="text-xs font-semibold uppercase tracking-widest text-text-muted mb-5">
+          System Status
+        </h3>
+        <div className="space-y-4">
           {systemHealth.map((system, idx) => (
             <div key={idx}>
-              <div className="flex items-center justify-between mb-1">
-                <div className="flex items-center gap-2">
-                  <span className={`w-2 h-2 rounded-full ${
-                    system.status === 'online' ? 'bg-success' : 'bg-danger'
-                  }`}></span>
-                  <span className="text-sm text-text-secondary">{system.label}</span>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2.5">
+                  <span
+                    className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+                      system.status === 'online' ? 'bg-success shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-danger'
+                    }`}
+                    aria-hidden
+                  />
+                  <span className="text-sm font-medium text-text-primary">{system.label}</span>
                 </div>
-                <span className="text-sm font-mono text-text-primary">{system.value}%</span>
+                <span className="text-sm font-mono text-text-secondary tabular-nums">{system.value}%</span>
               </div>
-              <div className="w-full bg-bg-primary rounded-full h-1.5">
+              <div className="w-full bg-bg-primary rounded-full h-2 overflow-hidden">
                 <div
-                  className={`h-full rounded-full ${
+                  className={`h-full rounded-full transition-all duration-500 ${
                     system.value >= 95 ? 'bg-success' : 'bg-warning'
                   }`}
                   style={{ width: `${system.value}%` }}

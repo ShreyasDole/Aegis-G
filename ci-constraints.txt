@@ -1,0 +1,4 @@
+# CI dependency constraints – prevents later pip installs from upgrading these.
+# Use: pip install -r requirements-test.txt -c ci-constraints.txt
+# Without this, "pip install google-genai stix2" can upgrade httpx and break TestClient.
+httpx==0.27.0

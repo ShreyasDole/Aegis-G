@@ -4,7 +4,7 @@ import { Card } from '../ui/Card';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { ReasoningTerminal } from './ReasoningTerminal';
-import { Search, ShieldAlert, Cpu, Brain } from 'lucide-react';
+import { Search, ShieldAlert, Cpu, Brain, FileSearch } from 'lucide-react';
 
 interface IntelligenceBriefProps {
   report: any;
@@ -16,9 +16,19 @@ export const IntelligenceBrief: React.FC<IntelligenceBriefProps> = ({ report, th
 
   if (!report) {
     return (
-      <div className="text-center py-20 text-text-muted">
-        Select a threat to generate Intelligence Brief
-      </div>
+      <Card className="h-full flex flex-col items-center justify-center border border-dashed border-border-medium min-h-[280px]">
+        <div className="flex flex-col items-center justify-center text-center px-4 py-8">
+          <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center mb-4">
+            <FileSearch className="w-7 h-7 text-primary" strokeWidth={1.5} />
+          </div>
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-text-primary mb-1">
+            Intelligence Brief
+          </h3>
+          <p className="text-sm text-text-muted max-w-[220px] leading-relaxed">
+            Select a threat from the list and run <span className="text-primary font-medium">AI Analysis</span> to generate a fused intelligence report.
+          </p>
+        </div>
+      </Card>
     );
   }
 
