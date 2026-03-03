@@ -79,7 +79,10 @@ def client(db_session) -> Generator:
     try:
         yield test_client
     finally:
-        test_client.close()
+        try:
+            test_client.close()
+        except AttributeError:
+            pass
         app.dependency_overrides.clear()
 
 
