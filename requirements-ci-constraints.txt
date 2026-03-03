@@ -1,0 +1,5 @@
+# CI constraint pins – prevent resolver from upgrading these (TestClient + FastAPI 0.104.1 break otherwise)
+anyio==3.7.1
+httpx==0.27.0
+pydantic==2.5.0
+starlette==0.27.0

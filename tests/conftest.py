@@ -73,11 +73,11 @@ def client(db_session) -> Generator:
             pass
     
     app.dependency_overrides[get_db] = override_get_db
-    
-    with TestClient(app) as test_client:
+    test_client = TestClient(app)
+    try:
         yield test_client
-    
-    app.dependency_overrides.clear()
+    finally:
+        app.dependency_overrides.clear()
 
 
 # ============================================

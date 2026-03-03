@@ -55,8 +55,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements-test.txt
-          pip install 'google-genai>=1.62.0' 'stix2>=3.0.0'
+          pip install -r requirements-test.txt -c requirements-ci-constraints.txt
 
       - name: Run linting
         run: |

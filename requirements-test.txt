@@ -1,16 +1,22 @@
 # ============================================
 # 🧪 Aegis-G Test Dependencies
 # ============================================
-# Install with: pip install -r requirements-test.txt
-# Pins below keep FastAPI/httpx/anyio/pydantic compatible (avoid ASGITransport / TestClient breakage).
+# Single install: pip install -r requirements-test.txt
+# Strict pins below prevent anyio/pydantic/httpx upgrades that break TestClient.
 
 -r requirements.txt
 
-# Pin versions compatible with FastAPI 0.104.1 and test client
+# --- Lock test client stack (FastAPI 0.104.1 + Starlette + httpx 0.27 accept app= in TestClient) ---
 fastapi==0.104.1
+starlette==0.27.0
 httpx==0.27.0
-anyio>=3.7.1,<4.0.0
+anyio==3.7.1
 pydantic==2.5.0
+pydantic-settings==2.1.0
+
+# --- App deps (so CI does not need a second pip install that upgrades the above) ---
+google-genai>=1.62.0
+stix2>=3.0.0
 
 # Testing Framework
 pytest>=7.4.0
