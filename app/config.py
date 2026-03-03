@@ -13,10 +13,13 @@ class Settings(BaseSettings):
     PROJECT_NAME: Optional[str] = "Aegis-G"
     API_V1_STR: Optional[str] = "/api/v1"
     
-    # Gemini API
+    # Gemini API (Google AI - latest 2.5 models)
     GEMINI_API_KEY: str = "test-key"
-    GEMINI_FLASH_MODEL: str = "gemini-2.0-flash"
-    GEMINI_PRO_MODEL: str = "gemini-2.0-flash"
+    GEMINI_FLASH_MODEL: str = "gemini-2.5-flash"
+    GEMINI_PRO_MODEL: str = "gemini-2.5-pro"
+    
+    # MCP - Model Context Protocol (optional, for Google MCP servers)
+    MCP_SERVER_URL: Optional[str] = None
     
     # Database Configuration
     DATABASE_URL: str = "sqlite:///:memory:"

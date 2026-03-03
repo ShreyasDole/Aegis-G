@@ -75,10 +75,12 @@ def client(db_session) -> Generator:
     app.dependency_overrides[get_db] = override_get_db
     
     transport = ASGITransport(app=app)
-    with Client(transport=transport, base_url="http://testserver") as test_client:
+    test_client = Client(transport=transport, base_url="http://testserver")
+    try:
         yield test_client
-    
-    app.dependency_overrides.clear()
+    finally:
+        test_client.close()
+        app.dependency_overrides.clear()
 
 
 # ============================================

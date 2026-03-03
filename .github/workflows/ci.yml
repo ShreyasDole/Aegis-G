@@ -220,11 +220,8 @@ jobs:
           echo "=== Container Status ==="
           docker compose -f docker-compose.yml ps
           echo ""
-          echo "=== Backend logs (last 50 lines) ==="
-          docker compose -f docker-compose.yml logs --tail=50 backend || true
-          echo ""
-          echo "=== Frontend logs (last 50 lines) ==="
-          docker compose -f docker-compose.yml logs --tail=50 frontend || true
+          echo "=== App logs (backend + frontend in single container, last 80 lines) ==="
+          docker compose -f docker-compose.yml logs --tail=80 app || true
           echo ""
           echo "=== Database logs (last 20 lines) ==="
           docker compose -f docker-compose.yml logs --tail=20 db || true
@@ -239,10 +236,10 @@ jobs:
             fi
             echo "Attempt $i failed, waiting 3 seconds..."
             sleep 3
-          done || (echo "Backend health check failed after 10 attempts"; docker compose -f docker-compose.yml logs backend; exit 1)
+          done || (echo "Backend health check failed after 10 attempts"; docker compose -f docker-compose.yml logs app; exit 1)
           
-          echo "Checking frontend..."
-          curl -f http://localhost:3000 || (echo "Frontend health check failed"; docker compose -f docker-compose.yml logs frontend; exit 1)
+          echo "Checking frontend (same container, port 3000)..."
+          curl -f http://localhost:3000 || (echo "Frontend health check failed"; docker compose -f docker-compose.yml logs app; exit 1)
 
       - name: Stop services
         if: always()
