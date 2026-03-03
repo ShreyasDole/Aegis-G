@@ -6,7 +6,7 @@ Updated: 2026-02-05 - Fixed email validation for tests
 import os
 import pytest
 from typing import Generator
-from httpx import ASGITransport, Client
+from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
@@ -74,16 +74,10 @@ def client(db_session) -> Generator:
     
     app.dependency_overrides[get_db] = override_get_db
     
-    transport = ASGITransport(app=app)
-    test_client = Client(transport=transport, base_url="http://testserver")
-    try:
+    with TestClient(app) as test_client:
         yield test_client
-    finally:
-        try:
-            test_client.close()
-        except AttributeError:
-            pass
-        app.dependency_overrides.clear()
+    
+    app.dependency_overrides.clear()
 
 
 # ============================================
