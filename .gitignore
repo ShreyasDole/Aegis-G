@@ -51,6 +51,8 @@ yarn-error.log*
 frontend/.next/
 frontend/out/
 frontend/.vercel
+# Frontend src/lib (un-ignore; root lib/ is for Python)
+!frontend/src/lib/
 
 # IDE
 .idea/
