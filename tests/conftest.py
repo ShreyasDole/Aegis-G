@@ -4,8 +4,11 @@ Shared test fixtures for Aegis-G test suite
 Updated: 2026-02-05 - Fixed email validation for tests
 """
 import os
+import sys
+import types
 import pytest
 from typing import Generator
+from unittest.mock import MagicMock
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -21,9 +24,33 @@ os.environ.setdefault("NEO4J_URI", "bolt://localhost:7687")
 os.environ.setdefault("NEO4J_PASSWORD", "test")
 os.environ.setdefault("GEMINI_API_KEY", "test-key")
 
+# Mock google.genai before app imports (app uses "from google import genai" and "from google.genai import types").
+# Lets CI run without installing google-genai (which would pull httpx 0.28+ and break TestClient).
+def _make_genai_mock():
+    m = types.ModuleType("google.genai")
+    m.types = MagicMock()
+    m.Client = MagicMock()
+    # Any other attribute (e.g. types.GenerateContentConfig) returns a MagicMock
+    m.__getattr__ = lambda name: MagicMock()
+    return m
+
+if "google" not in sys.modules:
+    sys.modules["google"] = types.ModuleType("google")
+_genai_module = _make_genai_mock()
+sys.modules["google.genai"] = _genai_module
+sys.modules["google"].genai = _genai_module
+
+# Mock stix2 so app loads without installing it (app.services.export.stix_service imports Bundle, etc.).
+if "stix2" not in sys.modules:
+    _stix2 = types.ModuleType("stix2")
+    for name in ("Bundle", "Indicator", "Sighting", "Report", "Identity"):
+        setattr(_stix2, name, MagicMock())
+    _stix2.__getattr__ = lambda name: MagicMock()
+    sys.modules["stix2"] = _stix2
+
 # Import all models to register them with Base.metadata
 import app.models  # This imports all models via __init__.py
-from app.models.database import Base, get_db
+from app.models.database import Base
 from app.main import app
 
 
@@ -31,7 +58,7 @@ from app.main import app
 # Database Fixtures
 # ============================================
 
-# In-memory SQLite for testing
+# In-memory SQLite for testing (single engine so app and tests share same DB)
 SQLALCHEMY_TEST_DATABASE_URL = "sqlite:///:memory:"
 
 engine = create_engine(
@@ -46,38 +73,29 @@ TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engin
 @pytest.fixture(scope="function")
 def db_session() -> Generator:
     """
-    Creates a fresh database session for each test
-    Tables are created before and dropped after each test
+    Creates a fresh database session for each test.
+    Tables are created before and dropped after each test.
     """
-    # Create all tables
     Base.metadata.create_all(bind=engine)
-    
     session = TestingSessionLocal()
     try:
         yield session
     finally:
         session.close()
-        # Drop all tables after test
         Base.metadata.drop_all(bind=engine)
 
 
 @pytest.fixture(scope="function")
 def client(db_session) -> Generator:
     """
-    Test client with database dependency override
+    Test client. Patch app's DB to use test engine so register/login share same DB.
     """
-    def override_get_db():
-        try:
-            yield db_session
-        finally:
-            pass
-    
-    app.dependency_overrides[get_db] = override_get_db
-    test_client = TestClient(app)
-    try:
+    import app.models.database as db
+    db.engine = engine
+    db.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+    with TestClient(app) as test_client:
         yield test_client
-    finally:
-        app.dependency_overrides.clear()
 
 
 # ============================================

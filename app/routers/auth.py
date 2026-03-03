@@ -17,8 +17,13 @@ from app.auth.jwt import Token
 from app.config import settings
 from app.models.database import get_db
 from app.models.user import User
+from app.seed import DEFAULT_USERS
 
 router = APIRouter()
+
+# Demo users that can be auto-created on first login if DB is empty (e.g. seed didn't run)
+DEMO_EMAILS = {u["email"] for u in DEFAULT_USERS}
+DEMO_BY_EMAIL = {u["email"]: u for u in DEFAULT_USERS}
 
 
 # ============================================
@@ -88,38 +93,66 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
 async def login(credentials: UserLogin, db: Session = Depends(get_db)):
     """
     Login and receive JWT token
-    
+
     - **email**: Registered email address
     - **password**: Account password
-    
-    Returns JWT access token valid for configured duration
+
+    Returns JWT access token valid for configured duration.
+    Demo users (test@aegis.com, admin@aegis.com) are created on first login if missing.
     """
-    # Find user
     user = db.query(User).filter(User.email == credentials.email).first()
-    
-    if not user or not verify_password(credentials.password, user.hashed_password):
+
+    # If user not found, allow demo users to be created on first login (so login works without seed)
+    if not user and credentials.email in DEMO_EMAILS:
+        demo = DEMO_BY_EMAIL.get(credentials.email)
+        if demo and credentials.password == demo["password"]:
+            try:
+                user = User(
+                    email=demo["email"],
+                    hashed_password=get_password_hash(demo["password"]),
+                    full_name=demo["full_name"],
+                    role=demo["role"],
+                    is_active=True,
+                    status="approved",
+                )
+                db.add(user)
+                db.commit()
+                db.refresh(user)
+            except Exception:
+                db.rollback()
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="Database not ready. Run migrations and try again.",
+                )
+
+    if not user or not (user.hashed_password and verify_password(credentials.password, user.hashed_password)):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
+    if user.status != "approved":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Account is deactivated"
+            detail="Account is deactivated",
         )
-    
-    # Create access token
+
     access_token = create_access_token(
         data={
-            "sub": str(user.id),  # JWT requires sub to be a string
+            "sub": str(user.id),
             "email": user.email,
-            "role": user.role
+            "role": user.role,
         },
-        expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
     )
-    
     return Token(access_token=access_token)
 
 
