@@ -24,12 +24,21 @@ os.environ.setdefault("NEO4J_URI", "bolt://localhost:7687")
 os.environ.setdefault("NEO4J_PASSWORD", "test")
 os.environ.setdefault("GEMINI_API_KEY", "test-key")
 
-# Mock google.genai before app imports (app.services.ai.insights does "from google import genai").
+# Mock google.genai before app imports (app uses "from google import genai" and "from google.genai import types").
 # Lets CI run without installing google-genai (which would pull httpx 0.28+ and break TestClient).
+def _make_genai_mock():
+    m = types.ModuleType("google.genai")
+    m.types = MagicMock()
+    m.Client = MagicMock()
+    # Any other attribute (e.g. types.GenerateContentConfig) returns a MagicMock
+    m.__getattr__ = lambda name: MagicMock()
+    return m
+
 if "google" not in sys.modules:
     sys.modules["google"] = types.ModuleType("google")
-if not hasattr(sys.modules["google"], "genai"):
-    sys.modules["google"].genai = MagicMock()
+_genai_module = _make_genai_mock()
+sys.modules["google.genai"] = _genai_module
+sys.modules["google"].genai = _genai_module
 
 # Import all models to register them with Base.metadata
 import app.models  # This imports all models via __init__.py
