@@ -5,12 +5,11 @@ Translates natural language policies to DSL using Gemini
 import os
 import json
 from typing import Dict, List
-import google.generativeai as genai
+from google import genai
+from app.config import settings
 
-# Configure Gemini
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or settings.GEMINI_API_KEY
+client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
 
 
 POLICY_TRANSLATION_PROMPT = """
@@ -49,7 +48,7 @@ class PolicyService:
         """
         Translate natural language policy to DSL using Gemini
         """
-        if not GEMINI_API_KEY:
+        if not client:
             return {
                 "dsl": "# AI translation requires GEMINI_API_KEY",
                 "confidence": 0.0,
@@ -57,10 +56,11 @@ class PolicyService:
             }
         
         try:
-            model = genai.GenerativeModel('gemini-1.5-flash')
             prompt = POLICY_TRANSLATION_PROMPT.format(policy=policy)
-            
-            response = model.generate_content(prompt)
+            response = client.models.generate_content(
+                model=settings.GEMINI_FLASH_MODEL,
+                contents=prompt
+            )
             text = response.text
             
             # Extract JSON from response

@@ -3,11 +3,17 @@ import React, { useState } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { Badge } from '@/components/ui/Badge';
 import { NetworkGraph } from '@/components/visual/NetworkGraph';
 
 export default function NetworkPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('all');
+  const [clusterMode, setClusterMode] = useState(false);
+
+  const handleTraceOrigin = () => {
+    console.log('HIGHLIGHT_PATIENT_ZERO clicked');
+  };
 
   const stats = [
     { label: 'Total Nodes', value: '0', icon: '⚪' },
@@ -78,8 +84,28 @@ export default function NetworkPage() {
 
             {/* Actions */}
             <div className="flex gap-2">
-              <Button variant="secondary" icon="📸" onClick={() => console.log('Snapshot clicked')}>Snapshot</Button>
-              <Button variant="primary" icon="🔄" onClick={() => console.log('Refresh clicked')}>Refresh</Button>
+              <Button variant="secondary" icon={<span>📸</span>} onClick={() => console.log('Snapshot clicked')}>Snapshot</Button>
+              <Button variant="primary" icon={<span>🔄</span>} onClick={() => console.log('Refresh clicked')}>Refresh</Button>
+            </div>
+          </div>
+
+          {/* Phase 2.4: Advanced Network Logic */}
+          <div className="flex flex-wrap gap-3 mt-4 pt-4 border-t border-border-subtle">
+            <button
+              onClick={() => setClusterMode(!clusterMode)}
+              className={`px-3 py-1.5 rounded text-[10px] font-bold transition-all border ${clusterMode ? 'bg-secondary/20 border-secondary text-secondary shadow-glow-purple' : 'bg-bg-tertiary border-border-medium text-text-muted'}`}
+            >
+              COMMUNITY_VIEW (LOUVAIN)
+            </button>
+            <button
+              className="px-3 py-1.5 rounded text-[10px] font-bold bg-bg-tertiary border border-border-medium text-text-muted hover:border-danger hover:text-danger transition-all"
+              onClick={() => handleTraceOrigin()}
+            >
+              HIGHLIGHT_PATIENT_ZERO
+            </button>
+            <div className="ml-auto flex items-center gap-2">
+              <span className="text-[9px] text-text-muted font-mono uppercase">GDS Engine:</span>
+              <Badge variant="info">ACTIVE</Badge>
             </div>
           </div>
         </Card>

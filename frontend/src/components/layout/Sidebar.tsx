@@ -1,10 +1,39 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card } from '../ui/Card';
+import { AgentHeartbeat } from './AgentHeartbeat';
 
 export const Sidebar: React.FC = () => {
   const [activities] = useState<any[]>([]);
-  const [systemHealth] = useState<any[]>([]);
+  const [health, setHealth] = useState({ postgres: 100, neo4j: 100, redis: 100 });
+
+  useEffect(() => {
+    const checkHealth = async () => {
+      try {
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+        const res = await fetch(`${API_URL}/api/system/health`);
+        if (res.ok) {
+          const data = await res.json();
+          setHealth({
+            postgres: data.database ? 100 : 0,
+            neo4j: data.database ? 100 : 0,
+            redis: (data.database || data.ai_engine) ? 100 : 0
+          });
+        }
+      } catch (e) {
+        setHealth({ postgres: 0, neo4j: 0, redis: 0 });
+      }
+    };
+    checkHealth();
+    const interval = setInterval(checkHealth, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const systemHealth = [
+    { label: 'Postgres', value: health.postgres, status: health.postgres > 0 ? 'online' : 'offline' },
+    { label: 'Neo4j', value: health.neo4j, status: health.neo4j > 0 ? 'online' : 'offline' },
+    { label: 'Redis', value: health.redis, status: health.redis > 0 ? 'online' : 'offline' }
+  ];
   const [aiInsights] = useState<any[]>([]);
 
   const getActivityColor = (type: string) => {
@@ -75,7 +104,7 @@ export const Sidebar: React.FC = () => {
               <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-2">
                   <span className={`w-2 h-2 rounded-full ${
-                    system.status === 'online' ? 'bg-success' : 'bg-warning'
+                    system.status === 'online' ? 'bg-success' : 'bg-danger'
                   }`}></span>
                   <span className="text-sm text-text-secondary">{system.label}</span>
                 </div>
@@ -94,6 +123,9 @@ export const Sidebar: React.FC = () => {
           )}
         </div>
       </Card>
+
+      {/* Agent Neural Heartbeat */}
+      <AgentHeartbeat />
 
       {/* Quick AI Insights */}
       <Card className="mt-4 bg-primary/5 border-primary/30">

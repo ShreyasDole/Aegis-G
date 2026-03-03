@@ -1,8 +1,9 @@
 """
 Detection Router
 Real-time content scanning endpoint
+Supports X-Inference-Mode: local (CPU) or cloud (Gemini API)
 """
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from app.schemas.detection import ScanRequest, ScanResponse, BatchScanRequest
 from app.services.gemini.client import GeminiClient
 from datetime import datetime
@@ -12,17 +13,26 @@ router = APIRouter()
 
 
 @router.post("/", response_model=ScanResponse)
-async def scan_content(request: ScanRequest):
+async def scan_content(request: ScanRequest, req: Request):
     """
-    Real-time content scanning using Gemini 1.5 Flash
-    Evaluates perplexity, burstiness, and repetitive n-grams
+    Real-time content scanning using Gemini (cloud) or placeholder (local CPU).
+    X-Inference-Mode header: "local" = Prisha's DistilRoBERTa (placeholder), "cloud" = Gemini API
     """
     try:
-        # Initialize Gemini client
-        gemini_client = GeminiClient()
-        
-        # Analyze content
-        analysis = await gemini_client.detect_ai_content(request.content)
+        mode = (req.headers.get("X-Inference-Mode") or "local").lower()
+
+        if mode == "cloud":
+            # Call Gemini Cloud API
+            gemini_client = GeminiClient()
+            analysis = await gemini_client.detect_ai_content(request.content)
+        else:
+            # Local CPU mode - placeholder for Prisha's DistilRoBERTa
+            analysis = {
+                "risk_score": 0.75,
+                "is_ai_generated": True,
+                "confidence": 0.72,
+                "detected_model": "local-distilroberta (placeholder)",
+            }
         
         # Generate content hash
         content_hash = hashlib.sha256(request.content.encode()).hexdigest()
@@ -55,12 +65,12 @@ async def scan_content(request: ScanRequest):
         raise HTTPException(status_code=500, detail=f"Detection failed: {str(e)}")
 
 
-@router.post("/batch", response_model=list[ScanResponse])
-async def scan_batch(request: BatchScanRequest):
+@router.post("/batch", response_model=list)
+async def scan_batch(request: BatchScanRequest, req: Request):
     """Batch content scanning for high-volume processing"""
     results = []
     for item in request.items:
-        result = await scan_content(item)
+        result = await scan_content(item, req)
         results.append(result)
     return results
 

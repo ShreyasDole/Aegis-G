@@ -30,8 +30,13 @@ class PrivacyService:
         """
         
         try:
-            # Use Gemini Pro for redaction
-            response = self.gemini_client.pro_model.generate_content(prompt)
+            if not self.gemini_client.client:
+                raise Exception("Gemini API key not configured")
+            from app.config import settings
+            response = self.gemini_client.client.models.generate_content(
+                model=settings.GEMINI_PRO_MODEL,
+                contents=prompt
+            )
             redacted = response.text
             return redacted
         except Exception as e:

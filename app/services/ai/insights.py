@@ -1,18 +1,19 @@
 """
 AI Insights Service
 Generates proactive insights and recommendations
+Uses google-genai SDK (latest)
 """
 import os
 import json
 from typing import List, Dict
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
-import google.generativeai as genai
+from google import genai
+from app.config import settings
 
 # Configure Gemini
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or settings.GEMINI_API_KEY
+client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
 
 
 INSIGHT_GENERATION_PROMPT = """
@@ -39,56 +40,53 @@ Return JSON array of insights.
 
 class InsightService:
     """Service for generating AI-powered insights"""
-    
+
     @staticmethod
     async def generate_insights(db: Session) -> List[Dict]:
         """
         Generate insights based on system data
         """
-        if not GEMINI_API_KEY:
-            # Return demo insights when no API key
+        if not client:
             return InsightService._get_demo_insights()
-        
+
         try:
-            # Gather system statistics
             from app.models.threat import Threat
-            
+
             threat_count = db.query(Threat).count()
             high_risk_count = db.query(Threat).filter(Threat.risk_score >= 7.0).count()
-            
-            # Get recent patterns
+
             recent_threats = db.query(Threat)\
                 .filter(Threat.timestamp >= datetime.utcnow() - timedelta(days=7))\
                 .limit(10)\
                 .all()
-            
+
             patterns = [t.source_platform for t in recent_threats]
-            
-            # Generate insights using Gemini
-            model = genai.GenerativeModel('gemini-1.5-flash')
+
             prompt = INSIGHT_GENERATION_PROMPT.format(
                 threat_count=threat_count,
                 high_risk_count=high_risk_count,
                 patterns=", ".join(set(patterns)) if patterns else "None",
                 days=7
             )
-            
-            response = model.generate_content(prompt)
+
+            response = client.models.generate_content(
+                model=settings.GEMINI_FLASH_MODEL,
+                contents=prompt
+            )
             text = response.text
-            
-            # Extract JSON
+
             if "```json" in text:
                 text = text.split("```json")[1].split("```")[0].strip()
             elif "```" in text:
                 text = text.split("```")[1].split("```")[0].strip()
-            
+
             insights = json.loads(text)
             return insights
-            
+
         except Exception as e:
             print(f"Insight generation error: {e}")
             return InsightService._get_demo_insights()
-    
+
     @staticmethod
     def _get_demo_insights() -> List[Dict]:
         """Demo insights when API is unavailable"""
@@ -146,23 +144,22 @@ class InsightService:
                 "confidence_score": 0.76
             }
         ]
-    
+
     @staticmethod
     def analyze_trend(data_points: List[float]) -> Dict:
         """Analyze trend in numerical data"""
         if len(data_points) < 2:
             return {"trend": "insufficient_data"}
-        
-        # Simple linear regression
+
         avg_change = sum(data_points[i] - data_points[i-1] for i in range(1, len(data_points))) / (len(data_points) - 1)
-        
+
         if avg_change > 0.1:
             trend = "increasing"
         elif avg_change < -0.1:
             trend = "decreasing"
         else:
             trend = "stable"
-        
+
         return {
             "trend": trend,
             "average_change": avg_change,
@@ -172,4 +169,3 @@ class InsightService:
 
 
 insight_service = InsightService()
-

@@ -1,12 +1,46 @@
 """
 Sharing Router
-Federated intelligence sharing with PII redaction
+Federated intelligence sharing with PII redaction and STIX 2.1 export
 """
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
+from sqlalchemy.orm import Session
+from app.auth import get_current_active_user
+from app.models.database import get_db
+from app.models.threat import Threat, Report as AegisReport
+from app.services.export.stix_service import stix_service
 from app.services.gemini.privacy import PrivacyService
 from app.core.blockchain import add_to_ledger
 
 router = APIRouter()
+
+
+@router.get("/export/stix/{threat_id}")
+async def export_threat_to_stix(
+    threat_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_active_user)
+):
+    """
+    Generates a STIX 2.1 JSON bundle for a specific threat.
+    Authorized for Analysts and Admins only.
+    """
+    threat = db.query(Threat).filter(Threat.id == threat_id).first()
+    aegis_report = db.query(AegisReport).filter(AegisReport.threat_id == threat_id).first()
+
+    if not threat:
+        raise HTTPException(status_code=404, detail="Threat record not found")
+
+    try:
+        stix_json = stix_service.generate_threat_bundle(threat, aegis_report)
+        return Response(
+            content=stix_json,
+            media_type="application/json",
+            headers={
+                "Content-Disposition": f"attachment; filename=AEGIS_STIX_T{threat_id}.json"
+            }
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"STIX Generation Failed: {str(e)}")
 
 
 @router.post("/share/{report_id}")

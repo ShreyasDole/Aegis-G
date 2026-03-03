@@ -21,33 +21,54 @@ export const NetworkGraph: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
+  const [nodes, setNodes] = useState<Node[]>([]);
+  const [edges, setEdges] = useState<Edge[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const nodes: Node[] = [
-    { id: '1', label: 'APT29', type: 'actor', severity: 'critical' },
-    { id: '2', label: '193.201.45.22', type: 'ip', severity: 'critical' },
-    { id: '3', label: 'Mail Server', type: 'system', severity: 'high' },
-    { id: '4', label: 'APT41', type: 'actor', severity: 'high' },
-    { id: '5', label: '118.26.34.12', type: 'ip', severity: 'high' },
-    { id: '6', label: 'Web Server', type: 'system', severity: 'medium' },
-    { id: '7', label: 'Lazarus', type: 'actor', severity: 'critical' },
-    { id: '8', label: '210.52.109.88', type: 'ip', severity: 'critical' },
-    { id: '9', label: 'Database', type: 'system', severity: 'low' },
-    { id: '10', label: 'Unknown', type: 'threat', severity: 'medium' },
-  ];
+  // Fetch real data from backend
+  useEffect(() => {
+    const fetchGraph = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-  const edges: Edge[] = [
-    { source: '1', target: '2', strength: 0.9 },
-    { source: '2', target: '3', strength: 0.8 },
-    { source: '4', target: '5', strength: 0.85 },
-    { source: '5', target: '6', strength: 0.7 },
-    { source: '7', target: '8', strength: 0.95 },
-    { source: '8', target: '9', strength: 0.6 },
-    { source: '1', target: '7', strength: 0.5 },
-    { source: '4', target: '10', strength: 0.4 },
-    { source: '10', target: '6', strength: 0.3 },
-  ];
+        const response = await fetch(`${API_URL}/api/network/`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const rawNodes = data.nodes || [];
+          const rawEdges = data.edges || [];
+          setNodes(
+            rawNodes.map((n: Record<string, unknown>) => ({
+              id: String(n.id),
+              label: String(n.label || n.id),
+              type: (['threat', 'ip', 'actor', 'system'].includes(String(n.type)) ? n.type : 'threat') as Node['type'],
+              severity: (n.severity as Node['severity']) || 'medium',
+            }))
+          );
+          setEdges(
+            rawEdges.map((e: Record<string, unknown>) => ({
+              source: String(e.source),
+              target: String(e.target),
+              strength: typeof e.strength === 'number' ? e.strength : 0.7,
+            }))
+          );
+        }
+      } catch (error) {
+        console.error('Failed to load graph data', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchGraph();
+  }, []);
 
   useEffect(() => {
+    if (nodes.length === 0) return;
+
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -203,10 +224,15 @@ export const NetworkGraph: React.FC = () => {
       canvas.removeEventListener('click', handleClick);
       cancelAnimationFrame(animationFrame);
     };
-  }, [hoveredNode, selectedNode]);
+  }, [hoveredNode, selectedNode, nodes, edges]);
 
   return (
     <div className="relative w-full h-full">
+      {isLoading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-bg-secondary/80 z-10">
+          <span className="text-text-secondary text-sm">Loading graph...</span>
+        </div>
+      )}
       <canvas ref={canvasRef} className="w-full h-full" />
       
       {/* Legend */}

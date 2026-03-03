@@ -2,27 +2,22 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import React, { useState, useRef, useEffect } from 'react';
-
-const navItems = [
-  { name: 'Dashboard', path: '/dashboard' },
-  { name: 'Threats', path: '/threats' },
-  { name: 'Network Analysis', path: '/network' },
-  { name: 'Forensics', path: '/forensics' },
-  { name: 'Intel Sharing', path: '/sharing' },
-];
+import { Button } from '../ui/Button';
 
 export const Navbar: React.FC = () => {
   const pathname = usePathname();
   const router = useRouter();
+  const [inferenceMode, setInferenceMode] = useState<'local' | 'cloud'>(() => {
+    if (typeof window === 'undefined') return 'local';
+    return (localStorage.getItem('inference-mode') as 'local' | 'cloud') || 'local';
+  });
+  const [user, setUser] = useState<{ name: string; email: string; role: string } | null>(null);
   const [notifications] = useState(3);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-  const [user, setUser] = useState<{ name: string; email: string; role: string } | null>(null);
   const notificationsRef = useRef<HTMLDivElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
-  // Load user from localStorage
   useEffect(() => {
     const userStr = localStorage.getItem('user');
     if (userStr) {
@@ -34,7 +29,6 @@ export const Navbar: React.FC = () => {
     }
   }, []);
 
-  // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (notificationsRef.current && !notificationsRef.current.contains(event.target as Node)) {
@@ -44,73 +38,69 @@ export const Navbar: React.FC = () => {
         setShowUserMenu(false);
       }
     };
-
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const handleAIAssistant = () => {
-    // Dispatch custom event to open AI Manager
     window.dispatchEvent(new CustomEvent('openAIAssistant'));
   };
 
   const handleLogout = () => {
-    // Clear any stored auth data
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     router.push('/login');
   };
 
   const handleSettings = () => {
-    setShowSettings(true);
-    // You can navigate to a settings page or open a modal
-    console.log('Settings clicked - navigate to settings page');
+    setShowUserMenu(false);
+    console.log('Settings clicked');
   };
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-bg-secondary/95 backdrop-blur-sm border-b border-border-subtle h-16">
       <div className="container mx-auto px-6 h-full flex items-center justify-between">
-        {/* Logo & Brand */}
         <div className="flex items-center gap-8">
-          <Link href="/dashboard" className="flex items-center gap-3 group">
-            <div className="font-display text-xl font-bold tracking-wider text-primary">
-              AEGIS-G
-            </div>
-            <div className="h-6 w-px bg-border-medium"></div>
-            <div className="text-sm text-text-secondary font-medium">
-              Command Center
-            </div>
+          <Link href="/dashboard" className="font-display text-xl font-bold tracking-wider text-primary">
+            AEGIS-G
           </Link>
 
-          {/* Navigation Links */}
-          <div className="hidden md:flex items-center gap-1">
-            {navItems.map((item) => {
-              const isActive = pathname === item.path || pathname?.startsWith(item.path + '/');
-              return (
-                <Link
-                  key={item.path}
-                  href={item.path}
-                  className={`
-                    px-4 py-2 text-sm font-medium transition-all relative
-                    ${isActive 
-                      ? 'text-primary' 
-                      : 'text-text-secondary hover:text-text-primary'
-                    }
-                  `}
-                >
-                  {item.name}
-                  {isActive && (
-                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
-                  )}
-                </Link>
-              );
-            })}
+          <div className="hidden md:flex items-center gap-1 text-sm font-medium">
+            <Link href="/dashboard" className={`px-3 py-2 ${pathname === '/dashboard' ? 'text-primary border-b-2 border-primary' : 'text-text-secondary hover:text-text-primary'}`}>Dashboard</Link>
+            <Link href="/scans" className={`px-3 py-2 ${pathname === '/scans' ? 'text-primary border-b-2 border-primary' : 'text-text-secondary hover:text-text-primary'}`}>Incoming Scans</Link>
+            <Link href="/threats" className={`px-3 py-2 ${pathname === '/threats' ? 'text-primary border-b-2 border-primary' : 'text-text-secondary hover:text-text-primary'}`}>Threats</Link>
+            <Link href="/policy" className={`px-3 py-2 ${pathname === '/policy' ? 'text-primary border-b-2 border-primary' : 'text-text-secondary hover:text-text-primary'}`}>Policy</Link>
+            <Link href="/network" className={`px-3 py-2 ${pathname === '/network' ? 'text-primary border-b-2 border-primary' : 'text-text-secondary hover:text-text-primary'}`}>Graph</Link>
           </div>
         </div>
 
-        {/* Right Side Actions */}
         <div className="flex items-center gap-4">
-          {/* AI Manager Shortcut */}
+          {/* Phase 2: Inference Toggle */}
+          <div className="hidden lg:flex items-center bg-bg-primary border border-border-subtle rounded-full p-1 gap-1">
+            <button 
+              onClick={() => { setInferenceMode('local'); localStorage.setItem('inference-mode', 'local'); }}
+              className={`px-3 py-1 rounded-full text-[10px] font-bold transition-all ${inferenceMode === 'local' ? 'bg-primary text-white shadow-glow-blue' : 'text-text-muted hover:text-text-secondary'}`}
+            >
+              ● LOCAL CPU
+            </button>
+            <button 
+              onClick={() => { setInferenceMode('cloud'); localStorage.setItem('inference-mode', 'cloud'); }}
+              className={`px-3 py-1 rounded-full text-[10px] font-bold transition-all ${inferenceMode === 'cloud' ? 'bg-secondary text-white shadow-glow-purple' : 'text-text-muted hover:text-text-secondary'}`}
+            >
+              ○ CLOUD API
+            </button>
+          </div>
+
+          <Button 
+            variant="secondary" 
+            className="text-xs py-1.5 h-8 opacity-70 hover:opacity-100" 
+            onClick={() => router.push('/threats')}
+            title="Go to Threats to export STIX bundles"
+          >
+            Export SIEM
+          </Button>
+
+          {/* AI Assistant Shortcut */}
           <button 
             className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded bg-primary/10 text-primary text-xs font-medium hover:bg-primary/20 transition-all border border-primary/30"
             title="AI Assistant (Ctrl+M)"
@@ -135,8 +125,6 @@ export const Navbar: React.FC = () => {
                 </span>
               )}
             </button>
-            
-            {/* Notifications Dropdown */}
             {showNotifications && (
               <div className="absolute right-0 top-full mt-2 w-80 bg-bg-secondary border border-border-subtle rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
                 <div className="p-4 border-b border-border-subtle">
@@ -159,17 +147,12 @@ export const Navbar: React.FC = () => {
                       </div>
                     </div>
                   ) : (
-                    <div className="p-4 text-center text-text-secondary text-sm">
-                      No new notifications
-                    </div>
+                    <div className="p-4 text-center text-text-secondary text-sm">No new notifications</div>
                   )}
                 </div>
                 {notifications > 0 && (
                   <div className="p-2 border-t border-border-subtle">
-                    <button 
-                      className="w-full text-sm text-primary hover:text-blue-400 text-center py-2"
-                      onClick={() => setShowNotifications(false)}
-                    >
+                    <button className="w-full text-sm text-primary hover:text-blue-400 text-center py-2" onClick={() => setShowNotifications(false)}>
                       Mark all as read
                     </button>
                   </div>
@@ -178,7 +161,7 @@ export const Navbar: React.FC = () => {
             )}
           </div>
 
-          {/* User Profile */}
+          {/* User Profile with Menu */}
           <div className="relative" ref={userMenuRef}>
             <button
               className="flex items-center gap-3 hover:bg-bg-tertiary rounded-lg p-1 transition-colors"
@@ -192,8 +175,6 @@ export const Navbar: React.FC = () => {
                 {user?.name ? user.name.split(' ').map(n => n[0]).join('').toUpperCase() : 'AU'}
               </div>
             </button>
-            
-            {/* User Menu Dropdown */}
             {showUserMenu && (
               <div className="absolute right-0 top-full mt-2 w-48 bg-bg-secondary border border-border-subtle rounded-lg shadow-lg z-50">
                 <div className="p-2">
@@ -201,50 +182,22 @@ export const Navbar: React.FC = () => {
                     <div className="text-sm font-medium text-text-primary">{user?.name || 'Admin User'}</div>
                     <div className="text-xs text-text-muted">{user?.email || 'admin@agency.gov'}</div>
                   </div>
-                  <button
-                    className="w-full text-left px-3 py-2 text-sm text-text-secondary hover:bg-bg-tertiary rounded transition-colors"
-                    onClick={() => {
-                      setShowUserMenu(false);
-                      handleSettings();
-                    }}
-                  >
+                  <button className="w-full text-left px-3 py-2 text-sm text-text-secondary hover:bg-bg-tertiary rounded transition-colors" onClick={() => { setShowUserMenu(false); handleSettings(); }}>
                     Settings
                   </button>
-                  <button
-                    className="w-full text-left px-3 py-2 text-sm text-text-secondary hover:bg-bg-tertiary rounded transition-colors"
-                    onClick={() => {
-                      setShowUserMenu(false);
-                      router.push('/profile');
-                    }}
-                  >
+                  <button className="w-full text-left px-3 py-2 text-sm text-text-secondary hover:bg-bg-tertiary rounded transition-colors" onClick={() => { setShowUserMenu(false); router.push('/profile'); }}>
                     Profile
                   </button>
                   <div className="border-t border-border-subtle my-1"></div>
-                  <button
-                    className="w-full text-left px-3 py-2 text-sm text-danger hover:bg-danger/10 rounded transition-colors"
-                    onClick={handleLogout}
-                  >
+                  <button className="w-full text-left px-3 py-2 text-sm text-danger hover:bg-danger/10 rounded transition-colors" onClick={handleLogout}>
                     Logout
                   </button>
                 </div>
               </div>
             )}
           </div>
-
-          {/* Settings */}
-          <button 
-            className="p-2 rounded hover:bg-bg-tertiary transition-colors" 
-            title="Settings"
-            onClick={handleSettings}
-          >
-            <svg className="w-5 h-5 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-          </button>
         </div>
       </div>
     </nav>
   );
 };
-

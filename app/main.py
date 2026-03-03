@@ -5,7 +5,7 @@ FastAPI Application Entry Point
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from app.routers import system, auth, admin, ai
+from app.routers import system, auth, admin, ai, analyst, websocket, graph, threats, sharing, detection
 from app.middleware import AuthorizationMiddleware
 from app.middleware.audit import AuditMiddleware
 import logging
@@ -48,6 +48,12 @@ app.include_router(system.router, prefix="/api/system", tags=["System"])
 app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(admin.router, prefix="/api/admin", tags=["Admin"])
 app.include_router(ai.router, prefix="/api/ai", tags=["AI"])
+app.include_router(analyst.router, prefix="/api/analyst", tags=["Intelligence Analyst"])
+app.include_router(graph.router, prefix="/api/network", tags=["Graph"])
+app.include_router(threats.router, prefix="/api/threats", tags=["Threats"])
+app.include_router(sharing.router, prefix="/api/sharing", tags=["Intelligence Sharing"])
+app.include_router(detection.router, prefix="/api/scan", tags=["Detection"])
+app.include_router(websocket.router, tags=["WebSocket"])
 
 
 @app.on_event("startup")
@@ -57,6 +63,12 @@ async def startup():
     logger.info("Authorization Engine: Loaded")
     logger.info("Audit Logging: Active")
     logger.info("AI Services: Ready")
+    # Seed default test/admin users if they don't exist
+    try:
+        from app.seed import seed_default_users
+        seed_default_users()
+    except Exception as e:
+        logger.warning(f"Seed users skipped (tables may not exist yet): {e}")
 
 
 @app.get("/")

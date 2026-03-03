@@ -16,6 +16,7 @@ class LedgerEntry(Base):
     report_id = Column(Integer, nullable=False)
     recipient_agency = Column(String(100))
     redacted_content = Column(Text)
+    thought_process = Column(Text, nullable=True)  # AI's internal reasoning for legal audits
     timestamp = Column(DateTime, default=datetime.utcnow, index=True)
     verified = Column(String(10), default="pending")  # pending, verified, failed
 
