@@ -75,12 +75,14 @@ def client(db_session) -> Generator:
     app.dependency_overrides[get_db] = override_get_db
 
     # Use httpx Client + ASGITransport for compatibility with httpx 0.28+
-    # (Starlette TestClient passes app= to httpx.Client which was removed in 0.28)
+    # Don't use "with" — in httpx 0.28+ ASGITransport is not a context manager
     transport = httpx.ASGITransport(app=app)
-    with httpx.Client(transport=transport, base_url="http://testserver") as test_client:
+    test_client = httpx.Client(transport=transport, base_url="http://testserver")
+    try:
         yield test_client
-
-    app.dependency_overrides.clear()
+    finally:
+        test_client.close()
+        app.dependency_overrides.clear()
 
 
 # ============================================
