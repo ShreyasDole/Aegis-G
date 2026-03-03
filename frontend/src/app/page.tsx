@@ -18,15 +18,15 @@ export default function Home() {
       return;
     }
 
-    // Attempt to hit the backend
-    fetch('http://127.0.0.1:8000/')
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    fetch(API_URL + '/')
       .then(res => res.json())
       .then(data => {
-        setStatus("Connected");
+        setStatus('Connected');
         setBackendData(data);
       })
       .catch(err => {
-        setStatus("Connection Failed");
+        setStatus('Connection Failed');
         console.error(err);
       });
   }, [router]);
@@ -96,7 +96,7 @@ export default function Home() {
             Sign In to Command Center
           </Button>
         </Link>
-        <Link href="http://127.0.0.1:8000/docs" target="_blank">
+        <Link href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/docs`} target="_blank">
           <Button variant="secondary" className="text-base px-8 py-3">
             API Documentation
           </Button>

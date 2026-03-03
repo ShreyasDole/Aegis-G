@@ -1,12 +1,9 @@
 'use client';
 import { usePathname } from 'next/navigation';
 import { Navbar } from '@/components/layout/Navbar';
-import { AIManager } from '@/components/ai/AIManager';
 
 export function ClientLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  
-  // Don't show navbar on login/register pages
   const publicRoutes = ['/login', '/register'];
   const showNavbar = !publicRoutes.includes(pathname);
 
@@ -16,7 +13,6 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
       <main className={showNavbar ? "pt-16" : ""}>
         {children}
       </main>
-      {showNavbar && <AIManager />}
     </>
   );
 }
