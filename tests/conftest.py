@@ -40,6 +40,14 @@ _genai_module = _make_genai_mock()
 sys.modules["google.genai"] = _genai_module
 sys.modules["google"].genai = _genai_module
 
+# Mock stix2 so app loads without installing it (app.services.export.stix_service imports Bundle, etc.).
+if "stix2" not in sys.modules:
+    _stix2 = types.ModuleType("stix2")
+    for name in ("Bundle", "Indicator", "Sighting", "Report", "Identity"):
+        setattr(_stix2, name, MagicMock())
+    _stix2.__getattr__ = lambda name: MagicMock()
+    sys.modules["stix2"] = _stix2
+
 # Import all models to register them with Base.metadata
 import app.models  # This imports all models via __init__.py
 from app.models.database import Base, get_db
