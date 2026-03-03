@@ -1,41 +1,27 @@
 name: aegis-g-base
 
 services:
-  # 🐍 The Brain (FastAPI)
-  backend:
-    build: 
-      context: ./app
+  app:
+    build:
+      context: .
       dockerfile: Dockerfile
-    container_name: aegis_backend
+    container_name: aegis_app
     ports:
+      - "3000:3000"
       - "8000:8000"
     volumes:
-      - ./app:/app
+      - ./app:/workspace/app
+      - ./frontend:/workspace/frontend
+      - app_node_modules:/workspace/frontend/node_modules
     environment:
       - DATABASE_URL=postgresql://user:password@db:5432/aegis_db
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
     depends_on:
       - db
       - redis
 
-  # 💻 The Face (Next.js)
-  frontend:
-    build: 
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: aegis_frontend
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
-    depends_on:
-      - backend
-
-  # 🗄️ The Memory (Postgres)
   db:
     image: postgres:15-alpine
     container_name: aegis_db
@@ -48,7 +34,6 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
-  # 🔄 The Cache (Redis)
   redis:
     image: redis:7-alpine
     container_name: aegis_redis
@@ -61,4 +46,4 @@ services:
 volumes:
   postgres_data:
   redis_data:
-
+  app_node_modules:

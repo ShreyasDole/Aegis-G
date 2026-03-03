@@ -1,16 +1,61 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
 import { ThreatCard } from '@/components/threats/ThreatCard';
+import { exportToSTIX } from '@/lib/export';
 
 export default function ThreatsPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [filterSeverity, setFilterSeverity] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [threats, setThreats] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const threats: any[] = [];
+  useEffect(() => {
+    const loadThreats = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+        const response = await fetch(`${API_URL}/api/threats`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+
+          const formattedThreats = data.map((t: any) => ({
+            id: t.id,
+            title: `Threat #${t.id} - ${t.source_platform}`,
+            description: (t.content || '').substring(0, 100) + '...',
+            content: t.content || '',
+            severity:
+              t.risk_score > 8
+                ? 'critical'
+                : t.risk_score > 6
+                  ? 'high'
+                  : t.risk_score > 4
+                    ? 'medium'
+                    : 'low',
+            source: t.source_platform,
+            firstSeen: new Date(t.timestamp || 0).toLocaleString(),
+            affectedSystems: Math.floor(Math.random() * 10) + 1,
+            riskScore: t.risk_score <= 1 ? t.risk_score * 10 : t.risk_score,
+          }));
+
+          setThreats(formattedThreats);
+        }
+      } catch (error) {
+        console.error('Failed to load threats', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadThreats();
+  }, []);
 
   const filteredThreats = threats.filter(threat => {
     const matchesSeverity = filterSeverity === 'all' || threat.severity === filterSeverity;
@@ -170,9 +215,13 @@ export default function ThreatsPage() {
             ? 'grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4'
             : 'space-y-4'
         }>
-          {filteredThreats.length > 0 ? (
+          {isLoading ? (
+            <Card className="col-span-full text-center py-12">
+              <div className="text-text-secondary">Loading threats...</div>
+            </Card>
+          ) : filteredThreats.length > 0 ? (
             filteredThreats.map((threat) => (
-              <ThreatCard key={threat.id} {...threat} />
+              <ThreatCard key={threat.id} {...threat} onExportSTIX={exportToSTIX} />
             ))
           ) : (
             <Card className="col-span-full text-center py-12">

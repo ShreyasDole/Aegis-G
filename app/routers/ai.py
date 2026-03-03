@@ -2,7 +2,7 @@
 AI Router
 Endpoints for AI Policies, Insights, and Chat
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Body
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime
@@ -11,13 +11,15 @@ import json
 from app.auth import get_current_active_user, require_role
 from app.models.database import get_db
 from app.models.user import User
-from app.models.ai import AIPolicy, AIInsight
+from app.models.ai import AIPolicy, AIInsight, BlockedContent
 from app.schemas.ai import (
-    PolicyCreate, PolicyResponse, PolicyTranslation,
+    PolicyCreate, PolicyResponse, PolicyTranslation, PolicyGuardianTranslation,
     InsightResponse,
-    ChatRequest, ChatResponse
+    ChatRequest, ChatResponse,
+    BlockedContentResponse, BlockedContentStats
 )
 from app.services.ai import policy_service, insight_service, chat_service
+from app.services.ai.policy_guardian import policy_guardian
 from app.services.audit import audit
 
 router = APIRouter()
@@ -111,6 +113,53 @@ async def get_policy(
     return policy
 
 
+@router.put("/policies/{policy_id}", response_model=PolicyResponse)
+async def update_policy(
+    policy_id: int,
+    policy_data: PolicyCreate,
+    current_user: User = Depends(require_role(["admin", "analyst"])),
+    db: Session = Depends(get_db)
+):
+    """Update an existing policy"""
+    policy = db.query(AIPolicy).filter(AIPolicy.id == policy_id).first()
+    
+    if not policy:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Policy not found"
+        )
+    
+    # Translate if natural language
+    translated_dsl = None
+    if policy_data.policy_type == "natural":
+        translation = await policy_service.translate_natural_language_to_dsl(policy_data.content)
+        translated_dsl = translation.get("dsl")
+    
+    # Update policy
+    policy.name = policy_data.name
+    policy.description = policy_data.description
+    policy.policy_type = policy_data.policy_type
+    policy.content = policy_data.content
+    policy.translated_dsl = translated_dsl
+    policy.category = policy_data.category
+    policy.priority = policy_data.priority
+    
+    db.commit()
+    db.refresh(policy)
+    
+    # Log action
+    await audit.log_user_action(
+        action="ai.policy.update",
+        actor={"id": current_user.id, "email": current_user.email, "role": current_user.role},
+        target_type="ai_policy",
+        target_id=policy.id,
+        details={"policy_name": policy.name},
+        db=db
+    )
+    
+    return PolicyResponse.from_orm(policy)
+
+
 @router.delete("/policies/{policy_id}")
 async def delete_policy(
     policy_id: int,
@@ -159,6 +208,26 @@ async def translate_policy(
         confidence=translation.get("confidence", 0.0),
         explanation=translation.get("explanation", "")
     )
+
+
+@router.post("/policy-translate", response_model=PolicyGuardianTranslation)
+async def translate_policy_intent(
+    intent: str = Body(..., embed=True),
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    Agent 4: Policy Guardian - Translate human intent to Shield Rule DSL
+    
+    This endpoint uses Gemini 3 Pro with Thinking to:
+    - Analyze edge cases
+    - Refine rules to avoid false positives
+    - Generate executable DSL code
+    
+    Example intent: "Be extremely aggressive against any election disinformation"
+    """
+    result = await policy_guardian.translate_intent_to_rule(intent)
+    
+    return PolicyGuardianTranslation(**result)
 
 
 # ============================================
@@ -292,4 +361,146 @@ async def clear_chat(
     """Clear chat conversation history"""
     chat_service.clear_conversation(conversation_id)
     return {"message": "Conversation cleared"}
+
+
+# ============================================
+# Policy Guardian (Agent 4) - Blocked Content
+# ============================================
+
+@router.get("/blocked-content/stats", response_model=BlockedContentStats)
+async def get_blocked_content_stats(
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get statistics about blocked content (Agent 4)
+    Returns counts and breakdowns by policy and action
+    """
+    from datetime import datetime, timedelta
+    from sqlalchemy import func, and_
+    import json
+    
+    now = datetime.utcnow()
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    last_24h = now - timedelta(hours=24)
+    last_7d = now - timedelta(days=7)
+    
+    # Today's count
+    today_count = db.query(func.count(BlockedContent.id)).filter(
+        BlockedContent.blocked_at >= today_start
+    ).scalar() or 0
+    
+    # Last 24 hours
+    last_24h_count = db.query(func.count(BlockedContent.id)).filter(
+        BlockedContent.blocked_at >= last_24h
+    ).scalar() or 0
+    
+    # Last 7 days
+    last_7d_count = db.query(func.count(BlockedContent.id)).filter(
+        BlockedContent.blocked_at >= last_7d
+    ).scalar() or 0
+    
+    # Total count
+    total_count = db.query(func.count(BlockedContent.id)).scalar() or 0
+    
+    # By policy
+    by_policy_query = db.query(
+        BlockedContent.policy_name,
+        func.count(BlockedContent.id)
+    ).filter(
+        BlockedContent.blocked_at >= last_7d
+    ).group_by(BlockedContent.policy_name).all()
+    
+    by_policy = {name: count for name, count in by_policy_query}
+    
+    # By action
+    by_action_query = db.query(
+        BlockedContent.action_taken,
+        func.count(BlockedContent.id)
+    ).filter(
+        BlockedContent.blocked_at >= last_7d
+    ).group_by(BlockedContent.action_taken).all()
+    
+    by_action = {action: count for action, count in by_action_query}
+    
+    # Recent blocks (last 20)
+    recent_blocks = db.query(BlockedContent).order_by(
+        BlockedContent.blocked_at.desc()
+    ).limit(20).all()
+    
+    return BlockedContentStats(
+        today_count=today_count,
+        last_24h_count=last_24h_count,
+        last_7d_count=last_7d_count,
+        total_count=total_count,
+        by_policy=by_policy,
+        by_action=by_action,
+        recent_blocks=[BlockedContentResponse.from_orm(b) for b in recent_blocks]
+    )
+
+
+@router.get("/blocked-content", response_model=List[BlockedContentResponse])
+async def get_blocked_content(
+    limit: int = 50,
+    offset: int = 0,
+    policy_id: Optional[int] = None,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Get list of blocked content with pagination"""
+    query = db.query(BlockedContent)
+    
+    if policy_id:
+        query = query.filter(BlockedContent.policy_id == policy_id)
+    
+    blocks = query.order_by(
+        BlockedContent.blocked_at.desc()
+    ).offset(offset).limit(limit).all()
+    
+    return [BlockedContentResponse.from_orm(b) for b in blocks]
+
+
+@router.patch("/policies/{policy_id}/activate")
+async def activate_policy(
+    policy_id: int,
+    is_active: bool = Body(..., embed=True),
+    current_user: User = Depends(require_role(["admin", "analyst"])),
+    db: Session = Depends(get_db)
+):
+    """
+    Activate or deactivate a policy
+    Only admin/analyst can modify policy status
+    """
+    policy = db.query(AIPolicy).filter(AIPolicy.id == policy_id).first()
+    
+    if not policy:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Policy not found"
+        )
+    
+    old_status = policy.is_active
+    policy.is_active = is_active
+    db.commit()
+    db.refresh(policy)
+    
+    # Log action
+    await audit.log_user_action(
+        action="ai.policy.activate" if is_active else "ai.policy.deactivate",
+        actor={"id": current_user.id, "email": current_user.email, "role": current_user.role},
+        target_type="ai_policy",
+        target_id=policy.id,
+        details={
+            "policy_name": policy.name,
+            "old_status": old_status,
+            "new_status": is_active
+        },
+        db=db
+    )
+    
+    return {
+        "message": f"Policy {'activated' if is_active else 'deactivated'} successfully",
+        "policy_id": policy.id,
+        "is_active": policy.is_active
+    }
 

@@ -7,21 +7,28 @@ interface ThreatCardProps {
   id: number;
   title: string;
   description: string;
+  content?: string; // Full content for AI analysis (when different from truncated description)
   severity: 'critical' | 'high' | 'medium' | 'low';
   source: string;
   firstSeen: string;
   affectedSystems: number;
   riskScore: number;
+  onAnalyze?: (id: number, content: string) => void;
+  onExportSTIX?: (id: number) => void;
 }
 
 export const ThreatCard: React.FC<ThreatCardProps> = ({
+  id,
   title,
   description,
+  content,
   severity,
   source,
   firstSeen,
   affectedSystems,
   riskScore,
+  onAnalyze,
+  onExportSTIX,
 }) => {
   const severityConfig = {
     critical: { class: 'threat-card-critical', label: 'CRITICAL' },
@@ -43,6 +50,9 @@ export const ThreatCard: React.FC<ThreatCardProps> = ({
         <div className="flex gap-2">
           <Button variant="secondary" className="text-xs py-1 px-3" onClick={() => console.log('View Details clicked', id)}>
             View Details
+          </Button>
+          <Button variant="secondary" className="text-xs py-1 px-3" onClick={() => onExportSTIX?.(id)}>
+            Export STIX
           </Button>
           <Button variant="secondary" className="text-xs py-1 px-3" onClick={() => console.log('Dismiss clicked', id)}>
             Dismiss
@@ -90,7 +100,11 @@ export const ThreatCard: React.FC<ThreatCardProps> = ({
 
       {/* Actions */}
       <div className="flex gap-2 pt-3 border-t border-border-subtle">
-        <Button variant="ai" className="text-xs py-1.5 px-3 flex-1" onClick={() => console.log('AI Analysis clicked', id)}>
+        <Button
+          variant="ai"
+          className="text-xs py-1.5 px-3 flex-1"
+          onClick={() => onAnalyze?.(id, content ?? description)}
+        >
           AI Analysis
         </Button>
         <Button variant="secondary" className="text-xs py-1.5 px-3" onClick={() => console.log('Graph View clicked', id)}>

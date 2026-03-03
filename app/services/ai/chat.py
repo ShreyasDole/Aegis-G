@@ -5,13 +5,12 @@ Context-aware chatbot with tool execution capabilities
 import os
 import uuid
 from typing import List, Dict, Optional
-import google.generativeai as genai
+from google import genai
 from sqlalchemy.orm import Session
+from app.config import settings
 
-# Configure Gemini
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or settings.GEMINI_API_KEY
+client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
 
 
 SYSTEM_PROMPT = """
@@ -87,18 +86,20 @@ class ChatService:
         messages.append({"role": "user", "parts": [full_prompt]})
         
         # Generate response
-        if not GEMINI_API_KEY:
+        if not client:
             response_text = self._get_demo_response(message)
             tool_calls = None
         else:
             try:
-                model = genai.GenerativeModel('gemini-1.5-flash')
-                
                 # Check if tools should be used
                 if use_tools and db:
-                    response_text, tool_calls = await self._chat_with_tools(model, messages, db)
+                    response_text, tool_calls = await self._chat_with_tools(messages, db)
                 else:
-                    response = model.generate_content(messages)
+                    contents = [{"role": m["role"], "parts": [{"text": m["parts"][0]}]} for m in messages]
+                    response = client.models.generate_content(
+                        model=settings.GEMINI_FLASH_MODEL,
+                        contents=contents
+                    )
                     response_text = response.text
                     tool_calls = None
                     
@@ -121,7 +122,7 @@ class ChatService:
             "suggestions": suggestions
         }
     
-    async def _chat_with_tools(self, model, messages, db: Session) -> tuple[str, Optional[List]]:
+    async def _chat_with_tools(self, messages, db: Session) -> tuple[str, Optional[List]]:
         """
         Chat with tool execution capability
         """
@@ -146,7 +147,11 @@ class ChatService:
         
         # For now, simple response without actual tool execution
         # In production, this would use Gemini's function calling
-        response = model.generate_content(messages)
+        contents = [{"role": m["role"], "parts": [{"text": m["parts"][0]}]} for m in messages]
+        response = client.models.generate_content(
+            model=settings.GEMINI_FLASH_MODEL,
+            contents=contents
+        )
         return response.text, None
     
     def _get_demo_response(self, message: str) -> str:

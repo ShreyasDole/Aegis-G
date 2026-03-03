@@ -36,7 +36,7 @@ class PolicyResponse(BaseModel):
     category: Optional[str]
     priority: int
     is_active: bool
-    created_by: str
+    created_by: int  # User ID
     created_at: datetime
     
     class Config:
@@ -48,6 +48,16 @@ class PolicyTranslation(BaseModel):
     dsl: str
     confidence: float = Field(..., ge=0.0, le=1.0)
     explanation: str
+
+
+class PolicyGuardianTranslation(BaseModel):
+    """Enhanced translation response from Policy Guardian (Agent 4)"""
+    rule_name: str
+    dsl_logic: str
+    safety_score: float = Field(..., ge=0.0, le=1.0)
+    edge_cases: List[str] = []
+    explanation: str
+    ai_reasoning: Optional[str] = None
 
 
 # ============================================
@@ -136,4 +146,36 @@ class AnalysisResponse(BaseModel):
     recommendations: List[str]
     confidence: float
     generated_at: datetime
+
+
+# ============================================
+# Blocked Content (Agent 4)
+# ============================================
+
+class BlockedContentResponse(BaseModel):
+    id: int
+    content_hash: str
+    content_preview: Optional[str]
+    source_platform: Optional[str]
+    source_username: Optional[str]
+    policy_id: int
+    policy_name: str
+    rule_name: Optional[str]
+    action_taken: str
+    ai_score: Optional[float]
+    graph_cluster_size: Optional[int]
+    blocked_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+
+class BlockedContentStats(BaseModel):
+    today_count: int
+    last_24h_count: int
+    last_7d_count: int
+    total_count: int
+    by_policy: Dict[str, int]  # policy_name -> count
+    by_action: Dict[str, int]  # action_taken -> count
+    recent_blocks: List[BlockedContentResponse]
 

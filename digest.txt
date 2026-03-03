@@ -1,5 +1,5 @@
 Directory structure:
-└── CyberSec/
+└── CyberSec Project/
     ├── README.md
     ├── BASE_SCAFFOLD_README.md
     ├── IMPLEMENTATION_SUMMARY.md
@@ -10,6 +10,7 @@ Directory structure:
     ├── pytest.ini
     ├── requirements-test.txt
     ├── requirements.txt
+    ├── start-dev.ps1
     ├── .env.example
     ├── app/
     │   ├── Dockerfile
@@ -42,7 +43,9 @@ Directory structure:
     │   │   └── versions/
     │   │       ├── 20240101_0000_001_initial_schema.py
     │   │       ├── 20240205_0000_002_user_approval_and_audit.py
-    │   │       └── 20240205_1200_003_ai_features.py
+    │   │       ├── 20240205_1200_003_ai_features.py
+    │   │       ├── 20240218_0000_004_add_thought_process.py
+    │   │       └── 20240220_0000_005_blocked_content.py
     │   ├── models/
     │   │   ├── __init__.py
     │   │   ├── ai.py
@@ -55,18 +58,21 @@ Directory structure:
     │   │   ├── __init__.py
     │   │   ├── admin.py
     │   │   ├── ai.py
+    │   │   ├── analyst.py
     │   │   ├── auth.py
     │   │   ├── detection.py
     │   │   ├── forensics.py
     │   │   ├── graph.py
     │   │   ├── sharing.py
     │   │   ├── system.py
+    │   │   ├── websocket.py
     │   │   └── worker.py
     │   ├── schemas/
     │   │   ├── __init__.py
     │   │   ├── ai.py
     │   │   ├── detection.py
-    │   │   └── graph.py
+    │   │   ├── graph.py
+    │   │   └── intelligence.py
     │   ├── services/
     │   │   ├── __init__.py
     │   │   ├── audit.py
@@ -75,8 +81,12 @@ Directory structure:
     │   │   ├── ai/
     │   │   │   ├── __init__.py
     │   │   │   ├── chat.py
+    │   │   │   ├── fusion_service.py
     │   │   │   ├── insights.py
-    │   │   │   └── policy.py
+    │   │   │   ├── policy.py
+    │   │   │   └── policy_guardian.py
+    │   │   ├── detection/
+    │   │   │   └── models/
     │   │   ├── gemini/
     │   │   │   ├── __init__.py
     │   │   │   ├── client.py
@@ -92,6 +102,8 @@ Directory structure:
     │   │   └── vector/
     │   │       ├── __init__.py
     │   │       └── embeddings.py
+    │   ├── training/
+    │   │   └── scripts/
     │   └── workers/
     │       ├── __init__.py
     │       └── ingest_stream.py
@@ -127,6 +139,8 @@ Directory structure:
     │       │   │   └── page.tsx
     │       │   ├── network/
     │       │   │   └── page.tsx
+    │       │   ├── policy/
+    │       │   │   └── page.tsx
     │       │   ├── register/
     │       │   │   └── page.tsx
     │       │   ├── sharing/
@@ -136,9 +150,20 @@ Directory structure:
     │       ├── components/
     │       │   ├── ai/
     │       │   │   └── AIManager.tsx
+    │       │   ├── auth/
+    │       │   │   └── AuthGuard.tsx
+    │       │   ├── intel/
+    │       │   │   ├── IntelligenceBrief.tsx
+    │       │   │   └── ReasoningTerminal.tsx
     │       │   ├── layout/
+    │       │   │   ├── AgentHeartbeat.tsx
+    │       │   │   ├── ClientLayout.tsx
     │       │   │   ├── Navbar.tsx
     │       │   │   └── Sidebar.tsx
+    │       │   ├── policy/
+    │       │   │   ├── PolicyAuthor.tsx
+    │       │   │   ├── PolicyEditor.tsx
+    │       │   │   └── PolicyList.tsx
     │       │   ├── reports/
     │       │   │   └── AnalysisCard.tsx
     │       │   ├── threats/
@@ -158,6 +183,7 @@ Directory structure:
     │       ├── context/
     │       │   └── ThreatContext.tsx
     │       └── lib/
+    │           ├── fusion.ts
     │           └── gemini-stream.ts
     ├── scripts/
     │   ├── __init__.py
@@ -347,7 +373,9 @@ CyberSec/
 
 | Tool | Required | Purpose |
 |------|----------|---------|
-| [Docker Desktop](https://www.docker.com/get-started) | ✅ Yes | Runs all services |
+| [Docker Desktop](https://www.docker.com/get-started) | ✅ Yes (for Docker) | Runs all services |
+| Python 3.11+ | ✅ Yes (for local dev) | Backend runtime |
+| Node.js 18+ | ✅ Yes (for local dev) | Frontend runtime |
 | `make` | ✅ Yes | Dev commands (built-in on macOS/Linux) |
 | [Google Cloud SDK](https://cloud.google.com/sdk/docs/install) | ❌ Optional | For cloud deployment |
 
@@ -375,6 +403,12 @@ python -c "import secrets; print(secrets.token_hex(32))"
 GEMINI_API_KEY=your-api-key-here
 ```
 
+---
+
+## 🏃 Running the Command Center (Local Development)
+
+### Option 1: Using Docker (Recommended for Full Stack)
+
 4. **Start services**
 ```bash
 make up
@@ -389,6 +423,129 @@ make migrate
 - Frontend: http://localhost:3000
 - API Docs: http://localhost:8000/docs
 - Redis: localhost:6379
+
+### Option 2: Running Locally with Uvicorn and npm
+
+This method runs the backend and frontend directly on your machine without Docker.
+
+#### Step 1: Install Backend Dependencies
+
+```powershell
+# Windows PowerShell
+cd "C:\CyberSec Project"
+pip install -r requirements.txt
+```
+
+```bash
+# macOS/Linux
+cd CyberSec
+pip install -r requirements.txt
+```
+
+#### Step 2: Start the Backend Server (FastAPI with Uvicorn)
+
+**Windows PowerShell:**
+```powershell
+cd "C:\CyberSec Project"
+$env:PYTHONPATH="C:\CyberSec Project"
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+```
+
+**macOS/Linux:**
+```bash
+cd CyberSec
+export PYTHONPATH=$(pwd)
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+```
+
+**What this does:**
+- Starts the FastAPI backend server
+- Runs on `http://127.0.0.1:8000`
+- `--reload` enables auto-reload on code changes
+- API documentation available at `http://127.0.0.1:8000/docs`
+
+#### Step 3: Start the Frontend Server (Next.js)
+
+Open a **new terminal window** and run:
+
+**Windows PowerShell:**
+```powershell
+cd "C:\CyberSec Project\frontend"
+npm install  # First time only
+npm run dev
+```
+
+**macOS/Linux:**
+```bash
+cd CyberSec/frontend
+npm install  # First time only
+npm run dev
+```
+
+**What this does:**
+- Starts the Next.js development server
+- Runs on `http://localhost:3000`
+- Auto-reloads on code changes
+- Frontend will automatically connect to backend at `http://127.0.0.1:8000`
+
+#### Step 4: Access the Command Center
+
+1. **Open your browser** and navigate to: **http://localhost:3000**
+2. You will be **redirected to the login page** (`/login`)
+3. **Enter your credentials** (or register a new account)
+4. After successful login, you'll be redirected to the **Dashboard**
+
+#### Quick Start Script (PowerShell)
+
+For convenience, you can use the provided script:
+
+```powershell
+.\start-dev.ps1
+```
+
+This script starts both servers and shows their logs in one terminal.
+
+#### Verification
+
+✅ **Backend is running** if you see:
+```
+INFO:     Uvicorn running on http://127.0.0.1:8000
+INFO:     Application startup complete.
+```
+
+✅ **Frontend is running** if you see:
+```
+▲ Next.js 14.1.0
+- Local:        http://localhost:3000
+✓ Ready in X seconds
+```
+
+✅ **Test the connection:**
+- Visit: http://127.0.0.1:8000/health (should return `{"status": "healthy"}`)
+- Visit: http://127.0.0.1:8000/docs (should show API documentation)
+- Visit: http://localhost:3000 (should show login page)
+
+#### Stopping the Servers
+
+- **Backend**: Press `Ctrl+C` in the backend terminal
+- **Frontend**: Press `Ctrl+C` in the frontend terminal
+
+---
+
+### Database Setup (For Local Development)
+
+If running locally without Docker, you'll need to set up databases manually:
+
+1. **PostgreSQL**: Install and create database
+2. **Neo4j**: Install and start Neo4j service
+3. **Redis**: Install and start Redis server
+
+Or use Docker just for databases:
+```bash
+docker-compose up db neo4j redis
+```
+
+Then run backend/frontend locally as described above.
 
 ---
 
@@ -2122,6 +2279,60 @@ httpx==0.27.0
 
 
 ================================================
+File: start-dev.ps1
+================================================
+# Start both backend and frontend servers
+Write-Host "Starting Aegis-G Development Servers..." -ForegroundColor Cyan
+Write-Host ""
+
+# Start Backend
+Write-Host "Starting Backend (FastAPI) on http://127.0.0.1:8000..." -ForegroundColor Yellow
+$backendJob = Start-Job -ScriptBlock {
+    Set-Location "C:\CyberSec Project"
+    $env:PYTHONPATH = "C:\CyberSec Project"
+    python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+}
+
+# Start Frontend  
+Write-Host "Starting Frontend (Next.js) on http://localhost:3000..." -ForegroundColor Yellow
+$frontendJob = Start-Job -ScriptBlock {
+    Set-Location "C:\CyberSec Project\frontend"
+    npm run dev
+}
+
+Write-Host ""
+Write-Host "Both servers are starting in the background." -ForegroundColor Green
+Write-Host "To view backend logs: Receive-Job -Id $($backendJob.Id) -Keep" -ForegroundColor Gray
+Write-Host "To view frontend logs: Receive-Job -Id $($frontendJob.Id) -Keep" -ForegroundColor Gray
+Write-Host "To stop servers: Stop-Job -Id $($backendJob.Id),$($frontendJob.Id); Remove-Job -Id $($backendJob.Id),$($frontendJob.Id)" -ForegroundColor Gray
+Write-Host ""
+Write-Host "Monitoring logs (Press Ctrl+C to stop)..." -ForegroundColor Cyan
+
+# Monitor both jobs
+try {
+    while ($true) {
+        $backendOutput = Receive-Job -Id $backendJob.Id -ErrorAction SilentlyContinue
+        $frontendOutput = Receive-Job -Id $frontendJob.Id -ErrorAction SilentlyContinue
+        
+        if ($backendOutput) {
+            Write-Host "[BACKEND] $backendOutput" -ForegroundColor Blue
+        }
+        if ($frontendOutput) {
+            Write-Host "[FRONTEND] $frontendOutput" -ForegroundColor Magenta
+        }
+        
+        Start-Sleep -Milliseconds 500
+    }
+} finally {
+    Write-Host "`nStopping servers..." -ForegroundColor Yellow
+    Stop-Job -Id $backendJob.Id,$frontendJob.Id -ErrorAction SilentlyContinue
+    Remove-Job -Id $backendJob.Id,$frontendJob.Id -ErrorAction SilentlyContinue
+}
+
+
+
+
+================================================
 File: .env.example
 ================================================
 
@@ -2347,7 +2558,7 @@ class AuthorizationEngine:
                 with open(self.authz_map_path, 'r') as f:
                     self.authz_rules = json.load(f)
             else:
-                print(f"⚠️  Warning: {self.authz_map_path} not found. Creating default rules.")
+                print(f"Warning: {self.authz_map_path} not found. Creating default rules.")
                 self.create_default_rules()
             
             if self.public_map_path.exists():
@@ -2357,7 +2568,7 @@ class AuthorizationEngine:
                 self.create_default_public_endpoints()
                 
         except Exception as e:
-            print(f"❌ Error loading authorization rules: {e}")
+            print(f"Error loading authorization rules: {e}")
             self.authz_rules = {}
             self.public_endpoints = []
     
@@ -2541,7 +2752,7 @@ class AuthorizationEngine:
             with open(self.authz_map_path, 'w') as f:
                 json.dump(self.authz_rules, f, indent=2)
         except Exception as e:
-            print(f"❌ Error saving authorization rules: {e}")
+            print(f"Error saving authorization rules: {e}")
     
     def get_all_rules(self) -> Dict[str, Any]:
         """Get all authorization rules"""
@@ -2649,7 +2860,7 @@ FastAPI Application Entry Point
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from app.routers import system, auth, admin, ai
+from app.routers import system, auth, admin, ai, analyst, websocket
 from app.middleware import AuthorizationMiddleware
 from app.middleware.audit import AuditMiddleware
 import logging
@@ -2692,15 +2903,17 @@ app.include_router(system.router, prefix="/api/system", tags=["System"])
 app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(admin.router, prefix="/api/admin", tags=["Admin"])
 app.include_router(ai.router, prefix="/api/ai", tags=["AI"])
+app.include_router(analyst.router, prefix="/api/analyst", tags=["Intelligence Analyst"])
+app.include_router(websocket.router, tags=["WebSocket"])
 
 
 @app.on_event("startup")
 async def startup():
     """Run on application startup"""
-    logger.info("🛡️  Aegis-G Starting Up...")
-    logger.info("✅ Authorization Engine: Loaded")
-    logger.info("✅ Audit Logging: Active")
-    logger.info("✅ AI Services: Ready")
+    logger.info("Aegis-G Starting Up...")
+    logger.info("Authorization Engine: Loaded")
+    logger.info("Audit Logging: Active")
+    logger.info("AI Services: Ready")
 
 
 @app.get("/")
@@ -2846,6 +3059,7 @@ pydantic>=2.0.0
 pydantic-settings>=2.0.0
 python-multipart
 httpx
+google-genai>=0.2.0
 
 
 
@@ -3808,6 +4022,106 @@ def downgrade() -> None:
 
 
 ================================================
+File: app/migrations/versions/20240218_0000_004_add_thought_process.py
+================================================
+"""Add thought_process column to ledger_entries
+
+Revision ID: 004
+Revises: 003
+Create Date: 2024-02-18 00:00:00.000000
+
+"""
+from typing import Sequence, Union
+
+from alembic import op
+import sqlalchemy as sa
+
+# revision identifiers, used by Alembic.
+revision: str = '004'
+down_revision: Union[str, None] = '003'
+branch_labels: Union[str, Sequence[str], None] = None
+depends_on: Union[str, Sequence[str], None] = None
+
+
+def upgrade() -> None:
+    # Add thought_process column to ledger_entries table
+    op.add_column(
+        'ledger_entries',
+        sa.Column('thought_process', sa.Text(), nullable=True)
+    )
+
+
+def downgrade() -> None:
+    # Remove thought_process column from ledger_entries table
+    op.drop_column('ledger_entries', 'thought_process')
+
+
+
+
+================================================
+File: app/migrations/versions/20240220_0000_005_blocked_content.py
+================================================
+"""Add blocked_content table for Agent 4 (Policy Guardian)
+
+Revision ID: 005
+Revises: 004
+Create Date: 2024-02-20 00:00:00.000000
+
+"""
+from typing import Sequence, Union
+
+from alembic import op
+import sqlalchemy as sa
+
+# revision identifiers, used by Alembic.
+revision: str = '005'
+down_revision: Union[str, None] = '004'
+branch_labels: Union[str, Sequence[str], None] = None
+depends_on: Union[str, Sequence[str], None] = None
+
+
+def upgrade() -> None:
+    # Create blocked_content table
+    op.create_table(
+        'blocked_content',
+        sa.Column('id', sa.Integer(), nullable=False),
+        sa.Column('content_hash', sa.String(64), nullable=False),
+        sa.Column('content_preview', sa.Text(), nullable=True),
+        sa.Column('source_platform', sa.String(50), nullable=True),
+        sa.Column('source_username', sa.String(200), nullable=True),
+        sa.Column('policy_id', sa.Integer(), nullable=False),
+        sa.Column('policy_name', sa.String(200), nullable=False),
+        sa.Column('rule_name', sa.String(100), nullable=True),
+        sa.Column('dsl_logic', sa.Text(), nullable=True),
+        sa.Column('matched_conditions', sa.Text(), nullable=True),
+        sa.Column('action_taken', sa.String(50), nullable=False),
+        sa.Column('ai_score', sa.Float(), nullable=True),
+        sa.Column('graph_cluster_size', sa.Integer(), nullable=True),
+        sa.Column('narrative_keywords', sa.Text(), nullable=True),
+        sa.Column('blocked_at', sa.DateTime(timezone=True), server_default=sa.text('now()')),
+        sa.ForeignKeyConstraint(['policy_id'], ['ai_policies.id'], ondelete='CASCADE'),
+        sa.PrimaryKeyConstraint('id')
+    )
+    
+    # Create indexes for blocked_content
+    op.create_index('ix_blocked_content_id', 'blocked_content', ['id'])
+    op.create_index('ix_blocked_content_content_hash', 'blocked_content', ['content_hash'])
+    op.create_index('ix_blocked_content_policy_id', 'blocked_content', ['policy_id'])
+    op.create_index('ix_blocked_content_blocked_at', 'blocked_content', ['blocked_at'])
+
+
+def downgrade() -> None:
+    # Drop blocked_content table
+    op.drop_index('ix_blocked_content_blocked_at', 'blocked_content')
+    op.drop_index('ix_blocked_content_policy_id', 'blocked_content')
+    op.drop_index('ix_blocked_content_content_hash', 'blocked_content')
+    op.drop_index('ix_blocked_content_id', 'blocked_content')
+    op.drop_table('blocked_content')
+
+
+
+
+================================================
 File: app/models/__init__.py
 ================================================
 # Models package
@@ -3816,7 +4130,7 @@ File: app/models/__init__.py
 from app.models.database import Base
 from app.models.user import User
 from app.models.audit import AuditLog
-from app.models.ai import AIPolicy, AIInsight
+from app.models.ai import AIPolicy, AIInsight, BlockedContent
 from app.models.threat import Threat, Report
 from app.models.ledger import LedgerEntry
 
@@ -3826,6 +4140,7 @@ __all__ = [
     "AuditLog",
     "AIPolicy",
     "AIInsight",
+    "BlockedContent",
     "Threat",
     "Report",
     "LedgerEntry",
@@ -3905,6 +4220,42 @@ class AIInsight(Base):
     def __repr__(self):
         return f"<AIInsight {self.title} ({self.severity})>"
 
+
+class BlockedContent(Base):
+    """
+    Blocked Content Log - Agent 4 (Policy Guardian) enforcement records
+    Tracks all content blocked by active policies
+    """
+    __tablename__ = "blocked_content"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    
+    # Content details
+    content_hash = Column(String(64), nullable=False, index=True)  # SHA256 hash of content
+    content_preview = Column(Text, nullable=True)  # First 500 chars for logging
+    source_platform = Column(String(50), nullable=True)
+    source_username = Column(String(200), nullable=True)
+    
+    # Policy that triggered the block
+    policy_id = Column(Integer, ForeignKey("ai_policies.id"), nullable=False, index=True)
+    policy_name = Column(String(200), nullable=False)
+    rule_name = Column(String(100), nullable=True)  # e.g., "rule_04.aegis"
+    
+    # Enforcement details
+    dsl_logic = Column(Text, nullable=True)  # The DSL rule that was executed
+    matched_conditions = Column(Text, nullable=True)  # JSON array of matched conditions
+    action_taken = Column(String(50), nullable=False)  # BLOCK_AND_LOG, FLAG_THREAT, etc.
+    
+    # Context data
+    ai_score = Column(Float, nullable=True)  # Forensic score from Agent 1
+    graph_cluster_size = Column(Integer, nullable=True)  # From Agent 2
+    narrative_keywords = Column(Text, nullable=True)  # Detected narrative keywords
+    
+    # Metadata
+    blocked_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+    
+    def __repr__(self):
+        return f"<BlockedContent {self.content_hash[:8]}... by {self.policy_name}>"
 
 
 
@@ -4021,6 +4372,7 @@ class LedgerEntry(Base):
     report_id = Column(Integer, nullable=False)
     recipient_agency = Column(String(100))
     redacted_content = Column(Text)
+    thought_process = Column(Text, nullable=True)  # AI's internal reasoning for legal audits
     timestamp = Column(DateTime, default=datetime.utcnow, index=True)
     verified = Column(String(10), default="pending")  # pending, verified, failed
 
@@ -4502,7 +4854,7 @@ File: app/routers/ai.py
 AI Router
 Endpoints for AI Policies, Insights, and Chat
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Body
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime
@@ -4511,13 +4863,15 @@ import json
 from app.auth import get_current_active_user, require_role
 from app.models.database import get_db
 from app.models.user import User
-from app.models.ai import AIPolicy, AIInsight
+from app.models.ai import AIPolicy, AIInsight, BlockedContent
 from app.schemas.ai import (
-    PolicyCreate, PolicyResponse, PolicyTranslation,
+    PolicyCreate, PolicyResponse, PolicyTranslation, PolicyGuardianTranslation,
     InsightResponse,
-    ChatRequest, ChatResponse
+    ChatRequest, ChatResponse,
+    BlockedContentResponse, BlockedContentStats
 )
 from app.services.ai import policy_service, insight_service, chat_service
+from app.services.ai.policy_guardian import policy_guardian
 from app.services.audit import audit
 
 router = APIRouter()
@@ -4611,6 +4965,53 @@ async def get_policy(
     return policy
 
 
+@router.put("/policies/{policy_id}", response_model=PolicyResponse)
+async def update_policy(
+    policy_id: int,
+    policy_data: PolicyCreate,
+    current_user: User = Depends(require_role(["admin", "analyst"])),
+    db: Session = Depends(get_db)
+):
+    """Update an existing policy"""
+    policy = db.query(AIPolicy).filter(AIPolicy.id == policy_id).first()
+    
+    if not policy:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Policy not found"
+        )
+    
+    # Translate if natural language
+    translated_dsl = None
+    if policy_data.policy_type == "natural":
+        translation = await policy_service.translate_natural_language_to_dsl(policy_data.content)
+        translated_dsl = translation.get("dsl")
+    
+    # Update policy
+    policy.name = policy_data.name
+    policy.description = policy_data.description
+    policy.policy_type = policy_data.policy_type
+    policy.content = policy_data.content
+    policy.translated_dsl = translated_dsl
+    policy.category = policy_data.category
+    policy.priority = policy_data.priority
+    
+    db.commit()
+    db.refresh(policy)
+    
+    # Log action
+    await audit.log_user_action(
+        action="ai.policy.update",
+        actor={"id": current_user.id, "email": current_user.email, "role": current_user.role},
+        target_type="ai_policy",
+        target_id=policy.id,
+        details={"policy_name": policy.name},
+        db=db
+    )
+    
+    return PolicyResponse.from_orm(policy)
+
+
 @router.delete("/policies/{policy_id}")
 async def delete_policy(
     policy_id: int,
@@ -4659,6 +5060,26 @@ async def translate_policy(
         confidence=translation.get("confidence", 0.0),
         explanation=translation.get("explanation", "")
     )
+
+
+@router.post("/policy-translate", response_model=PolicyGuardianTranslation)
+async def translate_policy_intent(
+    intent: str = Body(..., embed=True),
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    Agent 4: Policy Guardian - Translate human intent to Shield Rule DSL
+    
+    This endpoint uses Gemini 3 Pro with Thinking to:
+    - Analyze edge cases
+    - Refine rules to avoid false positives
+    - Generate executable DSL code
+    
+    Example intent: "Be extremely aggressive against any election disinformation"
+    """
+    result = await policy_guardian.translate_intent_to_rule(intent)
+    
+    return PolicyGuardianTranslation(**result)
 
 
 # ============================================
@@ -4793,6 +5214,197 @@ async def clear_chat(
     chat_service.clear_conversation(conversation_id)
     return {"message": "Conversation cleared"}
 
+
+# ============================================
+# Policy Guardian (Agent 4) - Blocked Content
+# ============================================
+
+@router.get("/blocked-content/stats", response_model=BlockedContentStats)
+async def get_blocked_content_stats(
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get statistics about blocked content (Agent 4)
+    Returns counts and breakdowns by policy and action
+    """
+    from datetime import datetime, timedelta
+    from sqlalchemy import func, and_
+    import json
+    
+    now = datetime.utcnow()
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    last_24h = now - timedelta(hours=24)
+    last_7d = now - timedelta(days=7)
+    
+    # Today's count
+    today_count = db.query(func.count(BlockedContent.id)).filter(
+        BlockedContent.blocked_at >= today_start
+    ).scalar() or 0
+    
+    # Last 24 hours
+    last_24h_count = db.query(func.count(BlockedContent.id)).filter(
+        BlockedContent.blocked_at >= last_24h
+    ).scalar() or 0
+    
+    # Last 7 days
+    last_7d_count = db.query(func.count(BlockedContent.id)).filter(
+        BlockedContent.blocked_at >= last_7d
+    ).scalar() or 0
+    
+    # Total count
+    total_count = db.query(func.count(BlockedContent.id)).scalar() or 0
+    
+    # By policy
+    by_policy_query = db.query(
+        BlockedContent.policy_name,
+        func.count(BlockedContent.id)
+    ).filter(
+        BlockedContent.blocked_at >= last_7d
+    ).group_by(BlockedContent.policy_name).all()
+    
+    by_policy = {name: count for name, count in by_policy_query}
+    
+    # By action
+    by_action_query = db.query(
+        BlockedContent.action_taken,
+        func.count(BlockedContent.id)
+    ).filter(
+        BlockedContent.blocked_at >= last_7d
+    ).group_by(BlockedContent.action_taken).all()
+    
+    by_action = {action: count for action, count in by_action_query}
+    
+    # Recent blocks (last 20)
+    recent_blocks = db.query(BlockedContent).order_by(
+        BlockedContent.blocked_at.desc()
+    ).limit(20).all()
+    
+    return BlockedContentStats(
+        today_count=today_count,
+        last_24h_count=last_24h_count,
+        last_7d_count=last_7d_count,
+        total_count=total_count,
+        by_policy=by_policy,
+        by_action=by_action,
+        recent_blocks=[BlockedContentResponse.from_orm(b) for b in recent_blocks]
+    )
+
+
+@router.get("/blocked-content", response_model=List[BlockedContentResponse])
+async def get_blocked_content(
+    limit: int = 50,
+    offset: int = 0,
+    policy_id: Optional[int] = None,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Get list of blocked content with pagination"""
+    query = db.query(BlockedContent)
+    
+    if policy_id:
+        query = query.filter(BlockedContent.policy_id == policy_id)
+    
+    blocks = query.order_by(
+        BlockedContent.blocked_at.desc()
+    ).offset(offset).limit(limit).all()
+    
+    return [BlockedContentResponse.from_orm(b) for b in blocks]
+
+
+@router.patch("/policies/{policy_id}/activate")
+async def activate_policy(
+    policy_id: int,
+    is_active: bool = Body(..., embed=True),
+    current_user: User = Depends(require_role(["admin", "analyst"])),
+    db: Session = Depends(get_db)
+):
+    """
+    Activate or deactivate a policy
+    Only admin/analyst can modify policy status
+    """
+    policy = db.query(AIPolicy).filter(AIPolicy.id == policy_id).first()
+    
+    if not policy:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Policy not found"
+        )
+    
+    old_status = policy.is_active
+    policy.is_active = is_active
+    db.commit()
+    db.refresh(policy)
+    
+    # Log action
+    await audit.log_user_action(
+        action="ai.policy.activate" if is_active else "ai.policy.deactivate",
+        actor={"id": current_user.id, "email": current_user.email, "role": current_user.role},
+        target_type="ai_policy",
+        target_id=policy.id,
+        details={
+            "policy_name": policy.name,
+            "old_status": old_status,
+            "new_status": is_active
+        },
+        db=db
+    )
+    
+    return {
+        "message": f"Policy {'activated' if is_active else 'deactivated'} successfully",
+        "policy_id": policy.id,
+        "is_active": policy.is_active
+    }
+
+
+
+
+================================================
+File: app/routers/analyst.py
+================================================
+"""
+Analyst Router - Agent 3 (Intelligence Analyst)
+Fusion endpoint for synthesizing intelligence reports
+"""
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from app.models.database import get_db
+from app.schemas.intelligence import FusionRequest, IntelligenceReport
+from app.services.ai.fusion_service import AnalystAgent
+from app.core.blockchain import add_to_ledger  # For Prisha's component
+
+router = APIRouter()
+
+
+@router.post("/fusion", response_model=dict)
+async def analyze_threat_fusion(request: FusionRequest, db: Session = Depends(get_db)):
+    """
+    Endpoint for Agent 3 to combine Forensics and Graph data.
+    """
+    # 1. Run the Synthesis
+    result = await AnalystAgent.synthesize_intelligence(
+        content=request.content,
+        forensics=request.forensic_data,
+        graph=request.graph_data
+    )
+    
+    report = result["report"]
+    thoughts = result["ai_reasoning_log"]
+
+    # 2. Log to the Blockchain (Trust Layer)
+    # We include the AI's internal reasoning so the logic is immutable.
+    ledger_hash = await add_to_ledger(
+        report_id=request.threat_id,
+        recipient_agency="Internal-Audit",
+        content=f"Threat: {report.threat_title} | Logic: {thoughts}"
+    )
+
+    return {
+        "report": report,
+        "thought_process": thoughts,
+        "ledger_hash": ledger_hash,
+        "status": "Verified by Agent 3"
+    }
 
 
 
@@ -5243,6 +5855,122 @@ def health_check():
 
 
 ================================================
+File: app/routers/websocket.py
+================================================
+"""
+WebSocket Router
+Real-time notifications for blocked content (Agent 4)
+"""
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from typing import List, Dict, Any
+import json
+import asyncio
+from datetime import datetime
+
+router = APIRouter()
+
+# Active WebSocket connections
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: List[WebSocket] = []
+    
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+    
+    def disconnect(self, websocket: WebSocket):
+        if websocket in self.active_connections:
+            self.active_connections.remove(websocket)
+    
+    async def broadcast_blocked_content(self, blocked_data: Dict[str, Any]):
+        """Broadcast blocked content to all connected clients"""
+        message = {
+            "type": "blocked_content",
+            "timestamp": datetime.utcnow().isoformat(),
+            "data": blocked_data
+        }
+        
+        disconnected = []
+        for connection in self.active_connections:
+            try:
+                await connection.send_json(message)
+            except Exception as e:
+                print(f"Error sending to WebSocket: {e}")
+                disconnected.append(connection)
+        
+        # Remove disconnected clients
+        for conn in disconnected:
+            self.disconnect(conn)
+    
+    async def broadcast_stats_update(self, stats: Dict[str, Any]):
+        """Broadcast stats update to all connected clients"""
+        message = {
+            "type": "stats_update",
+            "timestamp": datetime.utcnow().isoformat(),
+            "data": stats
+        }
+        
+        disconnected = []
+        for connection in self.active_connections:
+            try:
+                await connection.send_json(message)
+            except Exception as e:
+                print(f"Error sending stats update: {e}")
+                disconnected.append(connection)
+        
+        for conn in disconnected:
+            self.disconnect(conn)
+
+
+# Global connection manager
+manager = ConnectionManager()
+
+
+@router.websocket("/ws/blocked-content")
+async def websocket_blocked_content(websocket: WebSocket):
+    """
+    WebSocket endpoint for real-time blocked content notifications
+    Clients receive updates when content is blocked by Agent 4
+    """
+    await manager.connect(websocket)
+    
+    try:
+        # Send initial connection confirmation
+        await websocket.send_json({
+            "type": "connected",
+            "message": "Connected to Agent 4 blocked content stream",
+            "timestamp": datetime.utcnow().isoformat()
+        })
+        
+        # Keep connection alive and handle incoming messages
+        while True:
+            # Wait for any message (ping/pong for keepalive)
+            try:
+                data = await asyncio.wait_for(websocket.receive_text(), timeout=30.0)
+                # Echo ping messages
+                if data == "ping":
+                    await websocket.send_json({"type": "pong"})
+            except asyncio.TimeoutError:
+                # Send keepalive
+                await websocket.send_json({"type": "keepalive"})
+            except WebSocketDisconnect:
+                break
+                
+    except WebSocketDisconnect:
+        pass
+    finally:
+        manager.disconnect(websocket)
+
+
+# Function to notify about blocked content (called from worker)
+async def notify_blocked_content(blocked_data: Dict[str, Any]):
+    """Notify all WebSocket clients about blocked content"""
+    await manager.broadcast_blocked_content(blocked_data)
+
+
+
+
+================================================
 File: app/routers/worker.py
 ================================================
 """
@@ -5391,7 +6119,7 @@ class PolicyResponse(BaseModel):
     category: Optional[str]
     priority: int
     is_active: bool
-    created_by: str
+    created_by: int  # User ID
     created_at: datetime
     
     class Config:
@@ -5403,6 +6131,16 @@ class PolicyTranslation(BaseModel):
     dsl: str
     confidence: float = Field(..., ge=0.0, le=1.0)
     explanation: str
+
+
+class PolicyGuardianTranslation(BaseModel):
+    """Enhanced translation response from Policy Guardian (Agent 4)"""
+    rule_name: str
+    dsl_logic: str
+    safety_score: float = Field(..., ge=0.0, le=1.0)
+    edge_cases: List[str] = []
+    explanation: str
+    ai_reasoning: Optional[str] = None
 
 
 # ============================================
@@ -5493,6 +6231,38 @@ class AnalysisResponse(BaseModel):
     generated_at: datetime
 
 
+# ============================================
+# Blocked Content (Agent 4)
+# ============================================
+
+class BlockedContentResponse(BaseModel):
+    id: int
+    content_hash: str
+    content_preview: Optional[str]
+    source_platform: Optional[str]
+    source_username: Optional[str]
+    policy_id: int
+    policy_name: str
+    rule_name: Optional[str]
+    action_taken: str
+    ai_score: Optional[float]
+    graph_cluster_size: Optional[int]
+    blocked_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+
+class BlockedContentStats(BaseModel):
+    today_count: int
+    last_24h_count: int
+    last_7d_count: int
+    total_count: int
+    by_policy: Dict[str, int]  # policy_name -> count
+    by_action: Dict[str, int]  # action_taken -> count
+    recent_blocks: List[BlockedContentResponse]
+
+
 
 
 ================================================
@@ -5574,6 +6344,55 @@ class NetworkQuery(BaseModel):
     relationship_type: Optional[str] = None
     depth: int = 2
     limit: int = 100
+
+
+
+
+================================================
+File: app/schemas/intelligence.py
+================================================
+"""
+Intelligence Schemas - Pydantic
+Structured output schemas for Agent 3 (Intelligence Analyst)
+"""
+from pydantic import BaseModel, Field
+from typing import List, Literal, Optional
+
+
+class EvidenceArtifact(BaseModel):
+    """Evidence artifact from Agent 1 (Forensics) or Agent 2 (Graph)"""
+    source: str = Field(description="Agent 1 (Forensics) or Agent 2 (Graph)")
+    finding: str = Field(description="The specific discovery (e.g., 'Low Burstiness detected')")
+    weight: float = Field(description="Confidence weight 0.0 to 1.0")
+
+
+class ActionStep(BaseModel):
+    """Actionable recommendation step"""
+    action: str = Field(description="Clear instruction (e.g., 'Escalate to CISA')")
+    priority: Literal["Immediate", "High", "Routine"] = Field(description="Priority level")
+
+
+class IntelligenceReport(BaseModel):
+    """Structured intelligence report from Agent 3"""
+    threat_title: str = Field(description="A concise name for this threat")
+    executive_summary: str = Field(description="High-level brief for leadership")
+    threat_type: Literal["Phishing", "Disinformation", "Botnet", "Human Error", "Compromised Account"] = Field(
+        description="Classification of the threat"
+    )
+    risk_level: Literal["Critical", "High", "Medium", "Low"] = Field(
+        description="Overall risk assessment"
+    )
+    confidence: float = Field(ge=0, le=1, description="Confidence score 0.0 to 1.0")
+    evidence: List[EvidenceArtifact] = Field(description="List of evidence artifacts")
+    recommendations: List[ActionStep] = Field(description="Actionable recommendations")
+
+
+class FusionRequest(BaseModel):
+    """Request schema for intelligence fusion"""
+    threat_id: int = Field(description="Threat ID for this analysis")
+    content: str = Field(description="Original content text")
+    forensic_data: dict = Field(description="Data from Agent 1 (Forensics)")
+    graph_data: dict = Field(description="Data from Agent 2 (Graph)")
 
 
 
@@ -6116,6 +6935,7 @@ AI Services
 from app.services.ai.policy import policy_service
 from app.services.ai.insights import insight_service
 from app.services.ai.chat import chat_service
+from app.services.ai.policy_guardian import policy_guardian
 
 __all__ = ["policy_service", "insight_service", "chat_service"]
 
@@ -6364,6 +7184,90 @@ Could you clarify what specific information you need? For example:
 # Global instance
 chat_service = ChatService()
 
+
+
+
+================================================
+File: app/services/ai/fusion_service.py
+================================================
+"""
+Fusion Service - Agent 3 (Intelligence Analyst)
+Synthesizes forensics and graph data into human-readable intelligence reports
+Uses Gemini 3 Flash Preview with Thinking process and Structured Output
+"""
+import os
+from google import genai
+from google.genai import types
+from app.schemas.intelligence import IntelligenceReport
+
+
+# Configure Gemini Client
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
+
+
+class AnalystAgent:
+    @staticmethod
+    async def synthesize_intelligence(content: str, forensics: dict, graph: dict):
+        """
+        Agent 3: Reason over contradictory data and produce a structured report.
+        """
+        system_instructions = """
+        You are the Intelligence Analyst (Agent 3) for the Aegis Defense Grid.
+        Your job is FUSION: take forensic scores and graph metadata to determine the REAL threat.
+        
+        LOGIC RULES:
+        - If Forensics = 'AI-written' but Graph = 'Isolated Node', it is likely a low-level bot.
+        - If Forensics = 'Human-written' but Graph = 'Large Cluster', it is a COMPROMISED ACCOUNT or a sleeper cell.
+        - If both are high, it is a COORDINATED DISINFORMATION CAMPAIGN.
+        """
+
+        user_prompt = f"""
+        Analyze this raw input for National Security risk:
+        
+        RAW CONTENT: "{content}"
+        
+        FORENSIC METADATA (Agent 1): {forensics}
+        GRAPH METADATA (Agent 2): {graph}
+        
+        Use your internal 'Thinking' process to evaluate these sources.
+        Return a structured JSON report.
+        """
+
+        if not client:
+            raise ValueError("GEMINI_API_KEY environment variable is not set")
+        
+        try:
+            response = client.models.generate_content(
+                model="gemini-3-flash-preview",
+                contents=user_prompt,
+                config=types.GenerateContentConfig(
+                    system_instruction=system_instructions,
+                    # ENABLE THINKING
+                    thinking_config=types.ThinkingConfig(include_thoughts=True),
+                    # ENABLE STRUCTURED OUTPUT
+                    response_mime_type="application/json",
+                    response_json_schema=IntelligenceReport.model_json_schema(),
+                )
+            )
+
+            # Extract the raw "Thinking" steps for the Audit Ledger
+            thoughts = ""
+            for part in response.candidates[0].content.parts:
+                if part.thought:
+                    thoughts += part.text
+
+            # Parse and validate the final answer
+            report_data = IntelligenceReport.model_validate_json(response.text)
+            
+            return {
+                "report": report_data,
+                "ai_reasoning_log": thoughts  # This goes to the Trust Layer
+            }
+
+        except Exception as e:
+            print(f"Agent 3 Synthesis Error: {e}")
+            raise e
 
 
 
@@ -6666,6 +7570,335 @@ class PolicyService:
 
 
 policy_service = PolicyService()
+
+
+
+
+================================================
+File: app/services/ai/policy_guardian.py
+================================================
+"""
+Policy Guardian Service - Agent 4
+Automated Mitigation: Translates human intent into executable DSL rules
+Uses Gemini 3 Pro with Thinking process for edge case analysis
+"""
+import os
+import json
+from typing import Dict, Any, Optional, List
+from google import genai
+from google.genai import types
+
+# Configure Gemini Client
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+client = None
+if GEMINI_API_KEY:
+    client = genai.Client(api_key=GEMINI_API_KEY)
+
+
+class PolicyGuardian:
+    """
+    Agent 4: Policy Guardian
+    Translates natural language policy intent into executable DSL rules
+    """
+    
+    @staticmethod
+    async def translate_intent_to_rule(human_intent: str) -> Dict[str, Any]:
+        """
+        Translate human strategic intent into executable DSL logic
+        
+        Uses Gemini 3 Pro with Thinking to analyze edge cases and refine rules
+        """
+        system_instructions = """
+        You are the Policy Guardian (Agent 4) of Project Aegis.
+        Your job is to translate human strategic intent into executable logic for the defense grid.
+        
+        DSL SYNTAX:
+        - IF <condition> THEN <action>
+        - Conditions: 
+          * narrative_match("text") - matches narrative keywords
+          * ai_score > X - forensic AI detection score
+          * graph_cluster_size > X - network cluster size
+          * contains(field, "text") - text contains substring
+          * equals(field, value) - exact match
+          * greater_than(field, value) - numeric comparison
+        - Actions:
+          * BLOCK_AND_LOG - block content and log to audit
+          * FLAG_THREAT(severity) - flag as threat with severity level
+          * ALERT(target) - send alert to target
+          * LOG_ONLY - log without blocking
+        
+        THINKING PROCESS:
+        - Consider edge cases: If user says "Block all AI text", should technical reports be blocked?
+        - Refine rules to avoid false positives
+        - Consider the balance between security and legitimate content
+        - Think about how this rule interacts with existing policies
+        
+        OUTPUT SCHEMA:
+        {
+          "rule_name": "string (e.g., rule_04.aegis)",
+          "dsl_logic": "string (executable DSL code)",
+          "safety_score": 0.0-1.0 (confidence in rule correctness),
+          "edge_cases": ["list of potential edge cases considered"],
+          "explanation": "brief explanation of the rule logic",
+          "ai_reasoning": "internal thinking process (for audit)"
+        }
+        """
+        
+        if not client:
+            return {
+                "rule_name": "rule_error",
+                "dsl_logic": "# Error: GEMINI_API_KEY not configured",
+                "safety_score": 0.0,
+                "edge_cases": [],
+                "explanation": "API key not configured",
+                "ai_reasoning": ""
+            }
+        
+        user_prompt = f"""
+        Translate this human strategic intent into a Shield Rule:
+        
+        INTENT: "{human_intent}"
+        
+        Use your internal 'Thinking' process to:
+        1. Analyze the intent for edge cases
+        2. Refine the rule to minimize false positives
+        3. Consider interactions with existing policies
+        4. Generate executable DSL code
+        
+        Return structured JSON matching the output schema.
+        """
+        
+        try:
+            response = client.models.generate_content(
+                model="gemini-3-flash-preview",  # Using flash for speed, can switch to pro if needed
+                contents=user_prompt,
+                config=types.GenerateContentConfig(
+                    system_instruction=system_instructions,
+                    thinking_config=types.ThinkingConfig(include_thoughts=True),
+                    response_mime_type="application/json"
+                )
+            )
+            
+            # Extract thinking process for audit
+            ai_reasoning = ""
+            for part in response.candidates[0].content.parts:
+                if hasattr(part, 'thought') and part.thought:
+                    ai_reasoning += part.text if hasattr(part, 'text') else str(part.thought)
+            
+            # Parse JSON response
+            result_text = response.text
+            if "```json" in result_text:
+                result_text = result_text.split("```json")[1].split("```")[0].strip()
+            elif "```" in result_text:
+                result_text = result_text.split("```")[1].split("```")[0].strip()
+            
+            result = json.loads(result_text)
+            
+            # Add AI reasoning to result
+            result["ai_reasoning"] = ai_reasoning
+            
+            return result
+            
+        except Exception as e:
+            return {
+                "rule_name": "rule_error",
+                "dsl_logic": f"# Translation error: {str(e)}",
+                "safety_score": 0.0,
+                "edge_cases": [],
+                "explanation": f"Failed to translate policy: {str(e)}",
+                "ai_reasoning": ""
+            }
+    
+    @staticmethod
+    def execute_dsl_rule(dsl_logic: str, post_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Execute DSL rule against a post with enhanced parsing
+        
+        Supports:
+        - IF condition THEN action
+        - AND, OR, NOT operators
+        - Multiple conditions
+        - Complex comparisons
+        
+        Returns:
+        {
+            "should_block": bool,
+            "action": str,
+            "reason": str,
+            "matched_conditions": List[str]
+        }
+        """
+        import re
+        from typing import List, Tuple
+        
+        try:
+            dsl_upper = dsl_logic.upper().strip()
+            
+            if "IF" not in dsl_upper or "THEN" not in dsl_upper:
+                return {
+                    "should_block": False,
+                    "action": "PASS",
+                    "reason": "Invalid DSL syntax: missing IF or THEN",
+                    "matched_conditions": []
+                }
+            
+            # Extract action
+            action_match = re.search(r'THEN\s+(\w+(?:_\w+)*)', dsl_upper)
+            if not action_match:
+                return {
+                    "should_block": False,
+                    "action": "PASS",
+                    "reason": "Invalid DSL syntax: no action specified",
+                    "matched_conditions": []
+                }
+            
+            action = action_match.group(1)
+            
+            # Extract condition part
+            condition_part = re.search(r'IF\s+(.+?)\s+THEN', dsl_upper, re.DOTALL)
+            if not condition_part:
+                return {
+                    "should_block": False,
+                    "action": "PASS",
+                    "reason": "Invalid DSL syntax: no condition specified",
+                    "matched_conditions": []
+                }
+            
+            condition_str = condition_part.group(1).strip()
+            
+            # Parse conditions with AND/OR logic
+            def evaluate_condition(cond: str) -> Tuple[bool, str]:
+                """Evaluate a single condition"""
+                cond = cond.strip()
+                
+                # narrative_match("keyword")
+                if 'narrative_match(' in cond.lower():
+                    match = re.search(r'narrative_match\("([^"]+)"\)', cond, re.IGNORECASE)
+                    if match:
+                        keyword = match.group(1)
+                        content = post_data.get("content", "").lower()
+                        matched = keyword.lower() in content
+                        return matched, f"narrative_match('{keyword}')" if matched else None
+                
+                # contains(field, "value")
+                if 'contains(' in cond.lower():
+                    match = re.search(r'contains\s*\(\s*(\w+)\s*,\s*"([^"]+)"\s*\)', cond, re.IGNORECASE)
+                    if match:
+                        field, value = match.group(1), match.group(2)
+                        field_value = str(post_data.get(field, "")).lower()
+                        matched = value.lower() in field_value
+                        return matched, f"contains({field}, '{value}')" if matched else None
+                
+                # ai_score > X, ai_score >= X, ai_score < X, etc.
+                if 'ai_score' in cond.lower():
+                    ai_score = post_data.get("ai_score", 0.0)
+                    for op in ['>=', '<=', '>', '<', '==', '!=']:
+                        match = re.search(r'ai_score\s*' + re.escape(op) + r'\s*([\d.]+)', cond, re.IGNORECASE)
+                        if match:
+                            threshold = float(match.group(1))
+                            matched = False
+                            if op == '>': matched = ai_score > threshold
+                            elif op == '>=': matched = ai_score >= threshold
+                            elif op == '<': matched = ai_score < threshold
+                            elif op == '<=': matched = ai_score <= threshold
+                            elif op == '==': matched = abs(ai_score - threshold) < 0.001
+                            elif op == '!=': matched = abs(ai_score - threshold) >= 0.001
+                            return matched, f"ai_score {op} {threshold}" if matched else None
+                
+                # graph_cluster_size > X
+                if 'graph_cluster_size' in cond.lower():
+                    cluster_size = post_data.get("graph_cluster_size", 0)
+                    for op in ['>=', '<=', '>', '<', '==', '!=']:
+                        match = re.search(r'graph_cluster_size\s*' + re.escape(op) + r'\s*(\d+)', cond, re.IGNORECASE)
+                        if match:
+                            threshold = int(match.group(1))
+                            matched = False
+                            if op == '>': matched = cluster_size > threshold
+                            elif op == '>=': matched = cluster_size >= threshold
+                            elif op == '<': matched = cluster_size < threshold
+                            elif op == '<=': matched = cluster_size <= threshold
+                            elif op == '==': matched = cluster_size == threshold
+                            elif op == '!=': matched = cluster_size != threshold
+                            return matched, f"graph_cluster_size {op} {threshold}" if matched else None
+                
+                # equals(field, value)
+                if 'equals(' in cond.lower():
+                    match = re.search(r'equals\s*\(\s*(\w+)\s*,\s*"([^"]+)"\s*\)', cond, re.IGNORECASE)
+                    if match:
+                        field, value = match.group(1), match.group(2)
+                        field_value = str(post_data.get(field, ""))
+                        matched = field_value == value
+                        return matched, f"equals({field}, '{value}')" if matched else None
+                
+                return False, None
+            
+            # Parse with AND/OR logic
+            def parse_and_evaluate(expr: str) -> Tuple[bool, List[str]]:
+                """Parse expression with AND/OR operators"""
+                matched_conditions = []
+                
+                # Handle NOT operator
+                if expr.strip().startswith('NOT'):
+                    inner = expr[3:].strip().strip('()')
+                    result, cond = evaluate_condition(inner)
+                    return not result, [f"NOT {cond}"] if cond else []
+                
+                # Split by OR first (lower precedence)
+                or_parts = re.split(r'\s+OR\s+', expr, flags=re.IGNORECASE)
+                if len(or_parts) > 1:
+                    # OR logic: any part true
+                    for part in or_parts:
+                        part_result, part_conds = parse_and_evaluate(part.strip())
+                        if part_result:
+                            matched_conditions.extend(part_conds)
+                            return True, matched_conditions
+                    return False, []
+                
+                # Split by AND
+                and_parts = re.split(r'\s+AND\s+', expr, flags=re.IGNORECASE)
+                if len(and_parts) > 1:
+                    # AND logic: all parts must be true
+                    all_true = True
+                    for part in and_parts:
+                        part_result, part_conds = parse_and_evaluate(part.strip())
+                        if part_result:
+                            matched_conditions.extend(part_conds)
+                        else:
+                            all_true = False
+                    return all_true, matched_conditions
+                
+                # Single condition
+                result, cond = evaluate_condition(expr)
+                if result and cond:
+                    matched_conditions.append(cond)
+                return result, matched_conditions
+            
+            # Evaluate the condition
+            condition_result, matched_conditions = parse_and_evaluate(condition_str)
+            
+            # Determine if should block
+            should_block = condition_result and action in ["BLOCK_AND_LOG", "BLOCK"]
+            
+            return {
+                "should_block": should_block,
+                "action": action if condition_result else "PASS",
+                "reason": f"Matched conditions: {', '.join(matched_conditions)}" if matched_conditions else "No conditions met",
+                "matched_conditions": matched_conditions
+            }
+            
+        except Exception as e:
+            import traceback
+            return {
+                "should_block": False,
+                "action": "ERROR",
+                "reason": f"DSL execution error: {str(e)}",
+                "matched_conditions": []
+            }
+
+
+# Singleton instance
+policy_guardian = PolicyGuardian()
+
 
 
 
@@ -7272,6 +8505,7 @@ class EmbeddingService:
 
 
 
+
 ================================================
 File: app/workers/__init__.py
 ================================================
@@ -7290,10 +8524,11 @@ Uses asyncio for concurrent processing to keep the API responsive
 """
 import asyncio
 import json
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from datetime import datetime
 from app.services.gemini.client import GeminiClient
 from app.services.graph.neo4j import Neo4jService
+from app.services.ai.policy_guardian import policy_guardian
 import hashlib
 
 
@@ -7303,11 +8538,103 @@ class StreamIngestWorker:
     Processes items asynchronously to prevent API blocking
     """
     
-    def __init__(self):
+    def __init__(self, db_session=None):
         self.gemini_client = GeminiClient()
         self.neo4j_service = Neo4jService()
         self.processing_queue: asyncio.Queue = asyncio.Queue()
         self.is_running = False
+        self.db_session = db_session  # For accessing active policies
+    
+    async def apply_guardrails(self, item: Dict[str, Any], analysis: Dict[str, Any], graph_data: Dict[str, Any] = None) -> Optional[Dict[str, Any]]:
+        """
+        Agent 4: Apply policy guardrails to incoming post
+        Returns blocking decision or None if post should pass
+        """
+        if not self.db_session:
+            return None  # No DB session, skip guardrails
+        
+        try:
+            from app.models.ai import AIPolicy, BlockedContent
+            
+            # Fetch all active policies
+            active_policies = self.db_session.query(AIPolicy).filter(
+                AIPolicy.is_active == True
+            ).order_by(AIPolicy.priority.desc()).all()
+            
+            if not active_policies:
+                return None  # No active policies
+            
+            content = item.get("content", "")
+            content_hash = hashlib.sha256(content.encode()).hexdigest()
+            
+            # Prepare post data for DSL evaluation
+            post_data = {
+                "content": content,
+                "ai_score": analysis.get("risk_score", 0.0),
+                "graph_cluster_size": graph_data.get("cluster_size", 0) if graph_data else 0,
+                "platform": item.get("platform", "unknown"),
+                "username": item.get("username", "unknown")
+            }
+            
+            # Check each active policy
+            for policy in active_policies:
+                dsl_logic = policy.translated_dsl or policy.content
+                
+                if not dsl_logic:
+                    continue
+                
+                # Execute DSL rule
+                result = policy_guardian.execute_dsl_rule(dsl_logic, post_data)
+                
+                if result.get("should_block"):
+                    # Block and log
+                    blocked_record = BlockedContent(
+                        content_hash=content_hash,
+                        content_preview=content[:500],
+                        source_platform=item.get("platform"),
+                        source_username=item.get("username"),
+                        policy_id=policy.id,
+                        policy_name=policy.name,
+                        rule_name=f"rule_{policy.id:02d}.aegis",
+                        dsl_logic=dsl_logic,
+                        matched_conditions=json.dumps(result.get("matched_conditions", [])),
+                        action_taken=result.get("action", "BLOCK_AND_LOG"),
+                        ai_score=post_data.get("ai_score"),
+                        graph_cluster_size=post_data.get("graph_cluster_size"),
+                        narrative_keywords=json.dumps(result.get("matched_conditions", []))
+                    )
+                    
+                    self.db_session.add(blocked_record)
+                    self.db_session.commit()
+                    self.db_session.refresh(blocked_record)
+                    
+                    # Notify WebSocket clients
+                    try:
+                        from app.routers.websocket import notify_blocked_content
+                        asyncio.create_task(notify_blocked_content({
+                            "id": blocked_record.id,
+                            "content_preview": blocked_record.content_preview,
+                            "policy_name": policy.name,
+                            "action_taken": result.get("action", "BLOCK_AND_LOG"),
+                            "blocked_at": blocked_record.blocked_at.isoformat() if blocked_record.blocked_at else None,
+                            "source_platform": item.get("platform")
+                        }))
+                    except Exception as e:
+                        print(f"WebSocket notification error: {e}")
+                    
+                    return {
+                        "blocked": True,
+                        "policy_id": policy.id,
+                        "policy_name": policy.name,
+                        "reason": result.get("reason", "Policy violation"),
+                        "action": result.get("action", "BLOCK_AND_LOG")
+                    }
+            
+            return None  # No policy matched, allow through
+            
+        except Exception as e:
+            print(f"Guardrail error: {str(e)}")
+            return None  # On error, allow through (fail open)
     
     async def process_item(self, item: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -7325,7 +8652,27 @@ class StreamIngestWorker:
             # Step 2: Generate content hash
             content_hash = hashlib.sha256(content.encode()).hexdigest()
             
-            # Step 3: If malicious, create graph nodes
+            # Step 3: Agent 4 - Apply guardrails (BEFORE processing)
+            graph_data = None
+            if analysis.get("risk_score", 0) > 0.6:
+                # Get graph cluster info if available
+                graph_data = {"cluster_size": 1}  # Simplified - in production, query Neo4j
+            
+            guardrail_result = await self.apply_guardrails(item, analysis, graph_data)
+            
+            if guardrail_result and guardrail_result.get("blocked"):
+                # Post was blocked by Agent 4
+                return {
+                    "item_id": item.get("id"),
+                    "content_hash": content_hash,
+                    "status": "blocked",
+                    "blocked_by": "Agent 4 (Policy Guardian)",
+                    "policy": guardrail_result.get("policy_name"),
+                    "reason": guardrail_result.get("reason"),
+                    "processed_at": datetime.utcnow().isoformat()
+                }
+            
+            # Step 4: If malicious, create graph nodes (only if not blocked)
             if analysis.get("risk_score", 0) > 0.6:
                 await self.neo4j_service.create_node({
                     "id": f"user_{username}",
@@ -7383,15 +8730,15 @@ class StreamIngestWorker:
             with open(file_path, 'r') as f:
                 items = json.load(f)
             
-            print(f"📥 Ingesting {len(items)} items from {file_path}")
+            print(f"Ingesting {len(items)} items from {file_path}")
             results = await self.process_batch(items)
             
             success_count = sum(1 for r in results if r.get("status") == "success")
-            print(f"✅ Processed {success_count}/{len(items)} items successfully")
+            print(f"Processed {success_count}/{len(items)} items successfully")
             
             return results
         except Exception as e:
-            print(f"❌ Error ingesting from file: {str(e)}")
+            print(f"Error ingesting from file: {str(e)}")
             return []
     
     async def start_stream_processing(self, stream_source: Any):
@@ -7400,7 +8747,7 @@ class StreamIngestWorker:
         Can be connected to real-time social media APIs
         """
         self.is_running = True
-        print("🚀 Stream ingest worker started")
+        print("Stream ingest worker started")
         
         while self.is_running:
             try:
@@ -7412,13 +8759,13 @@ class StreamIngestWorker:
                 else:
                     await asyncio.sleep(1)  # Wait before checking again
             except Exception as e:
-                print(f"❌ Error in stream processing: {str(e)}")
+                print(f"Error in stream processing: {str(e)}")
                 await asyncio.sleep(5)  # Back off on error
     
     def stop(self):
         """Stop the stream processing worker"""
         self.is_running = False
-        print("🛑 Stream ingest worker stopped")
+        print("ðŸ›‘ Stream ingest worker stopped")
 
 
 async def main():
@@ -7430,7 +8777,7 @@ async def main():
     
     # Print summary
     high_risk = [r for r in results if r.get("analysis", {}).get("risk_score", 0) > 0.7]
-    print("\n📊 Summary:")
+    print("\nðŸ“Š Summary:")
     print(f"   Total processed: {len(results)}")
     print(f"   High-risk items: {len(high_risk)}")
 
@@ -10804,6 +12151,21 @@ File: frontend/src/app/globals.css
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
     background: #475569;
   }
+
+  @keyframes slide-in {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+
+  .animate-slide-in {
+    animation: slide-in 0.3s ease-out;
+  }
 }
 
 
@@ -10813,8 +12175,8 @@ File: frontend/src/app/layout.tsx
 ================================================
 import type { Metadata } from 'next';
 import './globals.css';
-import { Navbar } from '@/components/layout/Navbar';
-import { AIManager } from '@/components/ai/AIManager';
+import { ClientLayout } from '@/components/layout/ClientLayout';
+import { AuthGuard } from '@/components/auth/AuthGuard';
 
 export const metadata: Metadata = {
   title: 'Aegis-G Command Center',
@@ -10829,11 +12191,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="bg-bg-primary text-text-primary">
-        <Navbar />
-        <main className="pt-16">
-          {children}
-        </main>
-        <AIManager />
+        <AuthGuard>
+          <ClientLayout>
+            {children}
+          </ClientLayout>
+        </AuthGuard>
       </body>
     </html>
   );
@@ -10900,17 +12262,26 @@ File: frontend/src/app/page.tsx
 ================================================
 "use client";
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 
 export default function Home() {
+  const router = useRouter();
   const [status, setStatus] = useState<string>("Connecting...");
   const [backendData, setBackendData] = useState<any>(null);
 
   useEffect(() => {
+    // Check if user is already logged in
+    const token = localStorage.getItem('token');
+    if (token) {
+      router.push('/dashboard');
+      return;
+    }
+
     // Attempt to hit the backend
-    fetch('http://localhost:8000/')
+    fetch('http://127.0.0.1:8000/')
       .then(res => res.json())
       .then(data => {
         setStatus("Connected");
@@ -10920,7 +12291,7 @@ export default function Home() {
         setStatus("Connection Failed");
         console.error(err);
       });
-  }, []);
+  }, [router]);
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-8 bg-bg-primary relative overflow-hidden">
@@ -10982,12 +12353,12 @@ export default function Home() {
 
       {/* Action Buttons */}
       <div className="flex gap-4 z-10 mb-16">
-        <Link href="/dashboard">
+        <Link href="/login">
           <Button variant="primary" className="text-base px-8 py-3">
-            Enter Command Center
+            Sign In to Command Center
           </Button>
         </Link>
-        <Link href="http://localhost:8000/docs" target="_blank">
+        <Link href="http://127.0.0.1:8000/docs" target="_blank">
           <Button variant="secondary" className="text-base px-8 py-3">
             API Documentation
           </Button>
@@ -11034,63 +12405,70 @@ export default function Home() {
 File: frontend/src/app/dashboard/page.tsx
 ================================================
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StatCard } from '@/components/ui/StatCard';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { ThreatCard } from '@/components/threats/ThreatCard';
 import { ThreatMapGlobe } from '@/components/visual/ThreatMapGlobe';
 import { Sidebar } from '@/components/layout/Sidebar';
+import { IntelligenceBrief } from '@/components/intel/IntelligenceBrief';
 
 export default function DashboardPage() {
-  const [stats] = useState({
-    activeThreats: 85,
-    criticalAlerts: 12,
-    highRisk: 47,
-    totalEvents: 326,
-    uptime: 98.2,
+  const [stats, setStats] = useState({
+    activeThreats: 0,
+    criticalAlerts: 0,
+    highRisk: 0,
+    totalEvents: 0,
+    uptime: 0,
+    blockedThreats: 0, // Agent 4 blocked count
   });
 
-  const [topThreats] = useState([
-    {
-      id: 1,
-      title: 'APT29 - Phishing Campaign Detected',
-      description: 'Targeting government emails with malware attachments',
-      severity: 'critical' as const,
-      source: '193.201.45.22 (Russia)',
-      firstSeen: '2 hours ago',
-      affectedSystems: 12,
-      riskScore: 8.7,
-    },
-    {
-      id: 2,
-      title: 'Lazarus Group - Cryptocurrency Theft',
-      description: 'Attempting to compromise exchange wallets',
-      severity: 'critical' as const,
-      source: '210.52.109.88 (North Korea)',
-      firstSeen: '4 hours ago',
-      affectedSystems: 8,
-      riskScore: 9.1,
-    },
-    {
-      id: 3,
-      title: 'APT41 - Supply Chain Attack',
-      description: 'Compromised software update mechanism detected',
-      severity: 'high' as const,
-      source: '118.26.34.12 (China)',
-      firstSeen: '6 hours ago',
-      affectedSystems: 23,
-      riskScore: 7.9,
-    },
-  ]);
+  // Fetch blocked threats count
+  useEffect(() => {
+    const fetchBlockedCount = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch('/api/ai/blocked-content/stats', {
+          headers: {
+            'Authorization': `Bearer ${token || ''}`
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setStats(prev => ({ ...prev, blockedThreats: data.today_count || 0 }));
+        }
+      } catch (error) {
+        console.error('Error fetching blocked count:', error);
+      }
+    };
 
-  const [threatActors] = useState([
-    { name: 'APT29 (Cozy Bear)', incidents: 42, trend: 'up' },
-    { name: 'Lazarus Group', incidents: 38, trend: 'up' },
-    { name: 'APT41', incidents: 31, trend: 'stable' },
-    { name: 'FIN7', incidents: 27, trend: 'down' },
-    { name: 'APT28 (Fancy Bear)', incidents: 24, trend: 'up' },
-  ]);
+    fetchBlockedCount();
+    const interval = setInterval(fetchBlockedCount, 30000); // Update every 30 seconds
+    
+    // WebSocket for real-time updates
+    const ws = new WebSocket('ws://localhost:8000/ws/blocked-content');
+    ws.onmessage = (event) => {
+      const message = JSON.parse(event.data);
+      if (message.type === 'blocked_content') {
+        setStats(prev => ({ ...prev, blockedThreats: prev.blockedThreats + 1 }));
+      }
+    };
+
+    return () => {
+      clearInterval(interval);
+      ws.close();
+    };
+  }, []);
+
+  const [topThreats] = useState<any[]>([]);
+
+  const [threatActors] = useState<any[]>([]);
+
+  // Agent 3 Intelligence Brief state
+  const [activeReport, setActiveReport] = useState<any>(null);
+  const [reasoningLog, setReasoningLog] = useState<string>('');
 
   return (
     <div className="flex">
@@ -11109,10 +12487,19 @@ export default function DashboardPage() {
               Real-time threat intelligence and system monitoring
             </p>
           </div>
-          <div className="flex gap-3">
-            <Button variant="secondary">Filter</Button>
-            <Button variant="secondary">Export</Button>
-            <Button variant="primary">Refresh</Button>
+          <div className="flex items-center gap-4">
+            {/* Agent 4 Blocked Counter */}
+            <div className="text-right bg-bg-primary border border-red-500/30 rounded px-4 py-2">
+              <div className="text-xs font-semibold uppercase tracking-wider text-text-muted mb-1">
+                Agent 4 Blocked
+              </div>
+              <div className="text-2xl font-bold text-red-500">{stats.blockedThreats}</div>
+            </div>
+            <div className="flex gap-3">
+              <Button variant="secondary" onClick={() => console.log('Filter clicked')}>Filter</Button>
+              <Button variant="secondary" onClick={() => console.log('Export clicked')}>Export</Button>
+              <Button variant="primary" onClick={() => console.log('Refresh clicked')}>Refresh</Button>
+            </div>
           </div>
         </div>
 
@@ -11177,6 +12564,32 @@ export default function DashboardPage() {
           </div>
         </Card>
 
+        {/* Agent War Room: 12-Column Grid */}
+        <div className="grid grid-cols-12 gap-6 mb-6">
+          {/* Cols 1-4: Live Stream (Prisha's Component - Placeholder) */}
+          <Card className="col-span-12 md:col-span-4">
+            <h2 className="text-sm font-semibold uppercase tracking-wider mb-4">Live Stream (Agent 1)</h2>
+            <div className="text-center py-12 text-text-secondary text-sm">
+              Agent 1 (Forensics) Component
+              <p className="text-xs text-text-muted mt-2">Click an item to trigger fusion</p>
+            </div>
+          </Card>
+
+          {/* Cols 5-8: Campaign Graph (Yash's Component - Placeholder) */}
+          <Card className="col-span-12 md:col-span-4">
+            <h2 className="text-sm font-semibold uppercase tracking-wider mb-4">Campaign Graph (Agent 2)</h2>
+            <div className="text-center py-12 text-text-secondary text-sm">
+              Agent 2 (Graph) Component
+              <p className="text-xs text-text-muted mt-2">Network visualization</p>
+            </div>
+          </Card>
+
+          {/* Cols 9-12: Intelligence Brief (Agent 3) */}
+          <div className="col-span-12 md:col-span-4">
+            <IntelligenceBrief report={activeReport} thoughts={reasoningLog} />
+          </div>
+        </div>
+
         {/* Threat Map & Top Actors */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
           {/* Global Threat Map */}
@@ -11189,7 +12602,12 @@ export default function DashboardPage() {
           <Card>
             <h2 className="text-sm font-semibold uppercase tracking-wider mb-4">Top Threat Actors</h2>
             <div className="space-y-3">
-              {threatActors.map((actor, idx) => (
+              {threatActors.length === 0 ? (
+                <div className="text-center py-8 text-text-secondary text-sm">
+                  No threat actors data available
+                </div>
+              ) : (
+                threatActors.map((actor, idx) => (
                 <div
                   key={idx}
                   className="flex items-center justify-between p-3 bg-bg-primary rounded hover:bg-bg-tertiary transition-colors cursor-pointer"
@@ -11219,9 +12637,10 @@ export default function DashboardPage() {
                     {actor.trend === 'up' ? 'â†‘' : actor.trend === 'down' ? 'â†“' : 'â†’'}
                   </span>
                 </div>
-              ))}
+                ))
+              )}
             </div>
-            <Button variant="secondary" className="w-full mt-4 text-sm">
+            <Button variant="secondary" className="w-full mt-4 text-sm" onClick={() => console.log('View All Actors clicked')}>
               View All Actors
             </Button>
           </Card>
@@ -11231,12 +12650,22 @@ export default function DashboardPage() {
         <div className="mb-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-semibold uppercase tracking-wider">Recent Critical Threats</h2>
-            <Button variant="secondary" className="text-sm">View All</Button>
+            <Button variant="secondary" className="text-sm" onClick={() => console.log('View All clicked')}>View All</Button>
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-            {topThreats.map((threat) => (
-              <ThreatCard key={threat.id} {...threat} />
-            ))}
+            {topThreats.length === 0 ? (
+              <Card className="col-span-full text-center py-12">
+                <div className="text-6xl mb-4 text-text-muted">âš </div>
+                <h3 className="text-xl font-semibold mb-2">No threats available</h3>
+                <p className="text-text-secondary">
+                  No critical threats detected at this time
+                </p>
+              </Card>
+            ) : (
+              topThreats.map((threat) => (
+                <ThreatCard key={threat.id} {...threat} />
+              ))
+            )}
           </div>
         </div>
 
@@ -11244,16 +12673,16 @@ export default function DashboardPage() {
         <Card>
           <h2 className="text-sm font-semibold uppercase tracking-wider mb-4">Quick Actions</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <Button variant="primary" className="flex-col h-20 justify-center">
+            <Button variant="primary" className="flex-col h-20 justify-center" onClick={() => console.log('Scan Network clicked')}>
               <span className="text-sm">Scan Network</span>
             </Button>
-            <Button variant="primary" className="flex-col h-20 justify-center">
+            <Button variant="primary" className="flex-col h-20 justify-center" onClick={() => console.log('Generate Report clicked')}>
               <span className="text-sm">Generate Report</span>
             </Button>
-            <Button variant="ai" className="flex-col h-20 justify-center">
+            <Button variant="ai" className="flex-col h-20 justify-center" onClick={() => console.log('AI Insights clicked')}>
               <span className="text-sm">AI Insights</span>
             </Button>
-            <Button variant="secondary" className="flex-col h-20 justify-center">
+            <Button variant="secondary" className="flex-col h-20 justify-center" onClick={() => console.log('Share Intel clicked')}>
               <span className="text-sm">Share Intel</span>
             </Button>
           </div>
@@ -11279,86 +12708,11 @@ export default function ForensicsDetailPage() {
   const params = useParams();
   const id = params?.id || '1';
 
-  const forensicData = {
-    id: id,
-    title: 'APT29 Phishing Campaign Analysis',
-    severity: 'critical' as const,
-    status: 'investigating',
-    createdAt: '2024-02-05 14:23:00',
-    analyst: 'Sarah Chen',
-    description: 'Detailed forensic analysis of APT29 phishing campaign targeting government agencies',
-  };
-
-  const timeline = [
-    {
-      time: '14:23:00',
-      event: 'Threat detected',
-      description: 'Malicious email detected by mail filter',
-      type: 'detection',
-    },
-    {
-      time: '14:25:30',
-      event: 'Initial analysis',
-      description: 'Email contains malicious attachment (document.pdf.exe)',
-      type: 'analysis',
-    },
-    {
-      time: '14:28:15',
-      event: 'C2 communication',
-      description: 'Attempted connection to 193.201.45.22:443',
-      type: 'network',
-    },
-    {
-      time: '14:30:00',
-      event: 'Containment',
-      description: 'Blocked IP address and quarantined affected system',
-      type: 'response',
-    },
-    {
-      time: '14:35:20',
-      event: 'Deep scan',
-      description: 'Full system scan initiated, no additional infections found',
-      type: 'analysis',
-    },
-  ];
-
-  const artifacts = [
-    {
-      name: 'malicious_email.eml',
-      type: 'Email',
-      hash: 'sha256:a3d4f5...',
-      size: '145 KB',
-      risk: 'high',
-    },
-    {
-      name: 'document.pdf.exe',
-      type: 'Executable',
-      hash: 'sha256:7b8c9d...',
-      size: '2.3 MB',
-      risk: 'critical',
-    },
-    {
-      name: 'network_capture.pcap',
-      type: 'Network Capture',
-      hash: 'sha256:e1f2g3...',
-      size: '512 KB',
-      risk: 'medium',
-    },
-    {
-      name: 'system_logs.txt',
-      type: 'Logs',
-      hash: 'sha256:h4i5j6...',
-      size: '89 KB',
-      risk: 'low',
-    },
-  ];
-
-  const indicators = [
-    { type: 'IP Address', value: '193.201.45.22', confidence: 'High' },
-    { type: 'Domain', value: 'secure-gov-login.xyz', confidence: 'High' },
-    { type: 'Email', value: 'admin@gov-security.com', confidence: 'Medium' },
-    { type: 'File Hash', value: 'a3d4f5e6b7c8d9...', confidence: 'High' },
-  ];
+  const [forensicData] = useState<any>(null);
+  const [timeline] = useState<any[]>([]);
+  const [artifacts] = useState<any[]>([]);
+  const [indicators] = useState<any[]>([]);
+  const [relatedThreats] = useState<any[]>([]);
 
   return (
     <div className="min-h-screen p-6">
@@ -11370,21 +12724,31 @@ export default function ForensicsDetailPage() {
               <h1 className="text-3xl font-bold font-display">
                 🔍 Forensic Analysis #{id}
               </h1>
-              <Badge variant={forensicData.severity}>
-                {forensicData.severity.toUpperCase()}
-              </Badge>
-              <Badge variant="info">{forensicData.status}</Badge>
+              {forensicData && (
+                <>
+                  <Badge variant={forensicData.severity}>
+                    {forensicData.severity.toUpperCase()}
+                  </Badge>
+                  <Badge variant="info">{forensicData.status}</Badge>
+                </>
+              )}
             </div>
-            <p className="text-text-secondary">{forensicData.title}</p>
-            <div className="flex items-center gap-4 mt-2 text-sm text-text-muted">
-              <span>Created: {forensicData.createdAt}</span>
-              <span>•</span>
-              <span>Analyst: {forensicData.analyst}</span>
-            </div>
+            {forensicData ? (
+              <>
+                <p className="text-text-secondary">{forensicData.title}</p>
+                <div className="flex items-center gap-4 mt-2 text-sm text-text-muted">
+                  <span>Created: {forensicData.createdAt}</span>
+                  <span>•</span>
+                  <span>Analyst: {forensicData.analyst}</span>
+                </div>
+              </>
+            ) : (
+              <p className="text-text-secondary">No forensic data available for this analysis</p>
+            )}
           </div>
           <div className="flex gap-2">
-            <Button variant="secondary" icon="📥">Export Report</Button>
-            <Button variant="ai" icon="🤖">AI Analysis</Button>
+            <Button variant="secondary" icon="📥" onClick={() => console.log('Export Report clicked', id)}>Export Report</Button>
+            <Button variant="ai" icon="🤖" onClick={() => console.log('AI Analysis clicked', id)}>AI Analysis</Button>
           </div>
         </div>
 
@@ -11395,7 +12759,14 @@ export default function ForensicsDetailPage() {
             <Card>
               <h2 className="text-xl font-semibold mb-4">📅 Attack Timeline</h2>
               <div className="space-y-4">
-                {timeline.map((item, idx) => {
+                {timeline.length === 0 ? (
+                  <div className="text-center py-12 text-text-secondary">
+                    <div className="text-4xl mb-4">📅</div>
+                    <h3 className="text-lg font-semibold mb-2">No timeline data available</h3>
+                    <p className="text-sm">Timeline events will appear here when available</p>
+                  </div>
+                ) : (
+                  timeline.map((item, idx) => {
                   const typeColors = {
                     detection: 'border-warning',
                     analysis: 'border-info',
@@ -11421,7 +12792,8 @@ export default function ForensicsDetailPage() {
                       </div>
                     </div>
                   );
-                })}
+                  })
+                )}
               </div>
             </Card>
 
@@ -11429,7 +12801,14 @@ export default function ForensicsDetailPage() {
             <Card>
               <h2 className="text-xl font-semibold mb-4">📦 Evidence & Artifacts</h2>
               <div className="space-y-3">
-                {artifacts.map((artifact, idx) => (
+                {artifacts.length === 0 ? (
+                  <div className="text-center py-12 text-text-secondary">
+                    <div className="text-4xl mb-4">📦</div>
+                    <h3 className="text-lg font-semibold mb-2">No artifacts available</h3>
+                    <p className="text-sm">Evidence and artifacts will appear here when available</p>
+                  </div>
+                ) : (
+                  artifacts.map((artifact, idx) => (
                   <div
                     key={idx}
                     className="flex items-center justify-between p-4 bg-bg-primary rounded-lg hover:bg-bg-tertiary transition-colors"
@@ -11455,12 +12834,13 @@ export default function ForensicsDetailPage() {
                       >
                         {artifact.risk}
                       </Badge>
-                      <Button variant="secondary" className="text-xs py-1 px-3">
+                      <Button variant="secondary" className="text-xs py-1 px-3" onClick={() => console.log('Download artifact clicked', artifact.name)}>
                         Download
                       </Button>
                     </div>
                   </div>
-                ))}
+                  ))
+                )}
               </div>
             </Card>
 
@@ -11468,11 +12848,13 @@ export default function ForensicsDetailPage() {
             <Card>
               <h2 className="text-xl font-semibold mb-4">🌐 Network Activity</h2>
               <div className="bg-bg-primary p-4 rounded-lg font-mono text-sm text-text-secondary overflow-x-auto">
-                <div className="text-warning mb-2">### Connection Attempts ###</div>
-                <div>14:28:15 | OUTBOUND | 192.168.1.105:54321 → 193.201.45.22:443 | BLOCKED</div>
-                <div>14:28:16 | DNS      | Query: secure-gov-login.xyz | BLOCKED</div>
-                <div>14:28:17 | OUTBOUND | 192.168.1.105:54322 → 45.142.212.61:8080 | BLOCKED</div>
-                <div className="text-success mt-2">### All threats contained ###</div>
+                {timeline.length === 0 ? (
+                  <div className="text-center py-8 text-text-muted">
+                    No network activity data available
+                  </div>
+                ) : (
+                  <div className="text-text-muted">Network activity will appear here when available</div>
+                )}
               </div>
             </Card>
           </div>
@@ -11485,26 +12867,19 @@ export default function ForensicsDetailPage() {
                 <span>🤖</span> AI Insights
               </h3>
               <div className="space-y-3 text-sm">
-                <div className="p-3 bg-bg-primary/50 rounded">
-                  <div className="font-medium text-warning mb-1">⚠️ High Confidence Match</div>
-                  <div className="text-text-secondary">
-                    Techniques match known APT29 TTPs (MITRE ATT&CK: T1566.001)
+                {forensicData ? (
+                  <div className="text-text-secondary text-center py-8">
+                    AI insights will appear here when analysis is available
                   </div>
-                </div>
-                <div className="p-3 bg-bg-primary/50 rounded">
-                  <div className="font-medium text-info mb-1">💡 Recommendation</div>
-                  <div className="text-text-secondary">
-                    Review similar emails from past 7 days for additional victims
+                ) : (
+                  <div className="text-center py-8 text-text-secondary">
+                    <div className="text-4xl mb-4">🤖</div>
+                    <h3 className="text-lg font-semibold mb-2">No AI insights available</h3>
+                    <p className="text-sm">AI analysis will appear here when available</p>
                   </div>
-                </div>
-                <div className="p-3 bg-bg-primary/50 rounded">
-                  <div className="font-medium text-success mb-1">✅ Good Response</div>
-                  <div className="text-text-secondary">
-                    Quick containment prevented lateral movement
-                  </div>
-                </div>
+                )}
               </div>
-              <Button variant="ai" className="w-full mt-4 text-sm">
+              <Button variant="ai" className="w-full mt-4 text-sm" onClick={() => console.log('Generate Full Report clicked', id)}>
                 Generate Full Report
               </Button>
             </Card>
@@ -11513,7 +12888,14 @@ export default function ForensicsDetailPage() {
             <Card>
               <h3 className="text-lg font-semibold mb-3">🎯 IOCs</h3>
               <div className="space-y-3">
-                {indicators.map((ioc, idx) => (
+                {indicators.length === 0 ? (
+                  <div className="text-center py-8 text-text-secondary">
+                    <div className="text-4xl mb-4">🎯</div>
+                    <h3 className="text-lg font-semibold mb-2">No IOCs available</h3>
+                    <p className="text-sm">Indicators of compromise will appear here when available</p>
+                  </div>
+                ) : (
+                  indicators.map((ioc, idx) => (
                   <div key={idx} className="text-sm">
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-text-muted">{ioc.type}</span>
@@ -11525,9 +12907,10 @@ export default function ForensicsDetailPage() {
                       {ioc.value}
                     </div>
                   </div>
-                ))}
+                  ))
+                )}
               </div>
-              <Button variant="secondary" className="w-full mt-4 text-sm">
+              <Button variant="secondary" className="w-full mt-4 text-sm" onClick={() => console.log('Export IOCs clicked', id)}>
                 Export IOCs
               </Button>
             </Card>
@@ -11536,18 +12919,24 @@ export default function ForensicsDetailPage() {
             <Card>
               <h3 className="text-lg font-semibold mb-3">🔗 Related Threats</h3>
               <div className="space-y-2 text-sm">
-                <div className="p-2 bg-bg-primary rounded hover:bg-bg-tertiary cursor-pointer transition-colors">
-                  <div className="font-medium text-text-primary">APT29 Campaign #847</div>
-                  <div className="text-xs text-text-muted">2 days ago</div>
-                </div>
-                <div className="p-2 bg-bg-primary rounded hover:bg-bg-tertiary cursor-pointer transition-colors">
-                  <div className="font-medium text-text-primary">Similar Phishing #923</div>
-                  <div className="text-xs text-text-muted">5 days ago</div>
-                </div>
-                <div className="p-2 bg-bg-primary rounded hover:bg-bg-tertiary cursor-pointer transition-colors">
-                  <div className="font-medium text-text-primary">APT29 Infrastructure</div>
-                  <div className="text-xs text-text-muted">1 week ago</div>
-                </div>
+                {relatedThreats.length === 0 ? (
+                  <div className="text-center py-8 text-text-secondary">
+                    <div className="text-4xl mb-4">🔗</div>
+                    <h3 className="text-lg font-semibold mb-2">No related threats</h3>
+                    <p className="text-sm">Related threats will appear here when available</p>
+                  </div>
+                ) : (
+                  relatedThreats.map((threat, idx) => (
+                    <div 
+                      key={idx}
+                      className="p-2 bg-bg-primary rounded hover:bg-bg-tertiary cursor-pointer transition-colors"
+                      onClick={() => console.log('Related threat clicked', threat)}
+                    >
+                      <div className="font-medium text-text-primary">{threat.title || `Threat #${threat.id}`}</div>
+                      <div className="text-xs text-text-muted">{threat.date || 'Unknown date'}</div>
+                    </div>
+                  ))
+                )}
               </div>
             </Card>
           </div>
@@ -11578,11 +12967,26 @@ export default function LoginPage() {
     e.preventDefault();
     setIsLoading(true);
     
-    // Simulate login
-    setTimeout(() => {
+    try {
+      // TODO: Replace with actual API call
+      // const response = await fetch('/api/auth/login', {
+      //   method: 'POST',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify({ email, password }),
+      // });
+      
+      // Simulate login for now
+      setTimeout(() => {
+        setIsLoading(false);
+        // Store auth token (in real app, get from API response)
+        localStorage.setItem('token', 'mock-token');
+        localStorage.setItem('user', JSON.stringify({ email, name: 'Admin User', role: 'Administrator' }));
+        window.location.href = '/dashboard';
+      }, 1500);
+    } catch (error) {
       setIsLoading(false);
-      window.location.href = '/dashboard';
-    }, 1500);
+      console.error('Login error:', error);
+    }
   };
 
   return (
@@ -11721,10 +13125,10 @@ export default function NetworkPage() {
   const [selectedFilter, setSelectedFilter] = useState('all');
 
   const stats = [
-    { label: 'Total Nodes', value: '147', icon: '⚪' },
-    { label: 'Threat Actors', value: '23', icon: '🔴' },
-    { label: 'IP Addresses', value: '89', icon: '🟠' },
-    { label: 'Systems', value: '35', icon: '🔵' },
+    { label: 'Total Nodes', value: '0', icon: '⚪' },
+    { label: 'Threat Actors', value: '0', icon: '🔴' },
+    { label: 'IP Addresses', value: '0', icon: '🟠' },
+    { label: 'Systems', value: '0', icon: '🔵' },
   ];
 
   return (
@@ -11789,8 +13193,8 @@ export default function NetworkPage() {
 
             {/* Actions */}
             <div className="flex gap-2">
-              <Button variant="secondary" icon="📸">Snapshot</Button>
-              <Button variant="primary" icon="🔄">Refresh</Button>
+              <Button variant="secondary" icon="📸" onClick={() => console.log('Snapshot clicked')}>Snapshot</Button>
+              <Button variant="primary" icon="🔄" onClick={() => console.log('Refresh clicked')}>Refresh</Button>
             </div>
           </div>
         </Card>
@@ -11846,6 +13250,277 @@ export default function NetworkPage() {
     </div>
   );
 }
+
+
+
+================================================
+File: frontend/src/app/policy/page.tsx
+================================================
+'use client';
+import React, { useState, useEffect } from 'react';
+import { Card } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { PolicyAuthor } from '@/components/policy/PolicyAuthor';
+import { PolicyList } from '@/components/policy/PolicyList';
+import { PolicyEditor } from '@/components/policy/PolicyEditor';
+import { Sidebar } from '@/components/layout/Sidebar';
+
+interface BlockedItem {
+  id: number;
+  content_preview: string;
+  policy_name: string;
+  action_taken: string;
+  blocked_at: string;
+  source_platform?: string;
+}
+
+export default function PolicyPage() {
+  const [blockedItems, setBlockedItems] = useState<BlockedItem[]>([]);
+  const [blockedCount, setBlockedCount] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showEditor, setShowEditor] = useState(false);
+  const [editingPolicy, setEditingPolicy] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState<'author' | 'manage'>('author');
+
+  useEffect(() => {
+    // Fetch blocked content on mount
+    fetchBlockedContent();
+    
+    // Set up polling for live updates
+    const interval = setInterval(fetchBlockedContent, 5000); // Poll every 5 seconds
+    return () => clearInterval(interval);
+  }, []);
+
+  const fetchBlockedContent = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/ai/blocked-content/stats', {
+        headers: {
+          'Authorization': `Bearer ${token || ''}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setBlockedCount(data.today_count || 0);
+        setBlockedItems(data.recent_blocks || []);
+      }
+    } catch (error) {
+      console.error('Error fetching blocked content:', error);
+    }
+  };
+
+  // WebSocket connection for real-time updates
+  useEffect(() => {
+    const ws = new WebSocket('ws://localhost:8000/ws/blocked-content');
+    
+    ws.onmessage = (event) => {
+      const message = JSON.parse(event.data);
+      if (message.type === 'blocked_content') {
+        // Add new blocked item to the list
+        setBlockedItems(prev => [message.data, ...prev].slice(0, 50));
+        setBlockedCount(prev => prev + 1);
+      }
+    };
+
+    ws.onerror = (error) => {
+      console.error('WebSocket error:', error);
+    };
+
+    return () => {
+      ws.close();
+    };
+  }, []);
+
+  return (
+    <div className="flex">
+      {/* Sidebar */}
+      <Sidebar />
+
+      {/* Main Content */}
+      <div className="flex-1 ml-80 p-6 min-h-screen">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-bold tracking-wider uppercase mb-2">
+              Policy Guardian Console
+            </h1>
+            <p className="text-text-secondary text-sm">
+              Agent 4: Automated Mitigation - Translate intent into real-time defense rules
+            </p>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="text-right">
+              <div className="text-2xl font-bold text-red-500">{blockedCount}</div>
+              <div className="text-xs text-text-secondary uppercase tracking-wider">Blocked Today</div>
+            </div>
+            <Button variant="secondary" onClick={fetchBlockedContent}>
+              Refresh
+            </Button>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex gap-2 mb-6 border-b border-border-subtle">
+          <button
+            onClick={() => setActiveTab('author')}
+            className={`px-4 py-2 text-sm font-semibold uppercase tracking-wider border-b-2 transition-colors ${
+              activeTab === 'author'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-text-secondary hover:text-text-primary'
+            }`}
+          >
+            Policy Author
+          </button>
+          <button
+            onClick={() => setActiveTab('manage')}
+            className={`px-4 py-2 text-sm font-semibold uppercase tracking-wider border-b-2 transition-colors ${
+              activeTab === 'manage'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-text-secondary hover:text-text-primary'
+            }`}
+          >
+            Policy Management
+          </button>
+        </div>
+
+        {/* Policy Authoring Section */}
+        {activeTab === 'author' && (
+          <div className="mb-8">
+            <PolicyAuthor />
+          </div>
+        )}
+
+        {/* Policy Management Section */}
+        {activeTab === 'manage' && (
+          <div className="mb-8">
+            {showEditor ? (
+              <PolicyEditor
+                policy={editingPolicy}
+                onSave={async (policy) => {
+                  try {
+                    const token = localStorage.getItem('token');
+                    const url = policy.id
+                      ? `/api/ai/policies/${policy.id}`
+                      : '/api/ai/policies';
+                    
+                    const response = await fetch(url, {
+                      method: policy.id ? 'PUT' : 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token || ''}`
+                      },
+                      body: JSON.stringify(policy)
+                    });
+
+                    if (response.ok) {
+                      setShowEditor(false);
+                      setEditingPolicy(null);
+                    }
+                  } catch (error) {
+                    console.error('Error saving policy:', error);
+                  }
+                }}
+                onCancel={() => {
+                  setShowEditor(false);
+                  setEditingPolicy(null);
+                }}
+              />
+            ) : (
+              <>
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-lg font-semibold">Policies</h2>
+                  <Button
+                    variant="primary"
+                    onClick={() => {
+                      setEditingPolicy(null);
+                      setShowEditor(true);
+                    }}
+                  >
+                    Create New Policy
+                  </Button>
+                </div>
+                <PolicyList
+                  onEdit={(policy) => {
+                    setEditingPolicy(policy);
+                    setShowEditor(true);
+                  }}
+                  onDelete={(id) => {
+                    console.log('Policy deleted:', id);
+                  }}
+                  onToggleActive={(id, isActive) => {
+                    console.log('Policy toggled:', id, isActive);
+                  }}
+                />
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Live Block Log */}
+        <Card className="p-6">
+          <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest text-primary mb-4">
+            <span className="text-xl">📋</span> Live Block Log
+          </h3>
+          <div className="space-y-3 max-h-96 overflow-y-auto">
+            {blockedItems.length === 0 ? (
+              <div className="text-center py-8 text-text-secondary">
+                <div className="text-4xl mb-2">🔍</div>
+                <div>No content blocked yet</div>
+                <div className="text-xs mt-1">Blocked items will appear here in real-time</div>
+              </div>
+            ) : (
+              blockedItems.map((item) => (
+                <div
+                  key={item.id}
+                  className="bg-bg-primary border border-border-subtle rounded p-4 hover:border-red-500/50 transition-colors"
+                >
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-xs font-bold text-red-500 uppercase">
+                          {item.action_taken}
+                        </span>
+                        <span className="text-xs text-text-secondary">
+                          by {item.policy_name}
+                        </span>
+                        {item.source_platform && (
+                          <span className="text-xs text-text-muted">
+                            • {item.source_platform}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-text-primary line-clamp-2">
+                        {item.content_preview}
+                      </p>
+                    </div>
+                    <div className="text-xs text-text-secondary ml-4">
+                      {new Date(item.blocked_at).toLocaleTimeString()}
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </Card>
+
+        {/* Active Policies Section */}
+        <Card className="p-6 mt-6">
+          <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest text-primary mb-4">
+            <span className="text-xl">⚡</span> Active Policies
+          </h3>
+          <div className="text-text-secondary text-sm">
+            {/* TODO: Fetch and display active policies */}
+            <div className="text-center py-4">
+              No active policies. Create one above to start blocking threats.
+            </div>
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
 
 
 
@@ -12060,42 +13735,9 @@ import { Badge } from '@/components/ui/Badge';
 export default function SharingPage() {
   const [selectedReports, setSelectedReports] = useState<Set<number>>(new Set());
 
-  const reports = [
-    {
-      id: 1,
-      title: 'APT29 Phishing Campaign Analysis',
-      date: '2024-02-05',
-      severity: 'critical' as const,
-      status: 'shared',
-      recipients: ['FBI', 'CISA'],
-      hash: 'a3d4f5e6b7c8d9...',
-    },
-    {
-      id: 2,
-      title: 'Lazarus Group Cryptocurrency Theft',
-      date: '2024-02-04',
-      severity: 'critical' as const,
-      status: 'private',
-      recipients: [],
-      hash: '7b8c9de1f2g3h4...',
-    },
-    {
-      id: 3,
-      title: 'APT41 Supply Chain Attack',
-      date: '2024-02-03',
-      severity: 'high' as const,
-      status: 'shared',
-      recipients: ['NSA', 'DHS', 'FBI'],
-      hash: 'i5j6k7l8m9n0o1...',
-    },
-  ];
+  const reports: any[] = [];
 
-  const sharedWith = [
-    { name: 'FBI Cyber Division', status: 'verified', lastSync: '2 hours ago' },
-    { name: 'CISA', status: 'verified', lastSync: '5 hours ago' },
-    { name: 'NSA', status: 'verified', lastSync: '1 day ago' },
-    { name: 'DHS', status: 'pending', lastSync: 'Never' },
-  ];
+  const sharedWith: any[] = [];
 
   const toggleReport = (id: number) => {
     const newSelected = new Set(selectedReports);
@@ -12126,15 +13768,15 @@ export default function SharingPage() {
             {/* Stats */}
             <div className="grid grid-cols-3 gap-4">
               <Card hover className="text-center">
-                <div className="text-3xl font-bold text-primary mb-1">24</div>
+                <div className="text-3xl font-bold text-primary mb-1">{reports.filter(r => r.status === 'shared').length}</div>
                 <div className="text-sm text-text-secondary">Shared Reports</div>
               </Card>
               <Card hover className="text-center">
-                <div className="text-3xl font-bold text-success mb-1">4</div>
+                <div className="text-3xl font-bold text-success mb-1">{sharedWith.length}</div>
                 <div className="text-sm text-text-secondary">Partner Agencies</div>
               </Card>
               <Card hover className="text-center">
-                <div className="text-3xl font-bold text-warning mb-1">100%</div>
+                <div className="text-3xl font-bold text-warning mb-1">{sharedWith.length > 0 ? Math.round((sharedWith.filter(p => p.status === 'verified').length / sharedWith.length) * 100) : 0}%</div>
                 <div className="text-sm text-text-secondary">Verified</div>
               </Card>
             </div>
@@ -12147,13 +13789,21 @@ export default function SharingPage() {
                   variant="primary"
                   disabled={selectedReports.size === 0}
                   className="text-sm"
+                  onClick={() => console.log('Share Selected clicked', Array.from(selectedReports))}
                 >
                   Share Selected ({selectedReports.size})
                 </Button>
               </div>
 
               <div className="space-y-3">
-                {reports.map((report) => (
+                {reports.length === 0 ? (
+                  <div className="text-center py-12 text-text-secondary">
+                    <div className="text-4xl mb-4">📋</div>
+                    <h3 className="text-lg font-semibold mb-2">No reports available</h3>
+                    <p className="text-sm">No reports to share at this time</p>
+                  </div>
+                ) : (
+                  reports.map((report) => (
                   <div
                     key={report.id}
                     className={`p-4 rounded-lg border-2 transition-all cursor-pointer ${
@@ -12200,18 +13850,19 @@ export default function SharingPage() {
 
                       {/* Actions */}
                       <div className="flex gap-2">
-                        <Button variant="secondary" className="text-xs py-1 px-3">
+                        <Button variant="secondary" className="text-xs py-1 px-3" onClick={() => console.log('View report clicked', report.id)}>
                           View
                         </Button>
                         {report.status === 'shared' && (
-                          <Button variant="secondary" className="text-xs py-1 px-3">
+                          <Button variant="secondary" className="text-xs py-1 px-3" onClick={() => console.log('Verify report clicked', report.id)}>
                             Verify
                           </Button>
                         )}
                       </div>
                     </div>
                   </div>
-                ))}
+                  ))
+                )}
               </div>
             </Card>
 
@@ -12223,22 +13874,22 @@ export default function SharingPage() {
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-text-secondary">Total Blocks:</span>
-                  <span className="font-mono text-text-primary">1,247</span>
+                  <span className="font-mono text-text-primary">0</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-text-secondary">Last Block:</span>
-                  <span className="font-mono text-text-primary">0xa3d4f5e6b7c8...</span>
+                  <span className="font-mono text-text-primary">N/A</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-text-secondary">Chain Integrity:</span>
-                  <span className="text-success font-semibold">✓ Verified</span>
+                  <span className="text-text-muted font-semibold">-</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-text-secondary">Last Updated:</span>
-                  <span className="text-text-primary">2 minutes ago</span>
+                  <span className="text-text-primary">Never</span>
                 </div>
               </div>
-              <Button variant="secondary" className="w-full mt-4 text-sm">
+              <Button variant="secondary" className="w-full mt-4 text-sm" onClick={() => console.log('View Full Chain clicked')}>
                 View Full Chain →
               </Button>
             </Card>
@@ -12277,7 +13928,7 @@ export default function SharingPage() {
                     <option>TOP SECRET</option>
                   </select>
                 </div>
-                <Button variant="primary" className="w-full">
+                <Button variant="primary" className="w-full" onClick={() => console.log('Share Securely clicked')}>
                   🔒 Share Securely
                 </Button>
               </div>
@@ -12287,7 +13938,12 @@ export default function SharingPage() {
             <Card>
               <h3 className="text-lg font-semibold mb-4">🤝 Partner Agencies</h3>
               <div className="space-y-3">
-                {sharedWith.map((partner, idx) => (
+                {sharedWith.length === 0 ? (
+                  <div className="text-center py-8 text-text-secondary text-sm">
+                    No partner agencies configured
+                  </div>
+                ) : (
+                  sharedWith.map((partner, idx) => (
                   <div key={idx} className="p-3 bg-bg-primary rounded-lg">
                     <div className="flex items-center justify-between mb-1">
                       <span className="font-medium text-text-primary text-sm">
@@ -12303,9 +13959,10 @@ export default function SharingPage() {
                       Last sync: {partner.lastSync}
                     </div>
                   </div>
-                ))}
+                  ))
+                )}
               </div>
-              <Button variant="secondary" className="w-full mt-4 text-sm">
+              <Button variant="secondary" className="w-full mt-4 text-sm" onClick={() => console.log('Manage Partners clicked')}>
                 Manage Partners
               </Button>
             </Card>
@@ -12348,68 +14005,7 @@ export default function ThreatsPage() {
   const [filterSeverity, setFilterSeverity] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const threats = [
-    {
-      id: 1,
-      title: 'APT29 - Phishing Campaign Detected',
-      description: 'Targeting government emails with malware attachments',
-      severity: 'critical' as const,
-      source: '193.201.45.22 (Russia)',
-      firstSeen: '2 hours ago',
-      affectedSystems: 12,
-      riskScore: 8.7,
-    },
-    {
-      id: 2,
-      title: 'Lazarus Group - Cryptocurrency Theft',
-      description: 'Attempting to compromise exchange wallets',
-      severity: 'critical' as const,
-      source: '210.52.109.88 (North Korea)',
-      firstSeen: '4 hours ago',
-      affectedSystems: 8,
-      riskScore: 9.1,
-    },
-    {
-      id: 3,
-      title: 'APT41 - Supply Chain Attack',
-      description: 'Compromised software update mechanism detected',
-      severity: 'high' as const,
-      source: '118.26.34.12 (China)',
-      firstSeen: '6 hours ago',
-      affectedSystems: 23,
-      riskScore: 7.9,
-    },
-    {
-      id: 4,
-      title: 'FIN7 - Point of Sale Malware',
-      description: 'Retail payment systems targeted',
-      severity: 'high' as const,
-      source: '45.142.212.61 (Unknown)',
-      firstSeen: '8 hours ago',
-      affectedSystems: 15,
-      riskScore: 7.2,
-    },
-    {
-      id: 5,
-      title: 'Suspicious Login Activity',
-      description: 'Multiple failed authentication attempts',
-      severity: 'medium' as const,
-      source: '172.58.34.90 (USA)',
-      firstSeen: '12 hours ago',
-      affectedSystems: 3,
-      riskScore: 5.4,
-    },
-    {
-      id: 6,
-      title: 'Port Scan Detected',
-      description: 'Automated reconnaissance activity observed',
-      severity: 'low' as const,
-      source: '89.23.145.67 (Germany)',
-      firstSeen: '1 day ago',
-      affectedSystems: 1,
-      riskScore: 3.2,
-    },
-  ];
+  const threats: any[] = [];
 
   const filteredThreats = threats.filter(threat => {
     const matchesSeverity = filterSeverity === 'all' || threat.severity === filterSeverity;
@@ -12529,8 +14125,8 @@ export default function ThreatsPage() {
 
             {/* Actions */}
             <div className="flex gap-2">
-              <Button variant="secondary">Export</Button>
-              <Button variant="primary">Refresh</Button>
+              <Button variant="secondary" onClick={() => console.log('Export clicked')}>Export</Button>
+              <Button variant="primary" onClick={() => console.log('Refresh clicked')}>Refresh</Button>
             </div>
           </div>
         </Card>
@@ -12609,15 +14205,31 @@ interface Message {
 export const AIManager: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState('');
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      role: 'assistant',
-      content: 'Hello! I\'m your AI Security Assistant. I can help you analyze threats, generate reports, and provide insights. How can I assist you today?',
-      timestamp: new Date(),
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
+
+  // Listen for custom event from Navbar
+  React.useEffect(() => {
+    const handleOpenAI = () => {
+      setIsOpen(true);
+    };
+
+    window.addEventListener('openAIAssistant', handleOpenAI);
+    return () => window.removeEventListener('openAIAssistant', handleOpenAI);
+  }, []);
+
+  // Keyboard shortcut (Ctrl+M or Cmd+M)
+  React.useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'm') {
+        e.preventDefault();
+        setIsOpen(!isOpen);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [isOpen]);
 
   const handleSend = () => {
     if (!message.trim()) return;
@@ -12747,13 +14359,22 @@ export const AIManager: React.FC = () => {
             {/* Input */}
             <div className="p-4 border-t border-border-subtle bg-bg-secondary">
               <div className="flex gap-2 mb-2">
-                <button className="text-xs px-3 py-1 bg-bg-tertiary hover:bg-bg-primary rounded transition-colors text-text-secondary">
+                <button 
+                  className="text-xs px-3 py-1 bg-bg-tertiary hover:bg-bg-primary rounded transition-colors text-text-secondary"
+                  onClick={() => console.log('Show threats clicked')}
+                >
                   Show threats
                 </button>
-                <button className="text-xs px-3 py-1 bg-bg-tertiary hover:bg-bg-primary rounded transition-colors text-text-secondary">
+                <button 
+                  className="text-xs px-3 py-1 bg-bg-tertiary hover:bg-bg-primary rounded transition-colors text-text-secondary"
+                  onClick={() => console.log('Generate report clicked')}
+                >
                   Generate report
                 </button>
-                <button className="text-xs px-3 py-1 bg-bg-tertiary hover:bg-bg-primary rounded transition-colors text-text-secondary">
+                <button 
+                  className="text-xs px-3 py-1 bg-bg-tertiary hover:bg-bg-primary rounded transition-colors text-text-secondary"
+                  onClick={() => console.log('System status clicked')}
+                >
                   System status
                 </button>
               </div>
@@ -12785,12 +14406,306 @@ export const AIManager: React.FC = () => {
 
 
 ================================================
+File: frontend/src/components/auth/AuthGuard.tsx
+================================================
+'use client';
+import { useEffect, useState } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
+
+export function AuthGuard({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+
+  // Public routes that don't require authentication
+  const publicRoutes = ['/login', '/register', '/'];
+  const isPublicRoute = publicRoutes.includes(pathname);
+
+  useEffect(() => {
+    // Check if user is authenticated
+    const token = localStorage.getItem('token');
+    const user = localStorage.getItem('user');
+
+    if (token && user) {
+      setIsAuthenticated(true);
+    } else {
+      setIsAuthenticated(false);
+      
+      // Redirect to login if trying to access protected route
+      if (!isPublicRoute) {
+        router.push('/login');
+      }
+    }
+  }, [pathname, router, isPublicRoute]);
+
+  // Show nothing while checking authentication
+  if (isAuthenticated === null) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-bg-primary">
+        <div className="text-text-secondary">Loading...</div>
+      </div>
+    );
+  }
+
+  // If on public route and authenticated, redirect to dashboard
+  if (isPublicRoute && isAuthenticated && pathname === '/') {
+    router.push('/dashboard');
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-bg-primary">
+        <div className="text-text-secondary">Redirecting...</div>
+      </div>
+    );
+  }
+
+  // If not authenticated and trying to access protected route, show nothing (redirecting)
+  if (!isAuthenticated && !isPublicRoute) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-bg-primary">
+        <div className="text-text-secondary">Redirecting to login...</div>
+      </div>
+    );
+  }
+
+  // Allow access
+  return <>{children}</>;
+}
+
+
+
+
+================================================
+File: frontend/src/components/intel/IntelligenceBrief.tsx
+================================================
+'use client';
+import React, { useState } from 'react';
+import { Card } from '../ui/Card';
+import { Badge } from '../ui/Badge';
+import { Button } from '../ui/Button';
+import { ReasoningTerminal } from './ReasoningTerminal';
+import { Search, ShieldAlert, Cpu, Brain } from 'lucide-react';
+
+interface IntelligenceBriefProps {
+  report: any;
+  thoughts: string;
+}
+
+export const IntelligenceBrief: React.FC<IntelligenceBriefProps> = ({ report, thoughts }) => {
+  const [showLogic, setShowLogic] = useState(false);
+
+  if (!report) {
+    return (
+      <div className="text-center py-20 text-text-muted">
+        Select a threat to generate Intelligence Brief
+      </div>
+    );
+  }
+
+  // Map risk level to badge variant
+  const riskVariant = report.risk_level?.toLowerCase() as 'critical' | 'high' | 'medium' | 'low' | undefined;
+
+  return (
+    <Card className="border-l-4 border-l-primary h-full flex flex-col">
+      <div className="flex justify-between items-start mb-6">
+        <div>
+          <Badge variant={riskVariant || 'info'}>{report.risk_level} RISK</Badge>
+          <h2 className="text-2xl font-bold mt-2 font-display uppercase tracking-tight">
+            {report.threat_title}
+          </h2>
+          <p className="text-xs text-text-muted font-mono mt-1">
+            CONFIDENCE: {(report.confidence * 100).toFixed(0)}%
+          </p>
+        </div>
+        <Cpu className="w-8 h-8 text-primary opacity-50" />
+      </div>
+
+      <div className="space-y-6 flex-1">
+        <section>
+          <h3 className="text-xs font-bold uppercase text-primary tracking-widest mb-2">
+            Executive Summary
+          </h3>
+          <p className="text-sm text-text-primary leading-relaxed bg-bg-primary/50 p-3 rounded border border-border-subtle italic">
+            "{report.executive_summary}"
+          </p>
+        </section>
+
+        <section>
+          <h3 className="text-xs font-bold uppercase text-primary tracking-widest mb-2">
+            Fused Evidence Base
+          </h3>
+          <div className="grid grid-cols-1 gap-2">
+            {report.evidence?.map((item: any, idx: number) => (
+              <div key={idx} className="flex items-center justify-between text-xs p-2 bg-bg-tertiary rounded">
+                <span className="text-text-secondary font-bold uppercase">{item.source}</span>
+                <span className="text-text-primary">{item.finding}</span>
+                <span className="text-blue-400">wt: {item.weight?.toFixed(2)}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section>
+          <h3 className="text-xs font-bold uppercase text-primary tracking-widest mb-2">
+            Immediate Mitigation
+          </h3>
+          <ul className="space-y-1">
+            {report.recommendations?.map((rec: any, idx: number) => (
+              <li key={idx} className="flex items-center gap-2 text-xs text-text-secondary">
+                <span className="w-1.5 h-1.5 rounded-full bg-danger"></span>
+                {rec.action} <span className="text-[10px] opacity-50">[{rec.priority}]</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      </div>
+
+      <div className="mt-6 pt-4 border-t border-border-subtle space-y-3">
+        <Button variant="ai" className="w-full" onClick={() => setShowLogic(true)}>
+          <Brain className="w-4 h-4 mr-2" /> Inspect AI Reasoning logic
+        </Button>
+        <div className="grid grid-cols-2 gap-2">
+          <Button variant="secondary" className="text-xs py-1">
+            <Search className="w-3 h-3 mr-1" /> Deep Research
+          </Button>
+          <Button variant="danger" className="text-xs py-1">
+            <ShieldAlert className="w-3 h-3 mr-1" /> Armed Policy
+          </Button>
+        </div>
+      </div>
+
+      {/* Logic Drawer / Terminal Overlay */}
+      {showLogic && (
+        <ReasoningTerminal 
+          content={thoughts} 
+          onClose={() => setShowLogic(false)} 
+        />
+      )}
+    </Card>
+  );
+};
+
+
+
+
+================================================
+File: frontend/src/components/intel/ReasoningTerminal.tsx
+================================================
+'use client';
+import React from 'react';
+import { X, Terminal } from 'lucide-react';
+
+interface ReasoningTerminalProps {
+  content: string;
+  onClose: () => void;
+}
+
+export const ReasoningTerminal: React.FC<ReasoningTerminalProps> = ({ content, onClose }) => {
+  return (
+    <div className="fixed inset-0 z-[100] bg-bg-primary/80 backdrop-blur-md flex items-center justify-end p-6">
+      <div className="w-full max-w-2xl h-full bg-black border border-primary/30 rounded-lg shadow-2xl flex flex-col overflow-hidden animate-slide-in">
+        <div className="bg-bg-secondary p-3 flex justify-between items-center border-b border-border-subtle">
+          <div className="flex items-center gap-2">
+            <Terminal className="w-4 h-4 text-primary" />
+            <span className="text-[10px] font-bold uppercase tracking-widest text-primary">
+              Gemini 3: Neural Thinking Trace
+            </span>
+          </div>
+          <button onClick={onClose} className="hover:text-danger transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="flex-1 p-6 overflow-y-auto font-mono text-xs leading-relaxed scrollbar-thin">
+          <div className="text-emerald-500 mb-4 font-bold tracking-tighter">
+            [SYS_LOG]: INITIATING MULTI-AGENT FUSION REASONING...
+          </div>
+          <p className="text-text-secondary whitespace-pre-wrap">
+            {content || "No reasoning trace available. Interaction was direct."}
+          </p>
+          <div className="text-primary mt-4 font-bold animate-pulse cursor-default">
+            _ [TRACE_COMPLETE]
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
+
+
+================================================
+File: frontend/src/components/layout/AgentHeartbeat.tsx
+================================================
+'use client';
+import React from 'react';
+import { Activity, ShieldCheck, Zap, Brain } from "lucide-react";
+
+export const AgentHeartbeat = () => {
+  const agents = [
+    { name: "Forensic Investigator (A1)", status: "Active", icon: <Zap className="w-3 h-3" />, color: "text-emerald-500" },
+    { name: "Graph Oracle (A2)", status: "Scanning", icon: <Activity className="w-3 h-3" />, color: "text-amber-500" },
+    { name: "Intelligence Analyst (A3)", status: "Reasoning", icon: <Brain className="w-3 h-3" />, color: "text-blue-500" },
+    { name: "Policy Guardian (A4)", status: "Armed", icon: <ShieldCheck className="w-3 h-3" />, color: "text-red-500" },
+  ];
+
+  return (
+    <div className="mt-8 pt-4 border-t border-border-subtle">
+      <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-muted mb-4">
+        Agent Neural Heartbeat
+      </h3>
+      <div className="space-y-3">
+        {agents.map((agent) => (
+          <div key={agent.name} className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className={`${agent.color} animate-pulse`}>{agent.icon}</span>
+              <span className="text-[11px] font-medium text-text-secondary">{agent.name}</span>
+            </div>
+            <span className="text-[9px] font-mono text-text-muted">{agent.status}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+
+
+
+================================================
+File: frontend/src/components/layout/ClientLayout.tsx
+================================================
+'use client';
+import { usePathname } from 'next/navigation';
+import { Navbar } from '@/components/layout/Navbar';
+import { AIManager } from '@/components/ai/AIManager';
+
+export function ClientLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  
+  // Don't show navbar on login/register pages
+  const publicRoutes = ['/login', '/register'];
+  const showNavbar = !publicRoutes.includes(pathname);
+
+  return (
+    <>
+      {showNavbar && <Navbar />}
+      <main className={showNavbar ? "pt-16" : ""}>
+        {children}
+      </main>
+      {showNavbar && <AIManager />}
+    </>
+  );
+}
+
+
+
+
+================================================
 File: frontend/src/components/layout/Navbar.tsx
 ================================================
 'use client';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import React, { useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import React, { useState, useRef, useEffect } from 'react';
 
 const navItems = [
   { name: 'Dashboard', path: '/dashboard' },
@@ -12802,7 +14717,59 @@ const navItems = [
 
 export const Navbar: React.FC = () => {
   const pathname = usePathname();
+  const router = useRouter();
   const [notifications] = useState(3);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [user, setUser] = useState<{ name: string; email: string; role: string } | null>(null);
+  const notificationsRef = useRef<HTMLDivElement>(null);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+
+  // Load user from localStorage
+  useEffect(() => {
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      try {
+        setUser(JSON.parse(userStr));
+      } catch (e) {
+        console.error('Error parsing user data:', e);
+      }
+    }
+  }, []);
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (notificationsRef.current && !notificationsRef.current.contains(event.target as Node)) {
+        setShowNotifications(false);
+      }
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setShowUserMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleAIAssistant = () => {
+    // Dispatch custom event to open AI Manager
+    window.dispatchEvent(new CustomEvent('openAIAssistant'));
+  };
+
+  const handleLogout = () => {
+    // Clear any stored auth data
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    router.push('/login');
+  };
+
+  const handleSettings = () => {
+    setShowSettings(true);
+    // You can navigate to a settings page or open a modal
+    console.log('Settings clicked - navigate to settings page');
+  };
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-bg-secondary/95 backdrop-blur-sm border-b border-border-subtle h-16">
@@ -12851,36 +14818,129 @@ export const Navbar: React.FC = () => {
           <button 
             className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded bg-primary/10 text-primary text-xs font-medium hover:bg-primary/20 transition-all border border-primary/30"
             title="AI Assistant (Ctrl+M)"
+            onClick={handleAIAssistant}
           >
             <span>AI Assistant</span>
             <kbd className="px-1.5 py-0.5 bg-bg-tertiary rounded text-xs text-text-muted">âŒ˜M</kbd>
           </button>
 
           {/* Notifications */}
-          <button className="relative p-2 rounded hover:bg-bg-tertiary transition-colors">
-            <svg className="w-5 h-5 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-            </svg>
-            {notifications > 0 && (
-              <span className="absolute top-1 right-1 w-4 h-4 bg-danger rounded-full text-white text-xs flex items-center justify-center font-semibold">
-                {notifications}
-              </span>
+          <div className="relative" ref={notificationsRef}>
+            <button 
+              className="relative p-2 rounded hover:bg-bg-tertiary transition-colors"
+              onClick={() => setShowNotifications(!showNotifications)}
+            >
+              <svg className="w-5 h-5 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
+              {notifications > 0 && (
+                <span className="absolute top-1 right-1 w-4 h-4 bg-danger rounded-full text-white text-xs flex items-center justify-center font-semibold">
+                  {notifications}
+                </span>
+              )}
+            </button>
+            
+            {/* Notifications Dropdown */}
+            {showNotifications && (
+              <div className="absolute right-0 top-full mt-2 w-80 bg-bg-secondary border border-border-subtle rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
+                <div className="p-4 border-b border-border-subtle">
+                  <h3 className="text-sm font-semibold text-text-primary">Notifications</h3>
+                </div>
+                <div className="p-2">
+                  {notifications > 0 ? (
+                    <div className="space-y-2">
+                      <div className="p-3 bg-bg-primary rounded hover:bg-bg-tertiary cursor-pointer">
+                        <div className="text-sm font-medium text-text-primary">New threat detected</div>
+                        <div className="text-xs text-text-secondary mt-1">2 minutes ago</div>
+                      </div>
+                      <div className="p-3 bg-bg-primary rounded hover:bg-bg-tertiary cursor-pointer">
+                        <div className="text-sm font-medium text-text-primary">System backup completed</div>
+                        <div className="text-xs text-text-secondary mt-1">15 minutes ago</div>
+                      </div>
+                      <div className="p-3 bg-bg-primary rounded hover:bg-bg-tertiary cursor-pointer">
+                        <div className="text-sm font-medium text-text-primary">AI analysis ready</div>
+                        <div className="text-xs text-text-secondary mt-1">1 hour ago</div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-4 text-center text-text-secondary text-sm">
+                      No new notifications
+                    </div>
+                  )}
+                </div>
+                {notifications > 0 && (
+                  <div className="p-2 border-t border-border-subtle">
+                    <button 
+                      className="w-full text-sm text-primary hover:text-blue-400 text-center py-2"
+                      onClick={() => setShowNotifications(false)}
+                    >
+                      Mark all as read
+                    </button>
+                  </div>
+                )}
+              </div>
             )}
-          </button>
+          </div>
 
           {/* User Profile */}
-          <div className="flex items-center gap-3">
-            <div className="hidden lg:block text-right">
-              <div className="text-sm font-medium text-text-primary">Admin User</div>
-              <div className="text-xs text-text-muted">Administrator</div>
-            </div>
-            <div className="w-10 h-10 rounded-full bg-primary/20 border-2 border-primary flex items-center justify-center text-primary font-bold text-sm">
-              AU
-            </div>
+          <div className="relative" ref={userMenuRef}>
+            <button
+              className="flex items-center gap-3 hover:bg-bg-tertiary rounded-lg p-1 transition-colors"
+              onClick={() => setShowUserMenu(!showUserMenu)}
+            >
+              <div className="hidden lg:block text-right">
+                <div className="text-sm font-medium text-text-primary">{user?.name || 'Admin User'}</div>
+                <div className="text-xs text-text-muted">{user?.role || 'Administrator'}</div>
+              </div>
+              <div className="w-10 h-10 rounded-full bg-primary/20 border-2 border-primary flex items-center justify-center text-primary font-bold text-sm">
+                {user?.name ? user.name.split(' ').map(n => n[0]).join('').toUpperCase() : 'AU'}
+              </div>
+            </button>
+            
+            {/* User Menu Dropdown */}
+            {showUserMenu && (
+              <div className="absolute right-0 top-full mt-2 w-48 bg-bg-secondary border border-border-subtle rounded-lg shadow-lg z-50">
+                <div className="p-2">
+                  <div className="px-3 py-2 border-b border-border-subtle">
+                    <div className="text-sm font-medium text-text-primary">{user?.name || 'Admin User'}</div>
+                    <div className="text-xs text-text-muted">{user?.email || 'admin@agency.gov'}</div>
+                  </div>
+                  <button
+                    className="w-full text-left px-3 py-2 text-sm text-text-secondary hover:bg-bg-tertiary rounded transition-colors"
+                    onClick={() => {
+                      setShowUserMenu(false);
+                      handleSettings();
+                    }}
+                  >
+                    Settings
+                  </button>
+                  <button
+                    className="w-full text-left px-3 py-2 text-sm text-text-secondary hover:bg-bg-tertiary rounded transition-colors"
+                    onClick={() => {
+                      setShowUserMenu(false);
+                      router.push('/profile');
+                    }}
+                  >
+                    Profile
+                  </button>
+                  <div className="border-t border-border-subtle my-1"></div>
+                  <button
+                    className="w-full text-left px-3 py-2 text-sm text-danger hover:bg-danger/10 rounded transition-colors"
+                    onClick={handleLogout}
+                  >
+                    Logout
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Settings */}
-          <button className="p-2 rounded hover:bg-bg-tertiary transition-colors" title="Settings">
+          <button 
+            className="p-2 rounded hover:bg-bg-tertiary transition-colors" 
+            title="Settings"
+            onClick={handleSettings}
+          >
             <svg className="w-5 h-5 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -12899,24 +14959,14 @@ export const Navbar: React.FC = () => {
 File: frontend/src/components/layout/Sidebar.tsx
 ================================================
 'use client';
-import React from 'react';
+import React, { useState } from 'react';
 import { Card } from '../ui/Card';
+import { AgentHeartbeat } from './AgentHeartbeat';
 
 export const Sidebar: React.FC = () => {
-  const activities = [
-    { text: 'New threat detected from Russia', time: '2m ago', type: 'critical', label: 'CRITICAL' },
-    { text: 'User login from China', time: '5m ago', type: 'warning', label: 'WARNING' },
-    { text: 'AI insight ready', time: '10m ago', type: 'info', label: 'INFO' },
-    { text: 'System backup completed', time: '15m ago', type: 'success', label: 'SUCCESS' },
-    { text: 'Failed login attempt', time: '20m ago', type: 'critical', label: 'CRITICAL' },
-  ];
-
-  const systemHealth = [
-    { label: 'Backend', status: 'online', value: 99.9 },
-    { label: 'Database', status: 'online', value: 100 },
-    { label: 'Redis Cache', status: 'online', value: 100 },
-    { label: 'Neo4j Graph', status: 'warning', value: 85 },
-  ];
+  const [activities] = useState<any[]>([]);
+  const [systemHealth] = useState<any[]>([]);
+  const [aiInsights] = useState<any[]>([]);
 
   const getActivityColor = (type: string) => {
     switch(type) {
@@ -12948,20 +14998,27 @@ export const Sidebar: React.FC = () => {
           </span>
         </div>
         <div className="space-y-2">
-          {activities.map((activity, idx) => (
-            <div 
-              key={idx}
-              className={`flex items-start gap-3 p-2 rounded hover:bg-bg-tertiary transition-colors cursor-pointer border-l-2 ${getActivityColor(activity.type)}`}
-            >
-              <div className="flex-1 min-w-0">
-                <div className={`text-xs font-semibold uppercase tracking-wide mb-1 ${getLabelColor(activity.type)}`}>
-                  {activity.label}
-                </div>
-                <p className="text-sm text-text-primary truncate">{activity.text}</p>
-                <p className="text-xs text-text-muted mt-1">{activity.time}</p>
-              </div>
+          {activities.length === 0 ? (
+            <div className="text-center py-8 text-text-secondary text-sm">
+              No recent activity
             </div>
-          ))}
+          ) : (
+            activities.map((activity, idx) => (
+              <div 
+                key={idx}
+                className={`flex items-start gap-3 p-2 rounded hover:bg-bg-tertiary transition-colors cursor-pointer border-l-2 ${getActivityColor(activity.type)}`}
+                onClick={() => console.log('Activity clicked', activity)}
+              >
+                <div className="flex-1 min-w-0">
+                  <div className={`text-xs font-semibold uppercase tracking-wide mb-1 ${getLabelColor(activity.type)}`}>
+                    {activity.label}
+                  </div>
+                  <p className="text-sm text-text-primary truncate">{activity.text}</p>
+                  <p className="text-xs text-text-muted mt-1">{activity.time}</p>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </Card>
 
@@ -12969,7 +15026,12 @@ export const Sidebar: React.FC = () => {
       <Card>
         <h3 className="text-sm font-semibold uppercase tracking-wider text-text-primary mb-4">System Status</h3>
         <div className="space-y-3">
-          {systemHealth.map((system, idx) => (
+          {systemHealth.length === 0 ? (
+            <div className="text-center py-8 text-text-secondary text-sm">
+              No system health data available
+            </div>
+          ) : (
+            systemHealth.map((system, idx) => (
             <div key={idx}>
               <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-2">
@@ -12989,32 +15051,544 @@ export const Sidebar: React.FC = () => {
                 />
               </div>
             </div>
-          ))}
+            ))
+          )}
         </div>
       </Card>
+
+      {/* Agent Neural Heartbeat */}
+      <AgentHeartbeat />
 
       {/* Quick AI Insights */}
       <Card className="mt-4 bg-primary/5 border-primary/30">
         <div className="flex items-center gap-2 mb-3">
           <h3 className="text-sm font-semibold uppercase tracking-wider text-text-primary">AI Insights</h3>
-          <span className="ml-auto badge-info text-xs px-2 py-0.5">3 NEW</span>
+          {aiInsights.length > 0 && (
+            <span className="ml-auto badge-info text-xs px-2 py-0.5">{aiInsights.length} NEW</span>
+          )}
         </div>
         <div className="space-y-2">
-          <div className="p-2 bg-bg-primary/50 rounded text-xs text-text-secondary border-l-2 border-warning">
-            <span className="text-warning font-semibold">WARNING:</span> Pattern detected - Increased login attempts from Asia
-          </div>
-          <div className="p-2 bg-bg-primary/50 rounded text-xs text-text-secondary border-l-2 border-warning">
-            <span className="text-warning font-semibold">ANOMALY:</span> Unusual traffic spike at 3 AM
-          </div>
-          <div className="p-2 bg-bg-primary/50 rounded text-xs text-text-secondary border-l-2 border-info">
-            <span className="text-info font-semibold">RECOMMEND:</span> Update firewall rules
-          </div>
+          {aiInsights.length === 0 ? (
+            <div className="text-center py-8 text-text-secondary text-sm">
+              No AI insights available
+            </div>
+          ) : (
+            aiInsights.map((insight, idx) => (
+              <div 
+                key={idx}
+                className="p-2 bg-bg-primary/50 rounded text-xs text-text-secondary border-l-2 border-warning"
+                onClick={() => console.log('AI insight clicked', insight)}
+              >
+                <span className="text-warning font-semibold">{insight.type}:</span> {insight.message}
+              </div>
+            ))
+          )}
         </div>
-        <button className="mt-3 w-full btn-primary text-sm py-1.5">
+        <button 
+          className="mt-3 w-full btn-primary text-sm py-1.5"
+          onClick={() => console.log('View All Insights clicked')}
+        >
           View All Insights
         </button>
       </Card>
     </aside>
+  );
+};
+
+
+
+
+================================================
+File: frontend/src/components/policy/PolicyAuthor.tsx
+================================================
+"use client";
+import React, { useState } from 'react';
+import { Card } from '../ui/Card';
+import { Button } from '../ui/Button';
+
+export const PolicyAuthor = () => {
+  const [intent, setIntent] = useState("");
+  const [dslPreview, setDslPreview] = useState<string>("# Waiting for intent translation...");
+  const [isArming, setIsArming] = useState(false);
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [translationResult, setTranslationResult] = useState<any>(null);
+  const [blockedCount, setBlockedCount] = useState(0);
+
+  const handleTranslate = async () => {
+    if (!intent.trim()) return;
+    
+    setIsTranslating(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/ai/policy-translate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token || ''}`
+        },
+        body: JSON.stringify(intent)
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        setTranslationResult(result);
+        setDslPreview(result.dsl_logic || "# Translation error");
+      } else {
+        setDslPreview("# Error: Failed to translate intent");
+      }
+    } catch (error) {
+      console.error('Translation error:', error);
+      setDslPreview("# Error: API call failed");
+    } finally {
+      setIsTranslating(false);
+    }
+  };
+
+  const handleArmPolicy = async () => {
+    if (!translationResult) return;
+    
+    setIsArming(!isArming);
+    // TODO: Call API to activate/deactivate policy
+    console.log(isArming ? "Disarming policy" : "Arming policy", translationResult);
+  };
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Command Intent Card */}
+      <Card className="p-6">
+        <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest text-primary mb-4">
+          <span className="text-xl">🛡️</span> Command Intent
+        </h3>
+        <textarea 
+          className="w-full h-40 bg-bg-primary border border-border-subtle p-4 rounded font-sans text-sm focus:border-primary outline-none resize-none"
+          placeholder="e.g. Be extremely aggressive against any narratives involving naval movements in the South China Sea..."
+          value={intent}
+          onChange={(e) => setIntent(e.target.value)}
+        />
+        <Button 
+           variant="ai" 
+           className="w-full mt-4"
+           onClick={handleTranslate}
+           disabled={isTranslating || !intent.trim()}
+        >
+          {isTranslating ? "Translating..." : "Generate Active Filter"}
+        </Button>
+      </Card>
+
+      {/* Executable Shield DSL Card */}
+      <Card className="p-6 bg-black border-red-900/30">
+        <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest text-red-500 mb-4">
+          <span className="text-xl">🔒</span> Executable Shield DSL
+        </h3>
+        <div className="font-mono text-[11px] text-emerald-500 bg-bg-primary p-4 rounded border border-white/5 h-40 overflow-y-auto">
+          <pre className="whitespace-pre-wrap">{dslPreview}</pre>
+        </div>
+        {translationResult && (
+          <div className="mt-3 text-xs text-text-secondary">
+            <div>Safety Score: {(translationResult.safety_score * 100).toFixed(1)}%</div>
+            {translationResult.edge_cases && translationResult.edge_cases.length > 0 && (
+              <div className="mt-1">
+                Edge Cases: {translationResult.edge_cases.length}
+              </div>
+            )}
+          </div>
+        )}
+        <div className="flex gap-2 mt-4">
+           <Button 
+             variant={isArming ? "danger" : "secondary"} 
+             className="flex-1"
+             onClick={handleArmPolicy}
+             disabled={!translationResult}
+           >
+             {isArming ? "DISARM GRID" : "ARM THE POLICY"}
+           </Button>
+           <Button 
+             variant="secondary" 
+             className="px-3"
+             onClick={() => console.log("Test policy")}
+             disabled={!translationResult}
+           >
+             ▶
+           </Button>
+        </div>
+      </Card>
+    </div>
+  );
+};
+
+
+
+
+================================================
+File: frontend/src/components/policy/PolicyEditor.tsx
+================================================
+"use client";
+import React, { useState, useEffect } from 'react';
+import { Card } from '../ui/Card';
+import { Button } from '../ui/Button';
+import { Input } from '../ui/Input';
+
+interface Policy {
+  id?: number;
+  name: string;
+  description?: string;
+  policy_type: 'logical' | 'natural';
+  content: string;
+  category?: string;
+  priority: number;
+}
+
+interface PolicyEditorProps {
+  policy?: Policy | null;
+  onSave: (policy: Policy) => void;
+  onCancel: () => void;
+}
+
+export const PolicyEditor: React.FC<PolicyEditorProps> = ({
+  policy,
+  onSave,
+  onCancel
+}) => {
+  const [formData, setFormData] = useState<Policy>({
+    name: '',
+    description: '',
+    policy_type: 'natural',
+    content: '',
+    category: '',
+    priority: 5
+  });
+
+  useEffect(() => {
+    if (policy) {
+      setFormData(policy);
+    }
+  }, [policy]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    onSave(formData);
+  };
+
+  return (
+    <Card className="p-6">
+      <h3 className="text-lg font-semibold mb-4">
+        {policy?.id ? 'Edit Policy' : 'Create New Policy'}
+      </h3>
+      
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-text-secondary mb-1">
+            Policy Name *
+          </label>
+          <Input
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            placeholder="e.g., Election Disinformation Block"
+            required
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-text-secondary mb-1">
+            Description
+          </label>
+          <Input
+            value={formData.description || ''}
+            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            placeholder="Brief description of the policy"
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-1">
+              Category
+            </label>
+            <Input
+              value={formData.category || ''}
+              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+              placeholder="e.g., security, finance"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-1">
+              Priority (1-10)
+            </label>
+            <Input
+              type="number"
+              min="1"
+              max="10"
+              value={formData.priority}
+              onChange={(e) => setFormData({ ...formData, priority: parseInt(e.target.value) || 5 })}
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-text-secondary mb-1">
+            Policy Type
+          </label>
+          <select
+            value={formData.policy_type}
+            onChange={(e) => setFormData({ ...formData, policy_type: e.target.value as 'logical' | 'natural' })}
+            className="w-full bg-bg-primary border border-border-subtle rounded px-3 py-2 text-sm focus:border-primary outline-none"
+          >
+            <option value="natural">Natural Language</option>
+            <option value="logical">DSL (Logical)</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-text-secondary mb-1">
+            Policy Content *
+          </label>
+          <textarea
+            value={formData.content}
+            onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+            placeholder={
+              formData.policy_type === 'natural'
+                ? 'e.g., Be extremely aggressive against any election disinformation'
+                : 'IF narrative_match("keyword") AND ai_score > 0.8 THEN BLOCK_AND_LOG'
+            }
+            className="w-full h-32 bg-bg-primary border border-border-subtle rounded p-3 text-sm focus:border-primary outline-none resize-none font-mono"
+            required
+          />
+        </div>
+
+        <div className="flex gap-3 justify-end">
+          <Button variant="secondary" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button variant="primary" type="submit">
+            {policy?.id ? 'Update Policy' : 'Create Policy'}
+          </Button>
+        </div>
+      </form>
+    </Card>
+  );
+};
+
+
+
+
+================================================
+File: frontend/src/components/policy/PolicyList.tsx
+================================================
+"use client";
+import React, { useState, useEffect } from 'react';
+import { Card } from '../ui/Card';
+import { Button } from '../ui/Button';
+import { Badge } from '../ui/Badge';
+
+interface Policy {
+  id: number;
+  name: string;
+  description?: string;
+  policy_type: 'logical' | 'natural';
+  content: string;
+  translated_dsl?: string;
+  category?: string;
+  priority: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+interface PolicyListProps {
+  onEdit?: (policy: Policy) => void;
+  onDelete?: (policyId: number) => void;
+  onToggleActive?: (policyId: number, isActive: boolean) => void;
+}
+
+export const PolicyList: React.FC<PolicyListProps> = ({
+  onEdit,
+  onDelete,
+  onToggleActive
+}) => {
+  const [policies, setPolicies] = useState<Policy[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [filter, setFilter] = useState<'all' | 'active' | 'inactive'>('all');
+
+  useEffect(() => {
+    fetchPolicies();
+  }, [filter]);
+
+  const fetchPolicies = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const url = filter === 'all' 
+        ? '/api/ai/policies'
+        : `/api/ai/policies?is_active=${filter === 'active'}`;
+      
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${token || ''}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setPolicies(data);
+      }
+    } catch (error) {
+      console.error('Error fetching policies:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleToggleActive = async (policy: Policy) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/ai/policies/${policy.id}/activate`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token || ''}`
+        },
+        body: JSON.stringify(!policy.is_active)
+      });
+
+      if (response.ok) {
+        await fetchPolicies();
+        if (onToggleActive) {
+          onToggleActive(policy.id, !policy.is_active);
+        }
+      }
+    } catch (error) {
+      console.error('Error toggling policy:', error);
+    }
+  };
+
+  const handleDelete = async (policyId: number) => {
+    if (!confirm('Are you sure you want to delete this policy?')) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/ai/policies/${policyId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token || ''}`
+        }
+      });
+
+      if (response.ok) {
+        await fetchPolicies();
+        if (onDelete) {
+          onDelete(policyId);
+        }
+      }
+    } catch (error) {
+      console.error('Error deleting policy:', error);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <Card className="p-6">
+        <div className="text-center py-8 text-text-secondary">Loading policies...</div>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Filter Tabs */}
+      <div className="flex gap-2">
+        <Button
+          variant={filter === 'all' ? 'primary' : 'secondary'}
+          onClick={() => setFilter('all')}
+          className="text-sm"
+        >
+          All ({policies.length})
+        </Button>
+        <Button
+          variant={filter === 'active' ? 'primary' : 'secondary'}
+          onClick={() => setFilter('active')}
+          className="text-sm"
+        >
+          Active ({policies.filter(p => p.is_active).length})
+        </Button>
+        <Button
+          variant={filter === 'inactive' ? 'primary' : 'secondary'}
+          onClick={() => setFilter('inactive')}
+          className="text-sm"
+        >
+          Inactive ({policies.filter(p => !p.is_active).length})
+        </Button>
+      </div>
+
+      {/* Policy List */}
+      {policies.length === 0 ? (
+        <Card className="p-6">
+          <div className="text-center py-8 text-text-secondary">
+            <div className="text-4xl mb-2">ðŸ“‹</div>
+            <div>No policies found</div>
+            <div className="text-xs mt-1">Create a policy to start blocking threats</div>
+          </div>
+        </Card>
+      ) : (
+        policies.map((policy) => (
+          <Card key={policy.id} className="p-6 hover:border-primary/50 transition-colors">
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-2">
+                  <h3 className="text-lg font-semibold text-text-primary">{policy.name}</h3>
+                  <Badge variant={policy.is_active ? 'success' : 'secondary'}>
+                    {policy.is_active ? 'Active' : 'Inactive'}
+                  </Badge>
+                  {policy.category && (
+                    <Badge variant="default">{policy.category}</Badge>
+                  )}
+                  <Badge variant="default">Priority: {policy.priority}</Badge>
+                </div>
+                {policy.description && (
+                  <p className="text-sm text-text-secondary mb-2">{policy.description}</p>
+                )}
+                <div className="text-xs text-text-muted mb-3">
+                  Type: {policy.policy_type} â€¢ Created: {new Date(policy.created_at).toLocaleDateString()}
+                </div>
+                {policy.translated_dsl && (
+                  <div className="bg-bg-primary border border-border-subtle rounded p-3 mt-3">
+                    <div className="text-xs font-semibold uppercase tracking-wider text-text-muted mb-1">
+                      DSL Rule
+                    </div>
+                    <pre className="text-xs font-mono text-emerald-500 whitespace-pre-wrap">
+                      {policy.translated_dsl}
+                    </pre>
+                  </div>
+                )}
+              </div>
+              <div className="flex flex-col gap-2 ml-4">
+                <Button
+                  variant={policy.is_active ? 'danger' : 'primary'}
+                  className="text-sm"
+                  onClick={() => handleToggleActive(policy)}
+                >
+                  {policy.is_active ? 'Deactivate' : 'Activate'}
+                </Button>
+                <Button
+                  variant="secondary"
+                  className="text-sm"
+                  onClick={() => onEdit && onEdit(policy)}
+                >
+                  Edit
+                </Button>
+                <Button
+                  variant="danger"
+                  className="text-sm"
+                  onClick={() => handleDelete(policy.id)}
+                >
+                  Delete
+                </Button>
+              </div>
+            </div>
+          </Card>
+        ))
+      )}
+    </div>
   );
 };
 
@@ -13124,10 +15698,10 @@ export const ThreatCard: React.FC<ThreatCardProps> = ({
           {config.label}
         </Badge>
         <div className="flex gap-2">
-          <Button variant="secondary" className="text-xs py-1 px-3">
+          <Button variant="secondary" className="text-xs py-1 px-3" onClick={() => console.log('View Details clicked', id)}>
             View Details
           </Button>
-          <Button variant="secondary" className="text-xs py-1 px-3">
+          <Button variant="secondary" className="text-xs py-1 px-3" onClick={() => console.log('Dismiss clicked', id)}>
             Dismiss
           </Button>
         </div>
@@ -13173,13 +15747,13 @@ export const ThreatCard: React.FC<ThreatCardProps> = ({
 
       {/* Actions */}
       <div className="flex gap-2 pt-3 border-t border-border-subtle">
-        <Button variant="ai" className="text-xs py-1.5 px-3 flex-1">
+        <Button variant="ai" className="text-xs py-1.5 px-3 flex-1" onClick={() => console.log('AI Analysis clicked', id)}>
           AI Analysis
         </Button>
-        <Button variant="secondary" className="text-xs py-1.5 px-3">
+        <Button variant="secondary" className="text-xs py-1.5 px-3" onClick={() => console.log('Graph View clicked', id)}>
           Graph View
         </Button>
-        <Button variant="secondary" className="text-xs py-1.5 px-3">
+        <Button variant="secondary" className="text-xs py-1.5 px-3" onClick={() => console.log('Forensics clicked', id)}>
           Forensics
         </Button>
       </div>
@@ -13197,7 +15771,7 @@ import React from 'react';
 
 interface BadgeProps {
   children: React.ReactNode;
-  variant?: 'critical' | 'high' | 'medium' | 'low' | 'info';
+  variant?: 'critical' | 'high' | 'medium' | 'low' | 'info' | 'success' | 'secondary' | 'default';
 }
 
 export const Badge: React.FC<BadgeProps> = ({ 
@@ -13210,6 +15784,9 @@ export const Badge: React.FC<BadgeProps> = ({
     medium: 'badge-medium',
     low: 'badge-low',
     info: 'badge-info',
+    success: 'badge-success',
+    secondary: 'badge-secondary',
+    default: 'badge-info',
   };
 
   return (
@@ -14001,6 +16578,87 @@ export function useThreatContext() {
 
 // Export for backward compatibility
 export { ThreatContext };
+
+
+
+
+================================================
+File: frontend/src/lib/fusion.ts
+================================================
+/**
+ * Agent 3 Fusion API Utilities
+ * Functions for calling the intelligence fusion endpoint
+ */
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+export interface FusionRequest {
+  threat_id: number;
+  content: string;
+  forensic_data: Record<string, any>;
+  graph_data: Record<string, any>;
+}
+
+export interface FusionResponse {
+  report: {
+    threat_title: string;
+    executive_summary: string;
+    threat_type: string;
+    risk_level: string;
+    confidence: number;
+    evidence: Array<{
+      source: string;
+      finding: string;
+      weight: number;
+    }>;
+    recommendations: Array<{
+      action: string;
+      priority: string;
+    }>;
+  };
+  thought_process: string;
+  ledger_hash: string;
+  status: string;
+}
+
+/**
+ * Call Agent 3 fusion endpoint to synthesize intelligence
+ */
+export async function fuseIntelligence(request: FusionRequest): Promise<FusionResponse> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/analyst/fusion`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(request),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Fusion API error: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Failed to fuse intelligence:', error);
+    throw error;
+  }
+}
+
+/**
+ * Example usage:
+ * 
+ * const result = await fuseIntelligence({
+ *   threat_id: 123,
+ *   content: "Suspicious post content...",
+ *   forensic_data: { ai_score: 0.98, perplexity: 0.12 },
+ *   graph_data: { nodes: [...], clusters: 5 }
+ * });
+ * 
+ * setActiveReport(result.report);
+ * setReasoningLog(result.thought_process);
+ */
 
 
 

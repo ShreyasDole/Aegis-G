@@ -54,6 +54,28 @@ export default function ForensicsDetailPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Phase 2.4: Stylometric Evasion Flags */}
+          <Card className="mb-6 border-l-2 border-red-500 bg-red-500/5 col-span-full">
+            <h2 className="text-[10px] font-bold uppercase tracking-widest text-red-500 mb-4">Adversarial Evasion Flags</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="text-center p-3 bg-bg-primary rounded border border-red-900/30">
+                <div className="text-lg font-bold text-red-500">HIGH</div>
+                <div className="text-[10px] text-text-muted uppercase">Invisible Unicode</div>
+                <div className="text-[9px] text-red-400/70 mt-1">Zero-Width Spaces Detected</div>
+              </div>
+              <div className="text-center p-3 bg-bg-primary rounded border border-orange-900/30">
+                <div className="text-lg font-bold text-orange-500">0.82</div>
+                <div className="text-[10px] text-text-muted uppercase">L33tSp34k Score</div>
+                <div className="text-[9px] text-orange-400/70 mt-1">Character-Swap Obfuscation</div>
+              </div>
+              <div className="text-center p-3 bg-bg-primary rounded border border-blue-900/30">
+                <div className="text-lg font-bold text-blue-500">LOW</div>
+                <div className="text-[10px] text-text-muted uppercase">Lexical Entropy</div>
+                <div className="text-[9px] text-blue-400/70 mt-1">AI-Consistent Pattern</div>
+              </div>
+            </div>
+          </Card>
+
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
             {/* Timeline */}

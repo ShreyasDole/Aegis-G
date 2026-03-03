@@ -9,30 +9,63 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleLogin = async (e: React.FormEvent) => {
+    setError(null);
     e.preventDefault();
     setIsLoading(true);
-    
+
     try {
-      // TODO: Replace with actual API call
-      // const response = await fetch('/api/auth/login', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ email, password }),
-      // });
-      
-      // Simulate login for now
-      setTimeout(() => {
-        setIsLoading(false);
-        // Store auth token (in real app, get from API response)
-        localStorage.setItem('token', 'mock-token');
-        localStorage.setItem('user', JSON.stringify({ email, name: 'Admin User', role: 'Administrator' }));
-        window.location.href = '/dashboard';
-      }, 1500);
-    } catch (error) {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+      // 1. Get the JWT Token
+      const loginResponse = await fetch(`${API_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (!loginResponse.ok) {
+        const errorData = await loginResponse.json().catch(() => ({}));
+        const detail = Array.isArray(errorData.detail) ? errorData.detail[0]?.msg : errorData.detail;
+        const msg = detail || (loginResponse.status === 500 ? 'Backend error - ensure DB migrations ran' : 'Login failed');
+        throw new Error(msg);
+      }
+
+      const data = await loginResponse.json();
+      localStorage.setItem('token', data.access_token);
+
+      // 2. Fetch the user's actual profile details
+      const userResponse = await fetch(`${API_URL}/api/auth/me`, {
+        headers: { 'Authorization': `Bearer ${data.access_token}` },
+      });
+
+      if (userResponse.ok) {
+        const userData = await userResponse.json();
+        localStorage.setItem(
+          'user',
+          JSON.stringify({
+            email: userData.email,
+            name: userData.full_name || 'Agent',
+            role: userData.role,
+          })
+        );
+      }
+
+      // 3. Redirect to Dashboard
+      window.location.href = '/dashboard';
+    } catch (err: unknown) {
+      console.error('Login error:', err);
+      let msg = 'Login failed';
+      if (err instanceof TypeError && (err.message === 'Failed to fetch' || err.message.includes('fetch'))) {
+        msg = 'Cannot reach backend. Ensure API is running at ' + (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000');
+      } else if (err instanceof Error) {
+        msg = err.message;
+      }
+      setError(msg);
+    } finally {
       setIsLoading(false);
-      console.error('Login error:', error);
     }
   };
 
@@ -61,6 +94,14 @@ export default function LoginPage() {
 
         {/* Login Form */}
         <form onSubmit={handleLogin} className="space-y-4">
+          {error && (
+            <div className="p-3 rounded bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
+              {error}
+            </div>
+          )}
+          <div className="p-3 rounded bg-primary/5 border border-primary/20 text-text-secondary text-xs">
+            <strong>Demo:</strong> test@aegis.com / TestPassword123! or admin@aegis.com / AdminPassword123!
+          </div>
           <Input
             type="email"
             label="Email Address"

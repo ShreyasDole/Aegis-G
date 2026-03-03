@@ -1,24 +1,122 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StatCard } from '@/components/ui/StatCard';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { ThreatCard } from '@/components/threats/ThreatCard';
 import { ThreatMapGlobe } from '@/components/visual/ThreatMapGlobe';
 import { Sidebar } from '@/components/layout/Sidebar';
+import { IntelligenceBrief } from '@/components/intel/IntelligenceBrief';
+import { fuseIntelligence } from '@/lib/fusion';
+import { exportToSTIX } from '@/lib/export';
 
 export default function DashboardPage() {
-  const [stats] = useState({
+  const [stats, setStats] = useState({
     activeThreats: 0,
     criticalAlerts: 0,
     highRisk: 0,
     totalEvents: 0,
     uptime: 0,
+    blockedThreats: 0, // Agent 4 blocked count
   });
 
-  const [topThreats] = useState<any[]>([]);
+  // Fetch blocked threats count
+  useEffect(() => {
+    const fetchBlockedCount = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch('/api/ai/blocked-content/stats', {
+          headers: {
+            'Authorization': `Bearer ${token || ''}`
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setStats(prev => ({ ...prev, blockedThreats: data.today_count || 0 }));
+        }
+      } catch (error) {
+        console.error('Error fetching blocked count:', error);
+      }
+    };
+
+    fetchBlockedCount();
+    const interval = setInterval(fetchBlockedCount, 30000); // Update every 30 seconds
+    
+    // WebSocket for real-time updates
+    const ws = new WebSocket('ws://localhost:8000/ws/blocked-content');
+    ws.onmessage = (event) => {
+      const message = JSON.parse(event.data);
+      if (message.type === 'blocked_content') {
+        setStats(prev => ({ ...prev, blockedThreats: prev.blockedThreats + 1 }));
+      }
+    };
+
+    return () => {
+      clearInterval(interval);
+      ws.close();
+    };
+  }, []);
+
+  const [topThreats, setTopThreats] = useState<any[]>([]);
 
   const [threatActors] = useState<any[]>([]);
+
+  // Agent 3 Intelligence Brief state
+  const [activeReport, setActiveReport] = useState<any>(null);
+  const [reasoningLog, setReasoningLog] = useState<string>('');
+
+  // Fetch top threats for dashboard
+  useEffect(() => {
+    const loadThreats = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+        const response = await fetch(`${API_URL}/api/threats`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          const formatted = data.slice(0, 6).map((t: any) => ({
+            id: t.id,
+            title: `Threat #${t.id} - ${t.source_platform}`,
+            description: (t.content || '').substring(0, 100) + '...',
+            content: t.content || '',
+            severity:
+              t.risk_score > 8 ? 'critical' : t.risk_score > 6 ? 'high' : t.risk_score > 4 ? 'medium' : 'low',
+            source: t.source_platform,
+            firstSeen: new Date(t.timestamp || 0).toLocaleString(),
+            affectedSystems: Math.floor(Math.random() * 10) + 1,
+            riskScore: t.risk_score <= 1 ? t.risk_score * 10 : t.risk_score,
+          }));
+          setTopThreats(formatted);
+        }
+      } catch (error) {
+        console.error('Failed to load dashboard threats', error);
+      }
+    };
+    loadThreats();
+  }, []);
+
+  const handleAnalyzeThreat = async (threatId: number, content: string) => {
+    setActiveReport(null);
+    setReasoningLog('Initializing Agent 3 Fusion protocol...\nConnecting to Gemini 3...');
+
+    try {
+      const result = await fuseIntelligence({
+        threat_id: threatId,
+        content: content,
+        forensic_data: { risk_score: 0.85, is_ai_generated: true },
+        graph_data: { cluster_size: 45 },
+      });
+
+      setActiveReport(result.report);
+      setReasoningLog(result.thought_process);
+    } catch (error) {
+      console.error('Fusion failed:', error);
+      setReasoningLog('ERROR: Connection to Agent 3 failed.');
+    }
+  };
 
   return (
     <div className="flex">
@@ -37,10 +135,19 @@ export default function DashboardPage() {
               Real-time threat intelligence and system monitoring
             </p>
           </div>
-          <div className="flex gap-3">
-            <Button variant="secondary" onClick={() => console.log('Filter clicked')}>Filter</Button>
-            <Button variant="secondary" onClick={() => console.log('Export clicked')}>Export</Button>
-            <Button variant="primary" onClick={() => console.log('Refresh clicked')}>Refresh</Button>
+          <div className="flex items-center gap-4">
+            {/* Agent 4 Blocked Counter */}
+            <div className="text-right bg-bg-primary border border-red-500/30 rounded px-4 py-2">
+              <div className="text-xs font-semibold uppercase tracking-wider text-text-muted mb-1">
+                Agent 4 Blocked
+              </div>
+              <div className="text-2xl font-bold text-red-500">{stats.blockedThreats}</div>
+            </div>
+            <div className="flex gap-3">
+              <Button variant="secondary" onClick={() => console.log('Filter clicked')}>Filter</Button>
+              <Button variant="secondary" onClick={() => console.log('Export clicked')}>Export</Button>
+              <Button variant="primary" onClick={() => console.log('Refresh clicked')}>Refresh</Button>
+            </div>
           </div>
         </div>
 
@@ -102,6 +209,80 @@ export default function DashboardPage() {
               <span className="text-text-secondary">Low</span>
               <span className="font-semibold text-text-primary">(42)</span>
             </div>
+          </div>
+        </Card>
+
+        {/* Phase 2.3: 3-Agent War Room Grid */}
+        <div className="grid grid-cols-12 gap-6 mb-6">
+          {/* Column 1: Agent 1 - Forensic Feed */}
+          <Card className="col-span-12 lg:col-span-4 p-4 border-l-2 border-emerald-500">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-[10px] font-bold uppercase tracking-widest text-emerald-500">A1 // Forensic Stream</h2>
+              <span className="text-[9px] font-mono text-text-muted">CPU_LOAD: 12%</span>
+            </div>
+            <div className="space-y-3 h-[400px] overflow-y-auto scrollbar-thin pr-2">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="p-3 bg-bg-primary border border-border-subtle rounded text-[11px] hover:border-emerald-500/50 transition-all cursor-pointer">
+                  <div className="flex justify-between mb-1">
+                    <span className="text-emerald-400 font-bold">● AI_DETECTION</span>
+                    <span className="text-text-muted">14:2{i}:02</span>
+                  </div>
+                  <p className="text-text-secondary italic line-clamp-2">&quot;Coordinated narrative regarding energy prices detected in Cluster 0{i}...&quot;</p>
+                  <div className="mt-2 flex justify-between items-center">
+                    <span className="text-[9px] bg-emerald-500/10 text-emerald-500 px-1.5 rounded">PROB: 0.9{i}</span>
+                    <span className="text-text-muted">Model: DistilRoBERTa</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          {/* Column 2: Agent 2 - Campaign Graph (Mini) */}
+          <Card className="col-span-12 lg:col-span-4 p-4 border-l-2 border-amber-500">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-[10px] font-bold uppercase tracking-widest text-amber-500">A2 // Cluster Oracle</h2>
+              <button className="text-[9px] text-amber-500 hover:underline">FULL_MAP</button>
+            </div>
+            <div className="h-[400px] bg-bg-primary rounded flex items-center justify-center relative overflow-hidden">
+              {/* Placeholder for Yash&apos;s Mini-Graph */}
+              <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(#f59e0b 0.5px, transparent 0.5px)', backgroundSize: '15px 15px' }}></div>
+              <div className="z-10 text-center">
+                <div className="text-2xl mb-2">🕸️</div>
+                <div className="text-[10px] font-mono text-amber-500">COMMUNITY_ID: LOUVAIN_04</div>
+                <div className="text-[10px] text-text-muted mt-1">45 Nodes Linked</div>
+              </div>
+            </div>
+          </Card>
+
+          {/* Column 3: Agent 3 - Intel Brief */}
+          <div className="col-span-12 lg:col-span-4">
+            <IntelligenceBrief report={activeReport} thoughts={reasoningLog} />
+          </div>
+        </div>
+
+        {/* Phase 2.3: Campaign Intensity Heatmap */}
+        <Card className="mb-6">
+          <h2 className="text-[10px] font-bold uppercase tracking-widest text-primary mb-4">Campaign Intensity Map (24H Timeline)</h2>
+          <div className="flex gap-1 h-12">
+            {Array.from({ length: 48 }).map((_, i) => {
+              const opacity = 0.2 + (i / 48) * 0.6 + (i % 7) * 0.05;
+              const clamped = Math.min(1, Math.max(0.1, opacity));
+              return (
+                <div
+                  key={i}
+                  className="flex-1 rounded-sm transition-all hover:scale-110 cursor-help"
+                  style={{
+                    backgroundColor: `rgba(239, 68, 68, ${clamped})`,
+                    border: clamped > 0.7 ? '1px solid rgba(255,255,255,0.2)' : 'none'
+                  }}
+                  title={`Intensity: ${(clamped * 100).toFixed(0)}% at T-${48 - i}h`}
+                />
+              );
+            })}
+          </div>
+          <div className="flex justify-between mt-2 text-[9px] text-text-muted font-mono">
+            <span>24 HOURS AGO</span>
+            <span>CURRENT_WINDOW</span>
           </div>
         </Card>
 
@@ -178,7 +359,7 @@ export default function DashboardPage() {
               </Card>
             ) : (
               topThreats.map((threat) => (
-                <ThreatCard key={threat.id} {...threat} />
+                <ThreatCard key={threat.id} {...threat} onAnalyze={handleAnalyzeThreat} onExportSTIX={exportToSTIX} />
               ))
             )}
           </div>

@@ -5,10 +5,11 @@ Uses asyncio for concurrent processing to keep the API responsive
 """
 import asyncio
 import json
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from datetime import datetime
 from app.services.gemini.client import GeminiClient
 from app.services.graph.neo4j import Neo4jService
+from app.services.ai.policy_guardian import policy_guardian
 import hashlib
 
 
@@ -18,11 +19,103 @@ class StreamIngestWorker:
     Processes items asynchronously to prevent API blocking
     """
     
-    def __init__(self):
+    def __init__(self, db_session=None):
         self.gemini_client = GeminiClient()
         self.neo4j_service = Neo4jService()
         self.processing_queue: asyncio.Queue = asyncio.Queue()
         self.is_running = False
+        self.db_session = db_session  # For accessing active policies
+    
+    async def apply_guardrails(self, item: Dict[str, Any], analysis: Dict[str, Any], graph_data: Dict[str, Any] = None) -> Optional[Dict[str, Any]]:
+        """
+        Agent 4: Apply policy guardrails to incoming post
+        Returns blocking decision or None if post should pass
+        """
+        if not self.db_session:
+            return None  # No DB session, skip guardrails
+        
+        try:
+            from app.models.ai import AIPolicy, BlockedContent
+            
+            # Fetch all active policies
+            active_policies = self.db_session.query(AIPolicy).filter(
+                AIPolicy.is_active == True
+            ).order_by(AIPolicy.priority.desc()).all()
+            
+            if not active_policies:
+                return None  # No active policies
+            
+            content = item.get("content", "")
+            content_hash = hashlib.sha256(content.encode()).hexdigest()
+            
+            # Prepare post data for DSL evaluation
+            post_data = {
+                "content": content,
+                "ai_score": analysis.get("risk_score", 0.0),
+                "graph_cluster_size": graph_data.get("cluster_size", 0) if graph_data else 0,
+                "platform": item.get("platform", "unknown"),
+                "username": item.get("username", "unknown")
+            }
+            
+            # Check each active policy
+            for policy in active_policies:
+                dsl_logic = policy.translated_dsl or policy.content
+                
+                if not dsl_logic:
+                    continue
+                
+                # Execute DSL rule
+                result = policy_guardian.execute_dsl_rule(dsl_logic, post_data)
+                
+                if result.get("should_block"):
+                    # Block and log
+                    blocked_record = BlockedContent(
+                        content_hash=content_hash,
+                        content_preview=content[:500],
+                        source_platform=item.get("platform"),
+                        source_username=item.get("username"),
+                        policy_id=policy.id,
+                        policy_name=policy.name,
+                        rule_name=f"rule_{policy.id:02d}.aegis",
+                        dsl_logic=dsl_logic,
+                        matched_conditions=json.dumps(result.get("matched_conditions", [])),
+                        action_taken=result.get("action", "BLOCK_AND_LOG"),
+                        ai_score=post_data.get("ai_score"),
+                        graph_cluster_size=post_data.get("graph_cluster_size"),
+                        narrative_keywords=json.dumps(result.get("matched_conditions", []))
+                    )
+                    
+                    self.db_session.add(blocked_record)
+                    self.db_session.commit()
+                    self.db_session.refresh(blocked_record)
+                    
+                    # Notify WebSocket clients
+                    try:
+                        from app.routers.websocket import notify_blocked_content
+                        asyncio.create_task(notify_blocked_content({
+                            "id": blocked_record.id,
+                            "content_preview": blocked_record.content_preview,
+                            "policy_name": policy.name,
+                            "action_taken": result.get("action", "BLOCK_AND_LOG"),
+                            "blocked_at": blocked_record.blocked_at.isoformat() if blocked_record.blocked_at else None,
+                            "source_platform": item.get("platform")
+                        }))
+                    except Exception as e:
+                        print(f"WebSocket notification error: {e}")
+                    
+                    return {
+                        "blocked": True,
+                        "policy_id": policy.id,
+                        "policy_name": policy.name,
+                        "reason": result.get("reason", "Policy violation"),
+                        "action": result.get("action", "BLOCK_AND_LOG")
+                    }
+            
+            return None  # No policy matched, allow through
+            
+        except Exception as e:
+            print(f"Guardrail error: {str(e)}")
+            return None  # On error, allow through (fail open)
     
     async def process_item(self, item: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -40,7 +133,27 @@ class StreamIngestWorker:
             # Step 2: Generate content hash
             content_hash = hashlib.sha256(content.encode()).hexdigest()
             
-            # Step 3: If malicious, create graph nodes
+            # Step 3: Agent 4 - Apply guardrails (BEFORE processing)
+            graph_data = None
+            if analysis.get("risk_score", 0) > 0.6:
+                # Get graph cluster info if available
+                graph_data = {"cluster_size": 1}  # Simplified - in production, query Neo4j
+            
+            guardrail_result = await self.apply_guardrails(item, analysis, graph_data)
+            
+            if guardrail_result and guardrail_result.get("blocked"):
+                # Post was blocked by Agent 4
+                return {
+                    "item_id": item.get("id"),
+                    "content_hash": content_hash,
+                    "status": "blocked",
+                    "blocked_by": "Agent 4 (Policy Guardian)",
+                    "policy": guardrail_result.get("policy_name"),
+                    "reason": guardrail_result.get("reason"),
+                    "processed_at": datetime.utcnow().isoformat()
+                }
+            
+            # Step 4: If malicious, create graph nodes (only if not blocked)
             if analysis.get("risk_score", 0) > 0.6:
                 await self.neo4j_service.create_node({
                     "id": f"user_{username}",

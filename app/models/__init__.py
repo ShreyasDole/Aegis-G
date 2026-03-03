@@ -4,7 +4,7 @@
 from app.models.database import Base
 from app.models.user import User
 from app.models.audit import AuditLog
-from app.models.ai import AIPolicy, AIInsight
+from app.models.ai import AIPolicy, AIInsight, BlockedContent
 from app.models.threat import Threat, Report
 from app.models.ledger import LedgerEntry
 
@@ -14,6 +14,7 @@ __all__ = [
     "AuditLog",
     "AIPolicy",
     "AIInsight",
+    "BlockedContent",
     "Threat",
     "Report",
     "LedgerEntry",
