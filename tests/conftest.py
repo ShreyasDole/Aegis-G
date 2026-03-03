@@ -4,8 +4,11 @@ Shared test fixtures for Aegis-G test suite
 Updated: 2026-02-05 - Fixed email validation for tests
 """
 import os
+import sys
+import types
 import pytest
 from typing import Generator
+from unittest.mock import MagicMock
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -20,6 +23,13 @@ os.environ["DATABASE_URL"] = "sqlite:///:memory:"
 os.environ.setdefault("NEO4J_URI", "bolt://localhost:7687")
 os.environ.setdefault("NEO4J_PASSWORD", "test")
 os.environ.setdefault("GEMINI_API_KEY", "test-key")
+
+# Mock google.genai before app imports (app.services.ai.insights does "from google import genai").
+# Lets CI run without installing google-genai (which would pull httpx 0.28+ and break TestClient).
+if "google" not in sys.modules:
+    sys.modules["google"] = types.ModuleType("google")
+if not hasattr(sys.modules["google"], "genai"):
+    sys.modules["google"].genai = MagicMock()
 
 # Import all models to register them with Base.metadata
 import app.models  # This imports all models via __init__.py
