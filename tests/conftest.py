@@ -6,7 +6,7 @@ Updated: 2026-02-05 - Fixed email validation for tests
 import os
 import pytest
 from typing import Generator
-import httpx
+from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
@@ -74,15 +74,10 @@ def client(db_session) -> Generator:
     
     app.dependency_overrides[get_db] = override_get_db
 
-    # Use httpx Client + ASGITransport for compatibility with httpx 0.28+
-    # Don't use "with" — in httpx 0.28+ ASGITransport is not a context manager
-    transport = httpx.ASGITransport(app=app)
-    test_client = httpx.Client(transport=transport, base_url="http://testserver")
-    try:
+    with TestClient(app) as test_client:
         yield test_client
-    finally:
-        test_client.close()
-        app.dependency_overrides.clear()
+
+    app.dependency_overrides.clear()
 
 
 # ============================================
