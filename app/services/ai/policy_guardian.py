@@ -5,7 +5,7 @@ Uses google-genai with structured output
 """
 import os
 import json
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, List
 from google import genai
 from google.genai import types
 from app.config import settings
@@ -152,7 +152,7 @@ class PolicyGuardian:
         }
         """
         import re
-        from typing import List, Tuple
+        from typing import Tuple
         
         try:
             dsl_upper = dsl_logic.upper().strip()
@@ -220,12 +220,18 @@ class PolicyGuardian:
                         if match:
                             threshold = float(match.group(1))
                             matched = False
-                            if op == '>': matched = ai_score > threshold
-                            elif op == '>=': matched = ai_score >= threshold
-                            elif op == '<': matched = ai_score < threshold
-                            elif op == '<=': matched = ai_score <= threshold
-                            elif op == '==': matched = abs(ai_score - threshold) < 0.001
-                            elif op == '!=': matched = abs(ai_score - threshold) >= 0.001
+                            if op == '>':
+                                matched = ai_score > threshold
+                            elif op == '>=':
+                                matched = ai_score >= threshold
+                            elif op == '<':
+                                matched = ai_score < threshold
+                            elif op == '<=':
+                                matched = ai_score <= threshold
+                            elif op == '==':
+                                matched = abs(ai_score - threshold) < 0.001
+                            elif op == '!=':
+                                matched = abs(ai_score - threshold) >= 0.001
                             return matched, f"ai_score {op} {threshold}" if matched else None
                 
                 # graph_cluster_size > X
@@ -236,12 +242,18 @@ class PolicyGuardian:
                         if match:
                             threshold = int(match.group(1))
                             matched = False
-                            if op == '>': matched = cluster_size > threshold
-                            elif op == '>=': matched = cluster_size >= threshold
-                            elif op == '<': matched = cluster_size < threshold
-                            elif op == '<=': matched = cluster_size <= threshold
-                            elif op == '==': matched = cluster_size == threshold
-                            elif op == '!=': matched = cluster_size != threshold
+                            if op == '>':
+                                matched = cluster_size > threshold
+                            elif op == '>=':
+                                matched = cluster_size >= threshold
+                            elif op == '<':
+                                matched = cluster_size < threshold
+                            elif op == '<=':
+                                matched = cluster_size <= threshold
+                            elif op == '==':
+                                matched = cluster_size == threshold
+                            elif op == '!=':
+                                matched = cluster_size != threshold
                             return matched, f"graph_cluster_size {op} {threshold}" if matched else None
                 
                 # equals(field, value)
@@ -310,7 +322,6 @@ class PolicyGuardian:
             }
             
         except Exception as e:
-            import traceback
             return {
                 "should_block": False,
                 "action": "ERROR",

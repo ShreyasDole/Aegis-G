@@ -64,7 +64,7 @@ class GeminiClient:
             raise Exception("Gemini API key not configured")
 
         try:
-            response = self.client.models.generate_content(
+            self.client.models.generate_content(
                 model=settings.GEMINI_PRO_MODEL,
                 contents=prompt
             )

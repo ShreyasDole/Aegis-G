@@ -4,7 +4,6 @@ Real-time notifications for blocked content (Agent 4)
 """
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from typing import List, Dict, Any
-import json
 import asyncio
 from datetime import datetime
 

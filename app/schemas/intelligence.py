@@ -3,7 +3,7 @@ Intelligence Schemas - Pydantic
 Structured output schemas for Agent 3 (Intelligence Analyst)
 """
 from pydantic import BaseModel, Field
-from typing import List, Literal, Optional
+from typing import List, Literal
 
 
 class EvidenceArtifact(BaseModel):

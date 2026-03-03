@@ -2,10 +2,10 @@
 Analyst Router - Agent 3 (Intelligence Analyst)
 Fusion endpoint for synthesizing intelligence reports
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.models.database import get_db
-from app.schemas.intelligence import FusionRequest, IntelligenceReport
+from app.schemas.intelligence import FusionRequest
 from app.services.ai.fusion_service import AnalystAgent
 from app.core.blockchain import add_to_ledger  # For Prisha's component
 

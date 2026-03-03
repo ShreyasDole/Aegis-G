@@ -39,7 +39,7 @@ class StreamIngestWorker:
             
             # Fetch all active policies
             active_policies = self.db_session.query(AIPolicy).filter(
-                AIPolicy.is_active == True
+                AIPolicy.is_active
             ).order_by(AIPolicy.priority.desc()).all()
             
             if not active_policies:

@@ -80,7 +80,7 @@ class ThreatOrchestrator:
 
                 policy = (
                     db.query(AIPolicy)
-                    .filter(AIPolicy.is_active == True)
+                    .filter(AIPolicy.is_active)
                     .order_by(AIPolicy.priority.desc())
                     .first()
                 )

@@ -377,8 +377,7 @@ async def get_blocked_content_stats(
     Returns counts and breakdowns by policy and action
     """
     from datetime import datetime, timedelta
-    from sqlalchemy import func, and_
-    import json
+    from sqlalchemy import func
     
     now = datetime.utcnow()
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
