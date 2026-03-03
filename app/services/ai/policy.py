@@ -5,11 +5,15 @@ Translates natural language policies to DSL using Gemini
 import os
 import json
 from typing import Dict, List
-from google import genai
 from app.config import settings
 
+try:
+    from google import genai
+except ImportError:
+    genai = None  # google-genai not installed (e.g. in some test envs)
+
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or settings.GEMINI_API_KEY
-client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
+client = genai.Client(api_key=GEMINI_API_KEY) if genai and GEMINI_API_KEY else None
 
 
 POLICY_TRANSLATION_PROMPT = """
