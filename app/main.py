@@ -2,6 +2,7 @@
 Aegis-G: Cognitive Shield Command Center
 FastAPI Application Entry Point
 """
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -63,6 +64,9 @@ async def startup():
     logger.info("Authorization Engine: Loaded")
     logger.info("Audit Logging: Active")
     logger.info("AI Services: Ready")
+    # Skip seed in testing (tests use their own DB and fixtures)
+    if os.getenv("ENVIRONMENT") == "testing":
+        return
     # Seed default test/admin users if they don't exist
     try:
         from app.seed import seed_default_users

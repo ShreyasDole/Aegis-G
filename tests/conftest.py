@@ -58,7 +58,7 @@ from app.main import app
 # Database Fixtures
 # ============================================
 
-# In-memory SQLite for testing
+# In-memory SQLite for testing (single engine so app and tests share same DB)
 SQLALCHEMY_TEST_DATABASE_URL = "sqlite:///:memory:"
 
 engine = create_engine(
@@ -73,38 +73,29 @@ TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engin
 @pytest.fixture(scope="function")
 def db_session() -> Generator:
     """
-    Creates a fresh database session for each test
-    Tables are created before and dropped after each test
+    Creates a fresh database session for each test.
+    Tables are created before and dropped after each test.
     """
-    # Create all tables
     Base.metadata.create_all(bind=engine)
-    
     session = TestingSessionLocal()
     try:
         yield session
     finally:
         session.close()
-        # Drop all tables after test
         Base.metadata.drop_all(bind=engine)
 
 
 @pytest.fixture(scope="function")
 def client(db_session) -> Generator:
     """
-    Test client with database dependency override
+    Test client. Patch app's DB to use test engine so register/login share same DB.
     """
-    def override_get_db():
-        try:
-            yield db_session
-        finally:
-            pass
-    
-    app.dependency_overrides[get_db] = override_get_db
+    import app.models.database as db
+    db.engine = engine
+    db.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
     with TestClient(app) as test_client:
         yield test_client
-
-    app.dependency_overrides.clear()
 
 
 # ============================================
