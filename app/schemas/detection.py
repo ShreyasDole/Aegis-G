@@ -10,7 +10,8 @@ from datetime import datetime
 class ScanRequest(BaseModel):
     """Request schema for content scanning"""
     content: str = Field(..., description="Text content to analyze")
-    source_platform: Optional[str] = Field(None, description="Platform where content was found")
+    source_platform: Optional[str] = Field("web", description="Platform where content was found")
+    username: Optional[str] = Field("anonymous", description="Username or identifier of the content source")
     metadata: Optional[dict] = Field(None, description="Additional metadata")
 
 

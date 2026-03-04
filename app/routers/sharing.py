@@ -4,6 +4,7 @@ Federated intelligence sharing with PII redaction and STIX 2.1 export
 """
 from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
+from datetime import datetime
 from app.auth import get_current_active_user
 from app.models.database import get_db
 from app.models.threat import Threat, Report as AegisReport
@@ -90,3 +91,67 @@ async def verify_ledger_entry(hash: str):
         "timestamp": "2024-01-01T00:00:00Z"
     }
 
+
+@router.get("/ledger")
+async def get_ledger_history(
+    limit: int = 100,
+    offset: int = 0,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_active_user)
+):
+    """
+    Ledger Explorer - View blockchain history of threat intelligence sharing.
+    Returns all ledger entries in chronological order.
+    """
+    from app.models.ledger import LedgerEntry
+    from sqlalchemy import desc
+    
+    try:
+        # Get ledger entries
+        entries = db.query(LedgerEntry).order_by(desc(LedgerEntry.timestamp)).offset(offset).limit(limit).all()
+        
+        # Get total count
+        total = db.query(LedgerEntry).count()
+        
+        # Format response
+        ledger_data = []
+        for entry in entries:
+            ledger_data.append({
+                "id": entry.id,
+                "previous_hash": entry.previous_hash,
+                "current_hash": entry.current_hash,
+                "report_id": entry.report_id,
+                "recipient_agency": entry.recipient_agency,
+                "timestamp": entry.timestamp.isoformat() if entry.timestamp else None,
+                "verified": entry.verified,
+                "content_preview": entry.redacted_content[:100] + "..." if entry.redacted_content and len(entry.redacted_content) > 100 else entry.redacted_content
+            })
+        
+        return {
+            "entries": ledger_data,
+            "total": total,
+            "limit": limit,
+            "offset": offset
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve ledger: {str(e)}")
+
+
+@router.get("/ledger/integrity")
+async def check_chain_integrity(
+    current_user=Depends(get_current_active_user)
+):
+    """
+    Check blockchain integrity - verifies all blocks are linked correctly.
+    """
+    from app.core.blockchain import verify_chain_integrity
+    
+    try:
+        is_valid = verify_chain_integrity()
+        return {
+            "is_valid": is_valid,
+            "status": "INTACT" if is_valid else "TAMPERED",
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Integrity check failed: {str(e)}")
