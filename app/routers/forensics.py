@@ -1,6 +1,6 @@
 """
 Forensics Router
-Deep dive analysis using Gemini 1.5 Pro
+Deep dive analysis using Gemini 2.5 Flash
 """
 from fastapi import APIRouter, HTTPException
 from app.services.gemini.client import GeminiClient
@@ -12,7 +12,7 @@ router = APIRouter()
 async def analyze_forensics(threat_id: int, include_image: bool = False):
     """
     Deep forensic analysis of flagged content
-    Uses Gemini 1.5 Pro for advanced reasoning
+    Uses Gemini 2.5 Flash for advanced reasoning
     """
     try:
         gemini_client = GeminiClient()

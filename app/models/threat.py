@@ -17,7 +17,7 @@ class Threat(Base):
     risk_score = Column(Float, nullable=False)
     source_platform = Column(String(50))
     timestamp = Column(DateTime, default=datetime.utcnow, index=True)
-    detected_by = Column(String(50), default="gemini-1.5-flash")
+    detected_by = Column(String(50), default="gemini-2.5-flash")
     
     # Relationships
     reports = relationship("Report", back_populates="threat")

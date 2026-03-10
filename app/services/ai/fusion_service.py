@@ -50,7 +50,7 @@ class AnalystAgent:
                 response_mime_type="application/json",
             )
             response = client.models.generate_content(
-                model=settings.GEMINI_PRO_MODEL,
+                model=settings.GEMINI_FLASH_MODEL,
                 contents=user_prompt,
                 config=types.GenerateContentConfig(**config_kwargs)
             )

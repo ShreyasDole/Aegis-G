@@ -50,8 +50,7 @@ services:
       NEO4J_USER: neo4j
       NEO4J_PASSWORD: password
       GEMINI_API_KEY: ${GEMINI_API_KEY}
-      GEMINI_FLASH_MODEL: ${GEMINI_FLASH_MODEL:-gemini-1.5-flash}
-      GEMINI_PRO_MODEL: ${GEMINI_PRO_MODEL:-gemini-1.5-pro}
+      GEMINI_FLASH_MODEL: ${GEMINI_FLASH_MODEL:-gemini-2.5-flash}
     ports:
       - "8000:8000"
     depends_on:

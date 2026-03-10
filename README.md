@@ -631,8 +631,7 @@ REDIS_DB=0
 # AI / Gemini
 # ============================================
 GEMINI_API_KEY=                  # Get from https://aistudio.google.com/apikey
-GEMINI_FLASH_MODEL=gemini-1.5-flash
-GEMINI_PRO_MODEL=gemini-1.5-pro
+GEMINI_FLASH_MODEL=gemini-2.5-flash
 
 # ============================================
 # Storage

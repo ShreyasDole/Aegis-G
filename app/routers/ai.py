@@ -218,7 +218,7 @@ async def translate_policy_intent(
     """
     Agent 4: Policy Guardian - Translate human intent to Shield Rule DSL
     
-    This endpoint uses Gemini 3 Pro with Thinking to:
+    This endpoint uses Gemini 2.5 Flash to:
     - Analyze edge cases
     - Refine rules to avoid false positives
     - Generate executable DSL code

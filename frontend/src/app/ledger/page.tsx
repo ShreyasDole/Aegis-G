@@ -91,23 +91,19 @@ export default function LedgerExplorerPage() {
           <StatCard
             label="Total Blocks"
             value={total.toString()}
-            icon="📦"
           />
           <StatCard
             label="Chain Status"
             value={integrityStatus?.status || "CHECKING"}
-            icon={integrityStatus?.is_valid ? "✅" : "⚠️"}
-            variant={integrityStatus?.is_valid ? "success" : "warning"}
+            variant={integrityStatus?.is_valid ? "safe" : "warning"}
           />
           <StatCard
             label="Verified Blocks"
             value={entries.filter(e => e.verified === 'verified').length.toString()}
-            icon="🔒"
           />
           <StatCard
             label="Agencies"
             value={new Set(entries.map(e => e.recipient_agency)).size.toString()}
-            icon="🏛️"
           />
         </div>
 
@@ -217,6 +213,8 @@ export default function LedgerExplorerPage() {
     </div>
   );
 }
+
+
 
 
 
