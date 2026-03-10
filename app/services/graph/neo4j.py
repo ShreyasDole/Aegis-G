@@ -182,6 +182,8 @@ class Neo4jService:
                         return clusters
                 except Exception as gds_error:
                     logger.warning(f"GDS not available, falling back to basic clustering: {gds_error}")
+        except Exception as outer_e:
+            logger.warning(f"GDS outer setup failed, using basic clustering: {outer_e}")
         
         # Fallback to basic clustering if GDS not available
         query = """

@@ -3,7 +3,7 @@ Configuration Management
 Environment variables and settings
 """
 import os
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List, Optional
 
 
@@ -49,10 +49,11 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
     ENABLE_METRICS: bool = False
     
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
-        extra = "ignore"  # Ignore extra fields in .env
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        case_sensitive=True,
+        extra="ignore",  # Ignore extra fields in .env
+    )
 
 
 settings = Settings()

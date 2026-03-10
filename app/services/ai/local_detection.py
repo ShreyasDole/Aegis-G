@@ -6,10 +6,20 @@ Uses DistilRoBERTa or DeBERTa for CPU-optimized inference
 import os
 import logging
 from typing import Dict, Any
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
-import torch
 
 logger = logging.getLogger(__name__)
+
+# Optional heavyweight dependencies — gracefully disabled when not installed
+try:
+    from transformers import AutoTokenizer, AutoModelForSequenceClassification
+    import torch
+    _TRANSFORMERS_AVAILABLE = True
+except ImportError:
+    _TRANSFORMERS_AVAILABLE = False
+    logger.warning(
+        "transformers / torch not installed — local on-device detection disabled. "
+        "The system will fall back to heuristic/mock detection."
+    )
 
 
 class LocalClassifier:
@@ -34,14 +44,20 @@ class LocalClassifier:
         """Lazy initialization - loads model on first use"""
         if self.initialized:
             return
-        
+
+        if not _TRANSFORMERS_AVAILABLE:
+            raise ImportError(
+                "transformers / torch are not installed. "
+                "Local detection is unavailable; falling back to heuristic mode."
+            )
+
         try:
             logger.info("Loading Local ONNX Model for AI Detection...")
             logger.info(f"Model: {self.model_id}")
-            
+
             # Load tokenizer
             self.tokenizer = AutoTokenizer.from_pretrained(self.model_id)
-            
+
             # Load model (using PyTorch for now, can switch to ONNX Runtime later for production)
             # For production speed, switch to: ORTModelForSequenceClassification.from_pretrained()
             self.model = AutoModelForSequenceClassification.from_pretrained(
@@ -50,30 +66,39 @@ class LocalClassifier:
             )
             self.model.eval()  # Set to evaluation mode
             self.model.to(self.device)
-            
+
             self.initialized = True
-            logger.info("✓ Local Model Loaded Successfully (CPU Mode)")
-            
+            logger.info("Local Model Loaded Successfully (CPU Mode)")
+
         except Exception as e:
             logger.error(f"Failed to load local model: {e}")
             logger.warning("Falling back to mock detection. Model download may be required.")
-            # Set a flag so we can fall back gracefully
             self.initialized = False
             raise
 
     async def predict(self, text: str) -> Dict[str, Any]:
         """
         Predict if text is AI-generated.
-        
+
         Args:
             text: Input text to analyze
-            
+
         Returns:
             Dictionary with risk_score, is_ai_generated, confidence, etc.
         """
         if not self.initialized:
-            await self.initialize()
-        
+            try:
+                await self.initialize()
+            except Exception as init_err:
+                logger.warning(f"Local model unavailable ({init_err}). Using fallback.")
+                return {
+                    "risk_score": 0.5,
+                    "is_ai_generated": False,
+                    "confidence": 0.5,
+                    "detected_model": "local-unavailable",
+                    "error": str(init_err),
+                }
+
         try:
             # Tokenize input
             inputs = self.tokenizer(

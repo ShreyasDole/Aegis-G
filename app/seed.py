@@ -27,6 +27,11 @@ DEFAULT_USERS = [
 
 def seed_default_users():
     """Create default test and admin users if they don't exist."""
+    import os
+    if os.getenv("ENVIRONMENT") == "testing":
+        logger.debug("Skipping seed in testing environment")
+        return
+
     db = SessionLocal()
     try:
         for user_data in DEFAULT_USERS:
