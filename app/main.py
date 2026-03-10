@@ -2,7 +2,7 @@
 Aegis-G: Cognitive Shield Command Center
 FastAPI Application Entry Point
 """
-import os
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -15,12 +15,46 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan events — runs on startup and shutdown"""
+    # ── Step 1: Ensure all database tables exist ───────────────────────────
+    # Import all models so they're registered with Base.metadata, then
+    # create any missing tables. This is idempotent (safe on every restart)
+    # and works for both SQLite (dev) and PostgreSQL (prod).
+    try:
+        import app.models  # registers all ORM models with Base.metadata
+        from app.models.database import Base, engine
+        Base.metadata.create_all(bind=engine)
+        logger.info("Database tables verified / created.")
+    except Exception as e:
+        logger.error(f"Database table creation failed: {e}")
+
+    # ── Step 2: Startup banner ─────────────────────────────────────────────
+    logger.info("Aegis-G Starting Up...")
+    logger.info("Authorization Engine: Loaded")
+    logger.info("Audit Logging: Active")
+    logger.info("AI Services: Ready")
+
+    # ── Step 3: Seed default users (dev/test only) ─────────────────────────
+    try:
+        from app.seed import seed_default_users
+        seed_default_users()
+    except Exception as e:
+        logger.warning(f"Seed users skipped: {e}")
+
+    yield
+    # ── Shutdown (nothing to clean up currently) ───────────────────────────
+
+
 app = FastAPI(
     title="Aegis-G API",
     description="National Security Defense against AI-driven Malign Information Operations",
     version="2.0.0",
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
+    lifespan=lifespan,
 )
 
 # CORS Configuration
@@ -57,24 +91,6 @@ app.include_router(detection.router, prefix="/api/scan", tags=["Detection"])
 app.include_router(forensics.router, prefix="/api/forensics", tags=["Forensics"])
 app.include_router(worker.router, prefix="/api/worker", tags=["Workers"])
 app.include_router(websocket.router, tags=["WebSocket"])
-
-
-@app.on_event("startup")
-async def startup():
-    """Run on application startup"""
-    logger.info("Aegis-G Starting Up...")
-    logger.info("Authorization Engine: Loaded")
-    logger.info("Audit Logging: Active")
-    logger.info("AI Services: Ready")
-    # Skip seed in testing (tests use their own DB and fixtures)
-    if os.getenv("ENVIRONMENT") == "testing":
-        return
-    # Seed default test/admin users if they don't exist
-    try:
-        from app.seed import seed_default_users
-        seed_default_users()
-    except Exception as e:
-        logger.warning(f"Seed users skipped (tables may not exist yet): {e}")
 
 
 @app.get("/")

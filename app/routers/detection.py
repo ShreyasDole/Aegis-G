@@ -1,76 +1,104 @@
 """
 Detection Router
-Real-time content scanning endpoint
-Supports X-Inference-Mode: local (CPU) or cloud (Gemini API)
+Real-time content scanning endpoint.
+Now fully integrated with the Orchestrator Pipeline.
 """
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Depends
+from sqlalchemy.orm import Session
 from app.schemas.detection import ScanRequest, ScanResponse, BatchScanRequest
-from app.services.gemini.client import GeminiClient
+from app.services.ai.orchestrator import orchestrator
+from app.models.database import get_db
 from datetime import datetime
-import hashlib
+import logging
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
 @router.post("/", response_model=ScanResponse)
-async def scan_content(request: ScanRequest, req: Request):
+async def scan_content(
+    request: ScanRequest, 
+    req: Request,
+    db: Session = Depends(get_db)
+):
     """
-    Real-time content scanning using Gemini (cloud) or placeholder (local CPU).
-    X-Inference-Mode header: "local" = Prisha's DistilRoBERTa (placeholder), "cloud" = Gemini API
+    Live Threat Detection Pipeline.
+    
+    This endpoint now triggers the complete Multi-Agent Defense Pipeline:
+    1. Agent 1 (Forensics) - Analyzes content locally or via Gemini
+    2. Agent 2 (Graph) - Maps nodes and detects Patient Zero
+    3. Agent 4 (Policy Guardian) - Applies guardrails
+    4. Trust Layer (Blockchain) - Logs high-risk threats
+    
+    Headers:
+      X-Inference-Mode: 'local' (Air-Gapped) or 'cloud' (Gemini)
     """
     try:
+        # 1. Determine Mode (Default to Local for Security)
         mode = (req.headers.get("X-Inference-Mode") or "local").lower()
-
-        if mode == "cloud":
-            # Call Gemini Cloud API
-            gemini_client = GeminiClient()
-            analysis = await gemini_client.detect_ai_content(request.content)
-        else:
-            # Local CPU mode - placeholder for Prisha's DistilRoBERTa
-            analysis = {
-                "risk_score": 0.75,
-                "is_ai_generated": True,
-                "confidence": 0.72,
-                "detected_model": "local-distilroberta (placeholder)",
-            }
         
-        # Generate content hash
-        content_hash = hashlib.sha256(request.content.encode()).hexdigest()
+        # 2. Prepare payload for orchestrator
+        payload = {
+            "content": request.content,
+            "source_platform": request.source_platform or "web",
+            "username": request.username or "anonymous"
+        }
         
-        # Calculate risk score
-        risk_score = analysis.get("risk_score", 0.0)
-        is_ai_generated = analysis.get("is_ai_generated", False)
-        confidence = analysis.get("confidence", 0.0)
-        
-        # Determine recommendation
-        if risk_score > 0.8:
-            recommendation = "CRITICAL: Immediate forensic analysis required"
-        elif risk_score > 0.6:
-            recommendation = "HIGH: Schedule deep dive analysis"
-        elif risk_score > 0.4:
-            recommendation = "MEDIUM: Monitor and track"
-        else:
-            recommendation = "LOW: Standard monitoring"
-        
-        return ScanResponse(
-            content_hash=content_hash,
-            risk_score=risk_score,
-            is_ai_generated=is_ai_generated,
-            confidence=confidence,
-            detected_model=analysis.get("detected_model"),
-            timestamp=datetime.utcnow(),
-            recommendation=recommendation
+        # 3. Execute Orchestrator Pipeline
+        logger.info(f"🚀 Starting Defense Pipeline for content (mode: {mode})...")
+        result = await orchestrator.process_incoming_threat(
+            payload=payload,
+            db=db,
+            mode=mode
         )
+        
+        # 4. Handle blocked threats
+        if result.get("status") == "BLOCKED":
+            logger.warning("🚫 Threat blocked by Policy Guardian")
+            return ScanResponse(
+                content_hash=result.get("content_hash", ""),
+                risk_score=result.get("risk_score", 0.0),
+                is_ai_generated=result.get("forensics", {}).get("is_ai_generated", False),
+                confidence=result.get("forensics", {}).get("confidence", 0.0),
+                detected_model=result.get("forensics", {}).get("detected_model", "unknown"),
+                timestamp=datetime.utcnow(),
+                recommendation=f"BLOCKED: {result.get('action', {}).get('reason', 'Policy violation')}"
+            )
+        
+        # 5. Format Response for processed threats
+        forensics = result.get("forensics", {})
+        return ScanResponse(
+            content_hash=result.get("content_hash", ""),
+            risk_score=result.get("risk_score", 0.0),
+            is_ai_generated=result.get("is_ai_generated", False),
+            confidence=forensics.get("confidence", 0.0),
+            detected_model=forensics.get("detected_model", "unknown"),
+            timestamp=datetime.utcnow(),
+            recommendation=result.get("recommendation", "None")
+        )
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Detection failed: {str(e)}")
+        import traceback
+        logger.error(f"Defense Grid Error: {e}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Defense Grid Error: {str(e)}")
 
 
 @router.post("/batch", response_model=list)
-async def scan_batch(request: BatchScanRequest, req: Request):
+async def scan_batch(
+    request: BatchScanRequest, 
+    req: Request,
+    db: Session = Depends(get_db)
+):
     """Batch content scanning for high-volume processing"""
     results = []
     for item in request.items:
-        result = await scan_content(item, req)
+        # Create a ScanRequest from the batch item
+        scan_request = ScanRequest(
+            content=item.content,
+            source_platform=item.source_platform or "web",
+            username=item.username if hasattr(item, 'username') else "anonymous"
+        )
+        result = await scan_content(scan_request, req, db)
         results.append(result)
     return results
-

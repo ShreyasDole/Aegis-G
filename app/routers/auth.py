@@ -5,7 +5,7 @@ Login, Register, Outlook OAuth, and Token Management endpoints
 from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import RedirectResponse
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr
 from sqlalchemy.orm import Session
 
 from app.auth import (
@@ -49,14 +49,13 @@ class UserLogin(BaseModel):
 
 
 class UserResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     email: str
     full_name: str | None
     role: str
     is_active: bool
-
-    class Config:
-        from_attributes = True
 
 
 # ============================================
@@ -182,7 +181,7 @@ async def refresh_token(current_user: User = Depends(get_current_active_user)):
     """
     access_token = create_access_token(
         data={
-            "sub": current_user.id,
+            "sub": str(current_user.id),  # JWT spec requires sub to be a string
             "email": current_user.email,
             "role": current_user.role
         },

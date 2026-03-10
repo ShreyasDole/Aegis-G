@@ -2,7 +2,7 @@
 AI Schemas
 Pydantic models for AI features (Policies, Insights, Chat)
 """
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 from enum import Enum
@@ -27,6 +27,8 @@ class PolicyCreate(BaseModel):
 
 
 class PolicyResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     name: str
     description: Optional[str]
@@ -38,9 +40,6 @@ class PolicyResponse(BaseModel):
     is_active: bool
     created_by: int  # User ID
     created_at: datetime
-    
-    class Config:
-        from_attributes = True
 
 
 class PolicyTranslation(BaseModel):
@@ -81,6 +80,8 @@ class InsightCreate(BaseModel):
 
 
 class InsightResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     title: str
     description: str
@@ -93,9 +94,6 @@ class InsightResponse(BaseModel):
     created_at: datetime
     viewed: bool = False
     dismissed: bool = False
-    
-    class Config:
-        from_attributes = True
 
 
 # ============================================
@@ -153,6 +151,8 @@ class AnalysisResponse(BaseModel):
 # ============================================
 
 class BlockedContentResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     content_hash: str
     content_preview: Optional[str]
@@ -165,9 +165,6 @@ class BlockedContentResponse(BaseModel):
     ai_score: Optional[float]
     graph_cluster_size: Optional[int]
     blocked_at: datetime
-    
-    class Config:
-        from_attributes = True
 
 
 class BlockedContentStats(BaseModel):

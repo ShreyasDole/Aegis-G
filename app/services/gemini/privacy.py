@@ -34,7 +34,7 @@ class PrivacyService:
                 raise Exception("Gemini API key not configured")
             from app.config import settings
             response = self.gemini_client.client.models.generate_content(
-                model=settings.GEMINI_PRO_MODEL,
+                model=settings.GEMINI_FLASH_MODEL,
                 contents=prompt
             )
             redacted = response.text

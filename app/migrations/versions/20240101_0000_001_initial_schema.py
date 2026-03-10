@@ -42,7 +42,7 @@ def upgrade() -> None:
         sa.Column('risk_score', sa.Float(), nullable=False),
         sa.Column('source_platform', sa.String(50), nullable=True),
         sa.Column('timestamp', sa.DateTime(), server_default=sa.text('now()')),
-        sa.Column('detected_by', sa.String(50), server_default='gemini-1.5-flash'),
+        sa.Column('detected_by', sa.String(50), server_default='gemini-2.5-flash'),
         sa.PrimaryKeyConstraint('id')
     )
     op.create_index('ix_threats_id', 'threats', ['id'])

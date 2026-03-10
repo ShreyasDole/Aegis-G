@@ -16,7 +16,7 @@ class GeminiClient:
 
     async def detect_ai_content(self, content: str) -> Dict[str, Any]:
         """
-        Use Gemini 2.0 Flash for real-time detection
+        Use Gemini 2.5 Flash for real-time detection
         Evaluates perplexity, burstiness, and repetitive n-grams
         """
         prompt = f"""
@@ -49,7 +49,7 @@ class GeminiClient:
         include_image: bool = False
     ) -> Dict[str, Any]:
         """
-        Use Gemini 2.0 Flash for deep forensic analysis
+        Use Gemini 2.5 Flash for deep forensic analysis
         Checks image-text consistency, extracts entities, suggests attribution
         """
         prompt = f"""
@@ -65,7 +65,7 @@ class GeminiClient:
 
         try:
             self.client.models.generate_content(
-                model=settings.GEMINI_PRO_MODEL,
+                model=settings.GEMINI_FLASH_MODEL,
                 contents=prompt
             )
             return {
