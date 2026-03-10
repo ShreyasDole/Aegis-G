@@ -8,8 +8,8 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
   // Public routes that don't require authentication
-  const publicRoutes = ['/login', '/register', '/'];
-  const isPublicRoute = publicRoutes.includes(pathname);
+  const publicRoutes = ['/login', '/register', '/', '/auth/callback'];
+  const isPublicRoute = publicRoutes.includes(pathname) || pathname?.startsWith('/auth/');
 
   useEffect(() => {
     // Check if user is authenticated

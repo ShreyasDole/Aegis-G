@@ -4,6 +4,8 @@
   "/api/system/health",
   "/api/auth/login",
   "/api/auth/register",
+  "/api/auth/outlook",
+  "/api/auth/outlook/callback",
   "/docs",
   "/redoc",
   "/openapi.json",

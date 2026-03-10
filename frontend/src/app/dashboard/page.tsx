@@ -9,6 +9,7 @@ import { fuseIntelligence } from '@/lib/fusion';
 import { exportToSTIX } from '@/lib/export';
 import Link from 'next/link';
 import { ShieldCheck } from 'lucide-react';
+import { ThreatMapGlobe } from '@/components/visual/ThreatMapGlobe';
 
 export default function DashboardPage() {
   const [topThreats, setTopThreats] = useState<any[]>([]);
@@ -114,6 +115,7 @@ export default function DashboardPage() {
                     {...threat}
                     onAnalyze={handleAnalyzeThreat}
                     onExportSTIX={exportToSTIX}
+                    onDismiss={(dismissId) => setTopThreats((prev) => prev.filter((t) => t.id !== dismissId))}
                   />
                 ))
               )}
@@ -121,8 +123,11 @@ export default function DashboardPage() {
           </section>
 
           <aside className="col-span-12 lg:col-span-4 order-1 lg:order-2">
-            <div className="lg:sticky lg:top-24">
+            <div className="lg:sticky lg:top-24 space-y-6">
               <IntelligenceBrief report={activeReport} thoughts={reasoningLog} />
+              <div className="rounded-lg overflow-hidden border border-border-subtle">
+                <ThreatMapGlobe />
+              </div>
             </div>
           </aside>
         </div>

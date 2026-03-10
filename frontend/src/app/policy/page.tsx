@@ -54,7 +54,9 @@ export default function PolicyPage() {
 
   // WebSocket connection for real-time updates
   useEffect(() => {
-    const ws = new WebSocket('ws://localhost:8000/ws/blocked-content');
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    const wsUrl = apiBase.replace(/^http/, 'ws') + '/ws/blocked-content';
+    const ws = new WebSocket(wsUrl);
     
     ws.onmessage = (event) => {
       const message = JSON.parse(event.data);

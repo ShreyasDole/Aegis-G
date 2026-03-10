@@ -2,15 +2,19 @@
 AI Chat Service (AI Manager)
 Context-aware chatbot with tool execution capabilities
 """
-import os
 import uuid
 from typing import List, Dict, Optional
 from google import genai
 from sqlalchemy.orm import Session
 from app.config import settings
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or settings.GEMINI_API_KEY
-client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
+
+def _gemini_client():
+    """Use current settings so .env is always respected (e.g. after restart)."""
+    key = settings.GEMINI_API_KEY
+    if not key or (key.strip() if isinstance(key, str) else "") == "" or key == "test-key":
+        return None
+    return genai.Client(api_key=key)
 
 
 SYSTEM_PROMPT = """
@@ -85,7 +89,8 @@ class ChatService:
             messages.append({"role": msg["role"], "parts": [msg["content"]]})
         messages.append({"role": "user", "parts": [full_prompt]})
         
-        # Generate response
+        # Generate response (client created per request so config is always current)
+        client = _gemini_client()
         if not client:
             response_text = self._get_demo_response(message)
             tool_calls = None
@@ -93,7 +98,7 @@ class ChatService:
             try:
                 # Check if tools should be used
                 if use_tools and db:
-                    response_text, tool_calls = await self._chat_with_tools(messages, db)
+                    response_text, tool_calls = await self._chat_with_tools(client, messages, db)
                 else:
                     contents = [{"role": m["role"], "parts": [{"text": m["parts"][0]}]} for m in messages]
                     response = client.models.generate_content(
@@ -104,7 +109,14 @@ class ChatService:
                     tool_calls = None
                     
             except Exception as e:
-                response_text = f"I apologize, but I encountered an error: {str(e)}\n\nPlease try again or rephrase your question."
+                err_str = str(e).lower()
+                if "api key" in err_str or "api_key" in err_str or "invalid_argument" in err_str or "401" in err_str or "403" in err_str:
+                    response_text = (
+                        "The Gemini API key in your .env (GEMINI_API_KEY) is missing, invalid, or the Generative Language API is not enabled. "
+                        "Check: 1) .env has a valid key, 2) Restart the backend, 3) In Google Cloud Console enable 'Generative Language API' and ensure the key is correct."
+                    )
+                else:
+                    response_text = f"I apologize, but I encountered an error: {str(e)}\n\nPlease try again or rephrase your question."
                 tool_calls = None
         
         # Update conversation history
@@ -122,7 +134,7 @@ class ChatService:
             "suggestions": suggestions
         }
     
-    async def _chat_with_tools(self, messages, db: Session) -> tuple[str, Optional[List]]:
+    async def _chat_with_tools(self, client, messages, db: Session) -> tuple[str, Optional[List]]:
         """
         Chat with tool execution capability
         """

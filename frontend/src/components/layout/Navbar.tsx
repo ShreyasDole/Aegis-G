@@ -51,6 +51,7 @@ export const Navbar: React.FC = () => {
             <Link href="/threats" className={`px-3 py-2 ${pathname === '/threats' ? 'text-primary border-b-2 border-primary' : 'text-text-secondary hover:text-text-primary'}`}>Threats</Link>
             <Link href="/policy" className={`px-3 py-2 ${pathname === '/policy' ? 'text-primary border-b-2 border-primary' : 'text-text-secondary hover:text-text-primary'}`}>Policy</Link>
             <Link href="/network" className={`px-3 py-2 ${pathname === '/network' ? 'text-primary border-b-2 border-primary' : 'text-text-secondary hover:text-text-primary'}`}>Graph</Link>
+            <Link href="/sharing" className={`px-3 py-2 ${pathname === '/sharing' ? 'text-primary border-b-2 border-primary' : 'text-text-secondary hover:text-text-primary'}`}>Sharing</Link>
           </div>
         </div>
 

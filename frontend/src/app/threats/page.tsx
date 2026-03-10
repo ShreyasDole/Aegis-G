@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
 import { ThreatCard } from '@/components/threats/ThreatCard';
+import { ThreatMap } from '@/components/visual/ThreatMap';
+import { Sidebar } from '@/components/layout/Sidebar';
 import { exportToSTIX } from '@/lib/export';
 
 export default function ThreatsPage() {
@@ -64,8 +66,17 @@ export default function ThreatsPage() {
     return matchesSeverity && matchesSearch;
   });
 
+  const threatsForMap = threats.map((t) => ({
+    id: t.id,
+    risk_score: t.riskScore,
+    source_platform: t.source,
+    timestamp: t.firstSeen,
+  }));
+
   return (
-    <div className="min-h-screen p-6">
+    <div className="flex">
+      <Sidebar />
+      <div className="flex-1 ml-80 p-6 min-h-screen">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-6">
@@ -175,8 +186,8 @@ export default function ThreatsPage() {
 
             {/* Actions */}
             <div className="flex gap-2">
-              <Button variant="secondary" onClick={() => console.log('Export clicked')}>Export</Button>
-              <Button variant="primary" onClick={() => console.log('Refresh clicked')}>Refresh</Button>
+              <Button variant="secondary" onClick={() => window.open('/sharing', '_self')}>Sharing</Button>
+              <Button variant="primary" onClick={() => window.location.reload()}>Refresh</Button>
             </div>
           </div>
         </Card>
@@ -221,7 +232,12 @@ export default function ThreatsPage() {
             </Card>
           ) : filteredThreats.length > 0 ? (
             filteredThreats.map((threat) => (
-              <ThreatCard key={threat.id} {...threat} onExportSTIX={exportToSTIX} />
+              <ThreatCard
+                key={threat.id}
+                {...threat}
+                onExportSTIX={exportToSTIX}
+                onDismiss={(dismissId) => setThreats((prev) => prev.filter((t) => t.id !== dismissId))}
+              />
             ))
           ) : (
             <Card className="col-span-full text-center py-12">
@@ -233,6 +249,9 @@ export default function ThreatsPage() {
             </Card>
           )}
         </div>
+
+        <ThreatMap threats={threatsForMap} />
+      </div>
       </div>
     </div>
   );

@@ -17,7 +17,12 @@ interface Edge {
   strength: number;
 }
 
-export const NetworkGraph: React.FC = () => {
+interface NetworkGraphProps {
+  refreshKey?: number;
+  highlightPatientZero?: boolean;
+}
+
+export const NetworkGraph: React.FC<NetworkGraphProps> = ({ refreshKey = 0, highlightPatientZero = false }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
@@ -25,7 +30,7 @@ export const NetworkGraph: React.FC = () => {
   const [edges, setEdges] = useState<Edge[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch real data from backend
+  // Fetch real data from backend (refetch when refreshKey changes)
   useEffect(() => {
     const fetchGraph = async () => {
       try {
@@ -64,7 +69,7 @@ export const NetworkGraph: React.FC = () => {
     };
 
     fetchGraph();
-  }, []);
+  }, [refreshKey]);
 
   useEffect(() => {
     if (nodes.length === 0) return;
@@ -125,26 +130,28 @@ export const NetworkGraph: React.FC = () => {
       });
 
       // Draw nodes
+      const patientZeroId = highlightPatientZero && nodes.length > 0 ? nodes[0].id : null;
       nodes.forEach(node => {
         if (!node.x || !node.y) return;
 
         const isHovered = hoveredNode === node.id;
         const isSelected = selectedNode?.id === node.id;
-        const nodeSize = isHovered || isSelected ? 12 : 10;
+        const isPatientZero = patientZeroId === node.id;
+        const nodeSize = isHovered || isSelected ? 12 : isPatientZero ? 14 : 10;
 
-        // Node glow
-        if (isHovered || isSelected) {
+        // Node glow (including patient zero)
+        if (isHovered || isSelected || isPatientZero) {
           const gradient = ctx.createRadialGradient(node.x, node.y, 0, node.x, node.y, nodeSize * 3);
-          gradient.addColorStop(0, nodeColors[node.type] + '40');
-          gradient.addColorStop(1, nodeColors[node.type] + '00');
+          gradient.addColorStop(0, (isPatientZero ? '#f59e0b' : nodeColors[node.type]) + '60');
+          gradient.addColorStop(1, (isPatientZero ? '#f59e0b' : nodeColors[node.type]) + '00');
           ctx.fillStyle = gradient;
           ctx.beginPath();
-          ctx.arc(node.x, node.y, nodeSize * 3, 0, Math.PI * 2);
+          ctx.arc(node.x, node.y, (isPatientZero ? 20 : nodeSize * 3), 0, Math.PI * 2);
           ctx.fill();
         }
 
         // Node circle
-        ctx.fillStyle = nodeColors[node.type];
+        ctx.fillStyle = isPatientZero ? '#f59e0b' : nodeColors[node.type];
         ctx.beginPath();
         ctx.arc(node.x, node.y, nodeSize, 0, Math.PI * 2);
         ctx.fill();

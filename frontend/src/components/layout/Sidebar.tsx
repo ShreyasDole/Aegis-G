@@ -1,9 +1,10 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { Card } from '../ui/Card';
+import { AgentHeartbeat } from './AgentHeartbeat';
 
 export const Sidebar: React.FC = () => {
-  const [health, setHealth] = useState({ postgres: 100, neo4j: 100, redis: 100 });
+  const [health, setHealth] = useState({ database: 0, ai_engine: 0 });
 
   useEffect(() => {
     const checkHealth = async () => {
@@ -13,13 +14,12 @@ export const Sidebar: React.FC = () => {
         if (res.ok) {
           const data = await res.json();
           setHealth({
-            postgres: data.database ? 100 : 0,
-            neo4j: data.database ? 100 : 0,
-            redis: (data.database || data.ai_engine) ? 100 : 0
+            database: data.database ? 100 : 0,
+            ai_engine: data.ai_engine ? 100 : 0,
           });
         }
-      } catch (e) {
-        setHealth({ postgres: 0, neo4j: 0, redis: 0 });
+      } catch {
+        setHealth({ database: 0, ai_engine: 0 });
       }
     };
     checkHealth();
@@ -28,9 +28,8 @@ export const Sidebar: React.FC = () => {
   }, []);
 
   const systemHealth = [
-    { label: 'Postgres', value: health.postgres, status: health.postgres > 0 ? 'online' : 'offline' },
-    { label: 'Neo4j', value: health.neo4j, status: health.neo4j > 0 ? 'online' : 'offline' },
-    { label: 'Redis', value: health.redis, status: health.redis > 0 ? 'online' : 'offline' }
+    { label: 'Database', value: health.database, status: health.database > 0 ? 'online' : 'offline' },
+    { label: 'AI Engine', value: health.ai_engine, status: health.ai_engine > 0 ? 'online' : 'offline' },
   ];
 
   return (
@@ -66,6 +65,7 @@ export const Sidebar: React.FC = () => {
           ))}
         </div>
       </Card>
+      <AgentHeartbeat />
     </aside>
   );
 }

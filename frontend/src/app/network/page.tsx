@@ -4,16 +4,20 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
+import { Sidebar } from '@/components/layout/Sidebar';
 import { NetworkGraph } from '@/components/visual/NetworkGraph';
+import { GraphViz } from '@/components/visual/GraphViz';
 
 export default function NetworkPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [clusterMode, setClusterMode] = useState(false);
+  const [graphKey, setGraphKey] = useState(0);
+  const [highlightPatientZero, setHighlightPatientZero] = useState(false);
 
-  const handleTraceOrigin = () => {
-    console.log('HIGHLIGHT_PATIENT_ZERO clicked');
-  };
+  const handleRefresh = () => setGraphKey((k) => k + 1);
+  const handleSnapshot = () => setGraphKey((k) => k + 1);
+  const handleTraceOrigin = () => setHighlightPatientZero((v) => !v);
 
   const stats = [
     { label: 'Total Nodes', value: '0', icon: '⚪' },
@@ -23,7 +27,9 @@ export default function NetworkPage() {
   ];
 
   return (
-    <div className="min-h-screen p-6">
+    <div className="flex">
+      <Sidebar />
+      <div className="flex-1 ml-80 p-6 min-h-screen">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-6">
@@ -84,8 +90,8 @@ export default function NetworkPage() {
 
             {/* Actions */}
             <div className="flex gap-2">
-              <Button variant="secondary" icon={<span>📸</span>} onClick={() => console.log('Snapshot clicked')}>Snapshot</Button>
-              <Button variant="primary" icon={<span>🔄</span>} onClick={() => console.log('Refresh clicked')}>Refresh</Button>
+              <Button variant="secondary" icon={<span>📸</span>} onClick={handleSnapshot}>Snapshot</Button>
+              <Button variant="primary" icon={<span>🔄</span>} onClick={handleRefresh}>Refresh</Button>
             </div>
           </div>
 
@@ -98,8 +104,8 @@ export default function NetworkPage() {
               COMMUNITY_VIEW (LOUVAIN)
             </button>
             <button
-              className="px-3 py-1.5 rounded text-[10px] font-bold bg-bg-tertiary border border-border-medium text-text-muted hover:border-danger hover:text-danger transition-all"
-              onClick={() => handleTraceOrigin()}
+              className={`px-3 py-1.5 rounded text-[10px] font-bold border transition-all ${highlightPatientZero ? 'bg-warning/20 border-warning text-warning' : 'bg-bg-tertiary border-border-medium text-text-muted hover:border-danger hover:text-danger'}`}
+              onClick={handleTraceOrigin}
             >
               HIGHLIGHT_PATIENT_ZERO
             </button>
@@ -126,8 +132,14 @@ export default function NetworkPage() {
         {/* Network Graph */}
         <Card className="p-0 overflow-hidden">
           <div className="h-[600px] relative">
-            <NetworkGraph />
+            <NetworkGraph refreshKey={graphKey} highlightPatientZero={highlightPatientZero} />
           </div>
+        </Card>
+
+        {/* Graph summary (alternative view) */}
+        <Card className="mt-6 p-4">
+          <h3 className="text-sm font-semibold uppercase tracking-widest text-text-muted mb-3">Graph summary</h3>
+          <GraphViz nodes={[]} edges={[]} />
         </Card>
 
         {/* Graph Controls Info */}
@@ -157,6 +169,7 @@ export default function NetworkPage() {
             </div>
           </div>
         </Card>
+      </div>
       </div>
     </div>
   );

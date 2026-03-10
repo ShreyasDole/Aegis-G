@@ -1,46 +1,57 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
 
+const ERROR_MESSAGES: Record<string, string> = {
+  access_denied: 'Microsoft sign-in was cancelled or denied.',
+  oauth_failed: 'Microsoft sign-in failed. Please try again.',
+  no_email: 'Could not get email from Microsoft account.',
+  account_disabled: 'Your account is not active. Contact your administrator.',
+};
+
 export default function LoginPage() {
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showEmailForm, setShowEmailForm] = useState(false);
+
+  useEffect(() => {
+    const err = searchParams.get('error');
+    if (err && ERROR_MESSAGES[err]) setError(ERROR_MESSAGES[err]);
+  }, [searchParams]);
+
+  const handleMicrosoftLogin = () => {
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    window.location.href = `${API_URL}/api/auth/outlook`;
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     setError(null);
     e.preventDefault();
     setIsLoading(true);
-
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-
-      // 1. Get the JWT Token
       const loginResponse = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
-
       if (!loginResponse.ok) {
         const errorData = await loginResponse.json().catch(() => ({}));
         const detail = Array.isArray(errorData.detail) ? errorData.detail[0]?.msg : errorData.detail;
-        const msg = detail || (loginResponse.status === 500 ? 'Backend error - ensure DB migrations ran' : 'Login failed');
-        throw new Error(msg);
+        throw new Error(detail || 'Login failed');
       }
-
       const data = await loginResponse.json();
       localStorage.setItem('token', data.access_token);
-
-      // 2. Fetch the user's actual profile details
       const userResponse = await fetch(`${API_URL}/api/auth/me`, {
-        headers: { 'Authorization': `Bearer ${data.access_token}` },
+        headers: { Authorization: `Bearer ${data.access_token}` },
       });
-
       if (userResponse.ok) {
         const userData = await userResponse.json();
         localStorage.setItem(
@@ -52,18 +63,9 @@ export default function LoginPage() {
           })
         );
       }
-
-      // 3. Redirect to Dashboard
       window.location.href = '/dashboard';
     } catch (err: unknown) {
-      console.error('Login error:', err);
-      let msg = 'Login failed';
-      if (err instanceof TypeError && (err.message === 'Failed to fetch' || err.message.includes('fetch'))) {
-        msg = 'Cannot reach backend. Ensure API is running at ' + (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000');
-      } else if (err instanceof Error) {
-        msg = err.message;
-      }
-      setError(msg);
+      setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
       setIsLoading(false);
     }
@@ -71,107 +73,67 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden">
-      {/* Animated Background Grid */}
-      <div className="absolute inset-0 opacity-5">
-        <div className="absolute inset-0" style={{
-          backgroundImage: 'linear-gradient(#334155 1px, transparent 1px), linear-gradient(90deg, #334155 1px, transparent 1px)',
-          backgroundSize: '50px 50px'
-        }}></div>
-      </div>
-
-      {/* Login Card */}
+      <div className="absolute inset-0 opacity-5" style={{
+        backgroundImage: 'linear-gradient(#334155 1px, transparent 1px), linear-gradient(90deg, #334155 1px, transparent 1px)',
+        backgroundSize: '50px 50px',
+      }} />
       <Card className="w-full max-w-md z-10 relative">
-        {/* Logo & Title */}
         <div className="text-center mb-8">
-          <div className="font-display text-4xl font-bold tracking-wider text-primary mb-2">
-            AEGIS-G
-          </div>
-          <div className="h-px w-16 bg-primary mx-auto mb-4"></div>
-          <p className="text-text-secondary text-sm">
-            Secure Access Portal
-          </p>
+          <div className="font-display text-4xl font-bold tracking-wider text-primary mb-2">AEGIS-G</div>
+          <div className="h-px w-16 bg-primary mx-auto mb-4" />
+          <p className="text-text-secondary text-sm">Secure Access Portal</p>
         </div>
 
-        {/* Login Form */}
-        <form onSubmit={handleLogin} className="space-y-4">
-          {error && (
-            <div className="p-3 rounded bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
-              {error}
-            </div>
-          )}
-          <div className="p-3 rounded bg-primary/5 border border-primary/20 text-text-secondary text-xs">
-            <strong>Demo:</strong> test@aegis.com / TestPassword123! or admin@aegis.com / AdminPassword123!
+        {error && (
+          <div className="mb-4 p-3 rounded bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
+            {error}
           </div>
-          <Input
-            type="email"
-            label="Email Address"
-            placeholder="analyst@agency.gov"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
+        )}
 
-          <Input
-            type="password"
-            label="Password"
-            placeholder="••••••••"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-
-          <div className="flex items-center justify-between text-sm">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                className="w-4 h-4 rounded border-border-medium bg-bg-primary checked:bg-primary"
-              />
-              <span className="text-text-secondary">Remember me</span>
-            </label>
-            <Link href="/forgot-password" className="text-primary hover:text-blue-400">
-              Forgot password?
-            </Link>
-          </div>
-
+        <div className="space-y-3">
           <Button
-            type="submit"
+            type="button"
             variant="primary"
-            className="w-full py-3 text-base"
-            disabled={isLoading}
+            className="w-full py-3 text-base flex items-center justify-center gap-2"
+            onClick={handleMicrosoftLogin}
           >
-            {isLoading ? 'Authenticating...' : 'Sign In'}
+            <svg className="w-5 h-5" viewBox="0 0 21 21" fill="none"><path d="M10 0H0v10h10V0zm11 0H10.5v10H21V0zM10 10.5H0V21h10V10.5zm11 0H10.5V21H21V10.5z" fill="currentColor"/></svg>
+            Sign in with Microsoft
           </Button>
-        </form>
+        </div>
 
-        {/* Divider */}
         <div className="relative my-6">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-border-subtle"></div>
-          </div>
+          <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-border-subtle" /></div>
           <div className="relative flex justify-center text-sm">
             <span className="px-2 bg-bg-secondary text-text-muted">OR</span>
           </div>
         </div>
 
-        {/* SSO Options */}
-        <div className="space-y-2">
-          <Button variant="secondary" className="w-full">
-            Sign in with CAC/PIV
+        {!showEmailForm ? (
+          <Button variant="secondary" className="w-full" onClick={() => setShowEmailForm(true)}>
+            Sign in with email (demo)
           </Button>
-          <Button variant="secondary" className="w-full">
-            Sign in with Agency SSO
-          </Button>
-        </div>
+        ) : (
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div className="p-3 rounded bg-primary/5 border border-primary/20 text-text-secondary text-xs">
+              Demo: test@aegis.com / TestPassword123!
+            </div>
+            <Input type="email" label="Email" placeholder="email@example.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            <Input type="password" label="Password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required />
+            <div className="flex gap-2">
+              <Button type="button" variant="secondary" className="flex-1" onClick={() => setShowEmailForm(false)}>Back</Button>
+              <Button type="submit" variant="primary" className="flex-1" disabled={isLoading}>
+                {isLoading ? 'Signing in...' : 'Sign in'}
+              </Button>
+            </div>
+          </form>
+        )}
 
-        {/* Register Link */}
         <div className="mt-6 text-center text-sm">
           <span className="text-text-secondary">Need access? </span>
-          <Link href="/register" className="text-primary hover:text-blue-400 font-semibold">
-            Request Account
-          </Link>
+          <Link href="/register" className="text-primary hover:text-blue-400 font-semibold">Request Account</Link>
         </div>
 
-        {/* Security Notice */}
         <div className="mt-6 p-3 bg-warning/10 border border-warning/30 rounded">
           <div className="flex items-start gap-2 text-xs">
             <svg className="w-5 h-5 text-warning flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -179,18 +141,13 @@ export default function LoginPage() {
             </svg>
             <div>
               <div className="font-semibold text-warning mb-1">CLASSIFIED SYSTEM</div>
-              <div className="text-text-secondary">
-                Unauthorized access is prohibited. All activities are monitored and logged.
-              </div>
+              <div className="text-text-secondary">Unauthorized access is prohibited. All activities are monitored and logged.</div>
             </div>
           </div>
         </div>
       </Card>
-
-      {/* Footer */}
       <div className="absolute bottom-4 left-0 right-0 text-center text-text-muted text-xs z-10">
         <p>National Security Operations Platform</p>
-        <p className="mt-1">Contact: security@agency.gov</p>
       </div>
     </div>
   );
