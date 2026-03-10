@@ -11,8 +11,8 @@ from app.services.ai.fusion_service import AnalystAgent  # Agent 3
 from app.services.ai.policy_guardian import policy_guardian  # Agent 4
 from app.core.blockchain import add_to_ledger  # Agent 5 / Trust Layer
 
-# TODO: Import Prisha and Yash's actual services once they build them
-# from app.services.ai.stylometry import ForensicAgent           # Agent 1 (Prisha)
+# Import Prisha and Yash's services
+from app.services.ai.stylometry import forensic_investigator  # Agent 1 (Prisha)
 # from app.services.graph.neo4j import GraphOracle               # Agent 2 (Yash)
 
 logger = logging.getLogger(__name__)
@@ -35,25 +35,18 @@ class ThreatOrchestrator:
         # ---------------------------------------------------------
         # 1. ANALYSIS: Call Agent 1 (Forensics) & Agent 2 (Graph)
         # ---------------------------------------------------------
-        # mode switches between local (Prisha's DistilRoBERTa) and cloud (Gemini)
-        if mode == "local":
-            # Prisha's CPU-optimized DistilRoBERTa (Coming next!)
-            # forensics_data = await LocalClassifier.predict(content)
-            forensics_data = {
-                "is_ai": True,
-                "perplexity": 12.4,
-                "burstiness": 0.1,
-                "risk_score": 0.85,
-            }
-        else:
-            # Cloud Gemini API
-            # forensics_data = await GeminiClient.detect_ai_content(content)
-            forensics_data = {
-                "is_ai": True,
-                "perplexity": 12.4,
-                "burstiness": 0.1,
-                "risk_score": 0.85,
-            }
+        # Agent 1: Prisha's Forensic Investigator (Stylometry Engine)
+        logger.info(f"🔬 Calling Agent 1: Forensic Investigator")
+        forensics_data = forensic_investigator.analyze(content)
+        
+        # mode parameter kept for future extension (local ML models vs cloud API)
+        if mode == "cloud":
+            # Future: Could enhance with Gemini API for additional context
+            logger.info("Cloud mode: Using base forensic analysis")
+        
+        logger.info(f"📊 Agent 1 results: AI={forensics_data['is_ai']}, "
+                   f"Risk={forensics_data['risk_score']:.2f}, "
+                   f"Burstiness={forensics_data['burstiness']:.2f}")
 
         # graph_data = await GraphOracle.analyze_propagation(payload)
         graph_data = {
@@ -110,13 +103,20 @@ class ThreatOrchestrator:
         )
 
         # ---------------------------------------------------------
-        # 4. LOGGING: Call The Trust Layer (Blockchain)
+        # 4. LOGGING: Call Agent 5 - The Trust Layer (Blockchain)
         # ---------------------------------------------------------
-        logger.info(f"🔗 Securing report {threat_id} to blockchain")
+        logger.info(f"🔗 Agent 5: Securing report {threat_id} to blockchain ledger")
+        
+        # Get analyst ID from payload or use system default
+        analyst_id = payload.get("analyst_id", 1)  # Default to system analyst
+        
         ledger_hash = await add_to_ledger(
+            db=db,
             report_id=threat_id,
+            analyst_id=analyst_id,
+            content=f"Report: {fusion_result['report'].threat_title}",
             recipient_agency="Internal-Audit",
-            content=f"Report: {fusion_result['report'].threat_title} | Thoughts: {fusion_result['ai_reasoning_log']}",
+            thought_process=fusion_result['ai_reasoning_log']
         )
 
         return {
