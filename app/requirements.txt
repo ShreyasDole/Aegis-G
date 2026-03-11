@@ -20,6 +20,7 @@ email-validator>=2.2.0
 
 # AI - google-genai (unified SDK, replaces deprecated google-generativeai)
 google-genai>=1.62.0
+numpy>=1.26.0
 
 # Graph
 neo4j>=5.25.0

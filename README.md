@@ -96,6 +96,10 @@ A **5-stage automated pipeline** runs on every content scan (single or batch). E
 
 Trigger: **`POST /api/scan/`** (and **`POST /api/scan/batch`**). Header **`X-Inference-Mode: local`** or **`cloud`** selects detection mode.
 
+**Pipeline overview:**
+
+![Aegis-G Multi-Agent Defense Pipeline](WhatsApp Image 2026-03-11 at 8.22.43 AM.jpeg)
+
 #### 2. Backend — APIs and Services
 
 | Component | What We Built |

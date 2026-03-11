@@ -203,6 +203,69 @@ def verify_chain_integrity() -> bool:
         db.close()
 
 
+def verify_ledger_integrity(db: Session, entry_hash: str) -> bool:
+    """
+    Verify a single ledger entry by its current_hash.
+    Ensures the entry exists and its hash is consistent with its data.
+
+    Args:
+        db: Database session
+        entry_hash: The current_hash of the block to verify
+
+    Returns:
+        True if the entry exists and is valid, False otherwise
+    """
+    entry = db.query(LedgerEntry).filter(LedgerEntry.current_hash == entry_hash).first()
+    if not entry:
+        return False
+    timestamp = entry.timestamp.isoformat() if hasattr(entry.timestamp, "isoformat") else str(entry.timestamp)
+    content_snapshot = (entry.redacted_content[:100] if entry.redacted_content else "meta_only")
+    data_payload = json.dumps({
+        "report_id": entry.report_id,
+        "agency": entry.recipient_agency,
+        "content_snapshot": content_snapshot,
+    }, sort_keys=True)
+    expected_hash = calculate_hash(entry.id, entry.previous_hash, timestamp, data_payload)
+    return entry.current_hash == expected_hash
+
+
+async def verify_full_chain(db: Optional[Session] = None) -> Dict[str, Any]:
+    """
+    Verify integrity of the entire blockchain. Async wrapper for API use.
+    Uses provided session or creates one.
+
+    Returns:
+        Dict with keys: valid (bool), blocks_checked (int), message (str)
+    """
+    session = db or SessionLocal()
+    try:
+        chain = session.query(LedgerEntry).order_by(LedgerEntry.id.asc()).all()
+        if not chain:
+            return {"valid": True, "blocks_checked": 0, "message": "Chain is empty"}
+        for i, block in enumerate(chain):
+            if i == 0:
+                if block.previous_hash != "0" * 64:
+                    return {"valid": False, "blocks_checked": i + 1, "message": "Invalid genesis block"}
+                continue
+            prev_block = chain[i - 1]
+            if block.previous_hash != prev_block.current_hash:
+                return {"valid": False, "blocks_checked": len(chain), "message": f"Broken chain at block #{block.id}"}
+            timestamp = block.timestamp.isoformat() if hasattr(block.timestamp, "isoformat") else str(block.timestamp)
+            content_snapshot = (block.redacted_content[:100] if block.redacted_content else "meta_only")
+            data_payload = json.dumps({
+                "report_id": block.report_id,
+                "agency": block.recipient_agency,
+                "content_snapshot": content_snapshot,
+            }, sort_keys=True)
+            expected_hash = calculate_hash(block.id, block.previous_hash, timestamp, data_payload)
+            if block.current_hash != expected_hash:
+                return {"valid": False, "blocks_checked": len(chain), "message": f"Tampering detected at block #{block.id}"}
+        return {"valid": True, "blocks_checked": len(chain), "message": "Chain integrity verified"}
+    finally:
+        if db is None:
+            session.close()
+
+
 def get_chain_stats() -> Dict[str, Any]:
     """
     Get statistics about the blockchain.
