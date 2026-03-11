@@ -100,6 +100,38 @@ Trigger: **`POST /api/scan/`** (and **`POST /api/scan/batch`**). Header **`X-Inf
 
 ![Aegis-G Multi-Agent Defense Pipeline](assets/pipeline-diagram.jpeg)
 
+**End-to-end pipeline walkthrough**
+
+1. **Start — Input**  
+   The pipeline receives a payload: `content` (text to analyze), `platform` (source platform), and `username`. This is the trigger for every scan (e.g. from `POST /api/scan/`).
+
+2. **Ingest**  
+   The API payload is received and a **content hash** (SHA-256) is generated from the content. This hash uniquely identifies the piece of content and is used later for graph nodes and ledger records. Outputs: `content hash`, `content`.
+
+3. **Agent 1 — Run AI detection & compute risk**  
+   The content is sent to the detection engine (Gemini in cloud mode or ONNX/stylometry in local mode). The system decides whether the content is AI-generated and computes a **risk score**. Outputs: `risk_score`, `forensics_data` (e.g. burstiness, confidence). This is Phase 1 (Forensic Scan).
+
+4. **Agent 2 — Update Neo4j & find Patient Zero**  
+   Using `risk_score` and `forensics_data`, the graph layer creates or updates **User** and **Post** nodes in Neo4j, then runs **Patient Zero** detection to see if this content is part of a botnet or propagation cluster. Outputs: `graph_metadata`, `cluster_risk` (e.g. High/Low). This is Phase 2 (Graph Oracle).
+
+5. **Agent 3 — Synthesize intelligence & generate report**  
+   Forensics and graph data are fused into a structured **intelligence report** with an AI reasoning log (what was detected, why it matters). Outputs: `fusion_result`, `reasoning_log`. This supports analyst review and optional logging to the ledger.
+
+6. **Agent 4 — Execute DSL rules**  
+   The **Policy Guardian** loads the active policy (e.g. “IF ai_score > 0.85 THEN BLOCK_AND_LOG”) and runs it against the current context (content, risk score, graph cluster size). The result is a decision: **Should block?** (Yes/No).
+
+7. **Decision — Should block?**  
+   - **Yes** → The content is **Blocked**. A BLOCKED response is returned and the event can be pushed over WebSocket for real-time alerts. Pipeline ends here.  
+   - **No** → The content is allowed to proceed to the trust layer.
+
+8. **Agent 5 — Add to ledger & record immutable audit**  
+   For allowed (and optionally high-risk) items, the system calls **add_to_ledger**: it writes an immutable record (e.g. report summary, reasoning log) to the SHA-256 linked blockchain in PostgreSQL. Output: `ledger_hash`. This is the Trust Layer (Phase 4).
+
+9. **Processed**  
+   The pipeline completes with status **Processed**. The response includes `risk_score`, `blockchain_hash`, `graph_context`, and recommendations (e.g. Review vs Ignore). The content is now scanned, graphed, policy-checked, and (when applicable) audited on the ledger.
+
+In short: **Ingest → Detect (Agent 1) → Graph (Agent 2) → Intelligence (Agent 3) → Policy (Agent 4) → Block or Ledger (Agent 5) → Blocked or Processed.**
+
 #### 2. Backend — APIs and Services
 
 | Component | What We Built |
