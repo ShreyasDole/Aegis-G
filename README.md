@@ -98,7 +98,7 @@ Trigger: **`POST /api/scan/`** (and **`POST /api/scan/batch`**). Header **`X-Inf
 
 **Pipeline overview:**
 
-![Aegis-G Multi-Agent Defense Pipeline](WhatsApp Image 2026-03-11 at 8.22.43 AM.jpeg)
+![Aegis-G Multi-Agent Defense Pipeline](assets/pipeline-diagram.jpeg)
 
 #### 2. Backend — APIs and Services
 
