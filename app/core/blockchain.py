@@ -1,7 +1,8 @@
 """
-Blockchain Core - Production
+Blockchain Core - Production (Agent 5: Trust Layer)
 Implements a cryptographically linked ledger (Merkle Chain).
 Every block contains the hash of the previous block, making tampering impossible.
+Provides immutable ledger for threat intelligence sharing and audit trail.
 """
 import hashlib
 import json
@@ -20,13 +21,13 @@ def calculate_hash(index: int, prev_hash: str, timestamp: str, data: str) -> str
     """
     SHA-256 Hashing of the block content.
     Creates the cryptographic link between blocks.
-    
+
     Args:
         index: Block index/number
         prev_hash: Hash of the previous block
         timestamp: ISO format timestamp
         data: JSON string of block data
-        
+
     Returns:
         64-character hexadecimal hash
     """
@@ -35,33 +36,40 @@ def calculate_hash(index: int, prev_hash: str, timestamp: str, data: str) -> str
 
 
 async def add_to_ledger(
-    report_id: int, 
-    recipient_agency: str, 
-    content: Optional[str] = None
+    report_id: int,
+    recipient_agency: str,
+    content: Optional[str] = None,
+    db: Optional[Session] = None,
+    analyst_id: Optional[int] = None,
+    thought_process: Optional[str] = None,
 ) -> str:
     """
     Mints a new block in the chain.
-    
+
     Process:
     1. Fetches the last block (genesis if empty).
     2. Links current block to previous hash.
     3. Calculates new hash using previous hash + current data.
     4. Saves to database.
-    
+
     This creates an immutable chain where:
     - Block N contains hash of Block N-1
     - Changing any block breaks the chain
     - Verification can detect tampering
-    
+
     Args:
         report_id: ID of the threat intelligence report
         recipient_agency: Agency receiving the intelligence
         content: Redacted content snapshot (optional)
-        
+        db: Optional existing session; if None, creates one
+        analyst_id: Optional analyst ID for audit
+        thought_process: Optional AI reasoning log for audit trail
+
     Returns:
         Current block hash (64-character hex string)
     """
-    db: Session = SessionLocal()
+    own_session = db is None
+    db = db or SessionLocal()
     try:
         # 1. Get Last Block (Previous Hash)
         last_block = db.query(LedgerEntry).order_by(desc(LedgerEntry.id)).first()
@@ -79,11 +87,16 @@ async def add_to_ledger(
         # 2. Prepare Data Payload
         timestamp = datetime.utcnow().isoformat()
         # We hash the critical data: Agency + Report ID + Redacted Content
-        data_payload = json.dumps({
+        payload_dict = {
             "report_id": report_id,
             "agency": recipient_agency,
-            "content_snapshot": content[:100] if content else "meta_only"
-        }, sort_keys=True)  # sort_keys ensures consistent hashing
+            "content_snapshot": content[:100] if content else "meta_only",
+        }
+        if analyst_id is not None:
+            payload_dict["analyst_id"] = analyst_id
+        if thought_process:
+            payload_dict["thought_process"] = thought_process[:200]
+        data_payload = json.dumps(payload_dict, sort_keys=True)
 
         # 3. Mine the Block (Calculate Hash)
         # This is where the cryptographic link is created
@@ -98,6 +111,7 @@ async def add_to_ledger(
             report_id=report_id,
             recipient_agency=recipient_agency,
             redacted_content=content,
+            thought_process=thought_process,
             timestamp=datetime.utcnow(),
             verified="verified"
         )
@@ -115,7 +129,8 @@ async def add_to_ledger(
         logger.error(f"Error adding to ledger: {e}")
         raise e
     finally:
-        db.close()
+        if own_session:
+            db.close()
 
 
 def verify_chain_integrity() -> bool:

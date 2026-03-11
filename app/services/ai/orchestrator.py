@@ -14,6 +14,7 @@ from app.services.graph.neo4j import Neo4jService             # Agent 2 (Graph)
 from app.services.ai.fusion_service import AnalystAgent       # Agent 3 (Analyst)
 from app.services.ai.policy_guardian import policy_guardian   # Agent 4 (Guardian)
 from app.core.blockchain import add_to_ledger                 # Trust Layer
+from app.services.ai.stylometry import forensic_investigator  # Agent 1 (Stylometry)
 
 logger = logging.getLogger(__name__)
 
@@ -44,9 +45,9 @@ class ThreatOrchestrator:
         # PHASE 1: FORENSIC ANALYSIS (Agent 1)
         # ---------------------------------------------------------
         logger.info(f"🔍 Agent 1 Scanning ({mode} mode)...")
-        
+
         if mode == "local":
-            # Uses Prisha's Offline ONNX Model
+            # Uses Offline ONNX Model
             forensics_data = await local_classifier.predict(content)
         else:
             # Uses Google Gemini Cloud
@@ -57,13 +58,13 @@ class ThreatOrchestrator:
                 forensics_data = await local_classifier.predict(content)
 
         risk_score = forensics_data.get("risk_score", 0.0)
+        logger.info(f"📊 Agent 1 results: Risk={risk_score:.2f}")
 
         # ---------------------------------------------------------
         # PHASE 2: GRAPH MAPPING (Agent 2)
         # ---------------------------------------------------------
         logger.info("🕸️ Agent 2 Mapping Nodes...")
-        
-        # Create/Update the User Node in Neo4j
+
         await self.neo4j_service.create_node({
             "id": username,
             "label": username,
@@ -139,15 +140,15 @@ class ThreatOrchestrator:
         # ---------------------------------------------------------
         # PHASE 4: IMMUTABLE AUDIT (Trust Layer)
         # ---------------------------------------------------------
-        # Only log High Risk items to Blockchain to save resources
         ledger_hash = None
         if risk_score > 0.7:
             logger.info("🔗 High Risk Detected - Mining Block...")
             try:
                 ledger_hash = await add_to_ledger(
-                    report_id=0,  # In prod, this comes from DB ID
+                    report_id=0,
                     recipient_agency="Internal-Audit",
-                    content=f"Threat Detected: {risk_score} | Source: {username}"
+                    content=f"Threat Detected: {risk_score} | Source: {username}",
+                    db=db,
                 )
                 logger.info(f"Blockchain hash: {ledger_hash[:16]}...")
             except Exception as e:
@@ -156,7 +157,7 @@ class ThreatOrchestrator:
         return {
             "status": "PROCESSED",
             "risk_score": risk_score,
-            "is_ai_generated": forensics_data.get("is_ai_generated", False),
+            "is_ai_generated": forensics_data.get("is_ai_generated", forensics_data.get("is_ai", False)),
             "graph_context": graph_metadata,
             "blockchain_hash": ledger_hash,
             "recommendation": "Review" if risk_score > 0.5 else "Ignore",

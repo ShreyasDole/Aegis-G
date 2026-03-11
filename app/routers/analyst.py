@@ -30,12 +30,15 @@ async def analyze_threat_fusion(request: FusionRequest, db: Session = Depends(ge
     report = result["report"]
     thoughts = result["ai_reasoning_log"]
 
-    # 2. Log to the Blockchain (Trust Layer)
+    # 2. Log to the Blockchain (Trust Layer - Agent 5)
     # We include the AI's internal reasoning so the logic is immutable.
     ledger_hash = await add_to_ledger(
+        db=db,
         report_id=request.threat_id,
+        analyst_id=1,  # System analyst ID
+        content=f"Threat: {report.threat_title}",
         recipient_agency="Internal-Audit",
-        content=f"Threat: {report.threat_title} | Logic: {thoughts}"
+        thought_process=thoughts
     )
 
     return {
