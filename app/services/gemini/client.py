@@ -64,10 +64,11 @@ class GeminiClient:
             raise Exception("Gemini API key not configured")
 
         try:
-            self.client.models.generate_content(
+            response = self.client.models.generate_content(
                 model=settings.GEMINI_FLASH_MODEL,
                 contents=prompt
             )
+            reasoning = (response.text or "").strip()
             return {
                 "entities": {
                     "persons": [],
@@ -81,7 +82,8 @@ class GeminiClient:
                 "recommendations": [
                     "Monitor related accounts",
                     "Flag for further investigation"
-                ]
+                ],
+                "reasoning": reasoning or "Forensic analysis completed; see model output above."
             }
         except Exception as e:
             raise Exception(f"Forensic analysis failed: {str(e)}")
