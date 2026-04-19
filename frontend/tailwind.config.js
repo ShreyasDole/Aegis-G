@@ -8,10 +8,10 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Background colors
-        'bg-primary': '#0a0e1a',
-        'bg-secondary': '#121827',
-        'bg-tertiary': '#1a2332',
+        // Stitch app canvas + panels (matches stitch.withgoogle.com shell)
+        'bg-primary': '#191a1f',
+        'bg-secondary': '#22252e',
+        'bg-tertiary': '#2a2e38',
         
         // Accent colors
         'primary': '#3b82f6',
@@ -28,13 +28,13 @@ module.exports = {
         'text-disabled': '#475569',
         
         // Border colors
-        'border-subtle': '#1e293b',
-        'border-medium': '#334155',
+        'border-subtle': '#2a2e38',
+        'border-medium': '#3d4450',
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['"Google Sans Text"', '"Plus Jakarta Sans"', 'Inter', 'system-ui', 'sans-serif'],
         mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
-        display: ['Rajdhani', 'sans-serif'],
+        display: ['Rajdhani', 'system-ui', 'sans-serif'],
       },
       boxShadow: {
         'glow-blue': '0 0 20px rgba(59, 130, 246, 0.3)',

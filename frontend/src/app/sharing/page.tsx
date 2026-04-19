@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { Sidebar } from '@/components/layout/Sidebar';
 
 export default function SharingPage() {
   const [ledgerHash, setLedgerHash] = useState('');
@@ -30,9 +29,7 @@ export default function SharingPage() {
   };
 
   return (
-    <div className="flex">
-      <Sidebar />
-      <div className="flex-1 ml-80 p-6 min-h-screen">
+    <div className="p-6 min-h-screen max-w-4xl mx-auto">
         <h1 className="text-2xl font-bold text-text-primary mb-2">Intelligence Sharing</h1>
         <p className="text-text-muted text-sm mb-6">
           Export STIX 2.1 bundles and verify ledger entries.
@@ -70,7 +67,6 @@ export default function SharingPage() {
             )}
           </Card>
         </div>
-      </div>
     </div>
   );
 }

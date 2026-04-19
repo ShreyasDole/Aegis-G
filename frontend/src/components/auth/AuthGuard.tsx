@@ -9,7 +9,10 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
   // Public routes that don't require authentication
   const publicRoutes = ['/login', '/register', '/', '/auth/callback'];
-  const isPublicRoute = publicRoutes.includes(pathname) || pathname?.startsWith('/auth/');
+  const isPublicRoute =
+    publicRoutes.includes(pathname) ||
+    pathname?.startsWith('/auth/') ||
+    pathname?.startsWith('/stitch-embed');
 
   useEffect(() => {
     // Check if user is authenticated

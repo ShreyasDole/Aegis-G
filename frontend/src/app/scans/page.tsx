@@ -1,6 +1,5 @@
 'use client';
 import React, { useState } from 'react';
-import { Sidebar } from '@/components/layout/Sidebar';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -45,9 +44,7 @@ export default function ScansPage() {
   };
 
   return (
-    <div className="flex">
-      <Sidebar />
-      <div className="flex-1 ml-80 p-6">
+    <div className="p-6 min-h-screen max-w-7xl mx-auto">
         <h1 className="text-2xl font-bold font-display tracking-tight mb-6 uppercase">
           Incoming Scans
         </h1>
@@ -101,7 +98,6 @@ export default function ScansPage() {
             </Card>
           </div>
         </div>
-      </div>
     </div>
   );
 }

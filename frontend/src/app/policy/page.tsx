@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/Button';
 import { PolicyAuthor } from '@/components/policy/PolicyAuthor';
 import { PolicyList } from '@/components/policy/PolicyList';
 import { PolicyEditor } from '@/components/policy/PolicyEditor';
-import { Sidebar } from '@/components/layout/Sidebar';
 
 interface BlockedItem {
   id: number;
@@ -77,20 +76,15 @@ export default function PolicyPage() {
   }, []);
 
   return (
-    <div className="flex">
-      {/* Sidebar */}
-      <Sidebar />
-
-      {/* Main Content */}
-      <div className="flex-1 ml-80 p-6 min-h-screen">
+    <div className="p-6 min-h-screen max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold tracking-wider uppercase mb-2">
-              Policy Guardian Console
+            <h1 className="text-2xl font-bold tracking-tight text-text-primary mb-2">
+              Policy Engine
             </h1>
             <p className="text-text-secondary text-sm">
-              Agent 4: Automated Mitigation - Translate intent into real-time defense rules
+              Natural-language rules, blocked content, and live enforcement
             </p>
           </div>
           <div className="flex items-center gap-4">
@@ -260,7 +254,6 @@ export default function PolicyPage() {
             </div>
           </div>
         </Card>
-      </div>
     </div>
   );
 }

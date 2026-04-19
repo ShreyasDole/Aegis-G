@@ -5,7 +5,6 @@ import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
 import { ThreatCard } from '@/components/threats/ThreatCard';
 import { ThreatMap } from '@/components/visual/ThreatMap';
-import { Sidebar } from '@/components/layout/Sidebar';
 import { exportToSTIX } from '@/lib/export';
 
 export default function ThreatsPage() {
@@ -74,17 +73,14 @@ export default function ThreatsPage() {
   }));
 
   return (
-    <div className="flex">
-      <Sidebar />
-      <div className="flex-1 ml-80 p-6 min-h-screen">
-      <div className="max-w-7xl mx-auto">
+    <div className="p-6 min-h-screen max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-2xl font-bold tracking-wider uppercase mb-2">
-            Threat Intelligence
+          <h1 className="text-2xl font-bold tracking-tight text-text-primary mb-2">
+            Threat Analysis
           </h1>
           <p className="text-text-secondary text-sm">
-            Monitor and manage security threats in real-time
+            Live feed from /api/threats — filter, map, and export
           </p>
         </div>
 
@@ -251,8 +247,6 @@ export default function ThreatsPage() {
         </div>
 
         <ThreatMap threats={threatsForMap} />
-      </div>
-      </div>
     </div>
   );
 }

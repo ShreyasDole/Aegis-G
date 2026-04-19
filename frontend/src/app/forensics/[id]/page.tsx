@@ -4,7 +4,6 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Sidebar } from '@/components/layout/Sidebar';
 import { AnalysisCard } from '@/components/reports/AnalysisCard';
 
 export default function ForensicsDetailPage() {
@@ -86,33 +85,25 @@ export default function ForensicsDetailPage() {
 
   if (loading) {
     return (
-      <div className="flex">
-        <Sidebar />
-        <div className="flex-1 ml-80 p-6 flex items-center justify-center min-h-screen">
-          <p className="text-text-secondary">Loading...</p>
-        </div>
+      <div className="p-6 flex items-center justify-center min-h-screen">
+        <p className="text-text-secondary">Loading...</p>
       </div>
     );
   }
 
   if (error && !threat) {
     return (
-      <div className="flex">
-        <Sidebar />
-        <div className="flex-1 ml-80 p-6">
-          <Card className="p-6">
-            <p className="text-danger mb-4">{error}</p>
-            <Button variant="secondary" onClick={() => router.push('/threats')}>Back to Threats</Button>
-          </Card>
-        </div>
+      <div className="p-6 min-h-screen max-w-3xl mx-auto">
+        <Card className="p-6">
+          <p className="text-danger mb-4">{error}</p>
+          <Button variant="secondary" onClick={() => router.push('/threats')}>Back to Threats</Button>
+        </Card>
       </div>
     );
   }
 
   return (
-    <div className="flex">
-      <Sidebar />
-      <div className="flex-1 ml-80 p-6 min-h-screen">
+    <div className="p-6 min-h-screen max-w-5xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <div>
             <Link href="/threats" className="text-sm text-primary hover:underline mb-2 inline-block">← Back to Threats</Link>
@@ -155,7 +146,6 @@ export default function ForensicsDetailPage() {
             </div>
           )}
         </div>
-      </div>
     </div>
   );
 }

@@ -8,6 +8,7 @@ from app.services.gemini.client import GeminiClient
 from app.services.ai.stylometry import forensic_investigator
 from app.models.database import get_db
 from app.models.threat import Threat
+from app.core.blockchain import add_to_ledger
 
 router = APIRouter()
 
@@ -39,6 +40,25 @@ async def analyze_forensics(
         # 1. Agent 1: Stylometric Analysis
         stylometry_result = forensic_investigator.analyze(threat.content)
         
+        # 1b. Blockchain Audit (Agent 5): When Agent 1 detects a threat, record in ledger
+        ledger_hash = None
+        threat_detected = (
+            stylometry_result.get("risk_score", 0) >= 0.5
+            or stylometry_result.get("adversarial_detected", False)
+        )
+        if threat_detected:
+            try:
+                snapshot = (threat.content or "")[:100]
+                ledger_hash = await add_to_ledger(
+                    report_id=threat_id,
+                    recipient_agency="Internal-Audit",
+                    content=f"Agent1-Threat: risk={stylometry_result.get('risk_score', 0):.2f} adv={stylometry_result.get('adversarial_detected')} | {snapshot}",
+                    db=db,
+                    analyst_id=None,
+                )
+            except Exception as e:
+                pass  # Don't fail the request if ledger write fails
+        
         # 2. Gemini: Deep reasoning (optional, may fail if no API key)
         gemini_analysis = None
         try:
@@ -65,6 +85,7 @@ async def analyze_forensics(
                 "adversarial_detected": stylometry_result["adversarial_detected"],
                 "adversarial_patterns": stylometry_result["adversarial_patterns"]
             },
+            "blockchain_hash": ledger_hash,
             "ai_analysis": gemini_analysis,
             "entities": gemini_analysis.get("entities", {}) if isinstance(gemini_analysis, dict) else {},
             "attribution": gemini_analysis.get("attribution", {}) if isinstance(gemini_analysis, dict) else {},

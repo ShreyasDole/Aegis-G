@@ -66,7 +66,7 @@ async def run_orchestrator_pipeline(
     if not content:
         return {"status": "error", "detail": "body.content is required"}
     result = await orchestrator.process_incoming_threat(
-        payload={"content": content, "id": threat_id},
+        payload={"content": content, "id": threat_id, "analyst_id": current_user.id},
         db=db,
         mode=mode,
     )

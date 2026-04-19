@@ -3,7 +3,6 @@ import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { ThreatCard } from '@/components/threats/ThreatCard';
-import { Sidebar } from '@/components/layout/Sidebar';
 import { IntelligenceBrief } from '@/components/intel/IntelligenceBrief';
 import { fuseIntelligence } from '@/lib/fusion';
 import { exportToSTIX } from '@/lib/export';
@@ -69,17 +68,14 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="flex">
-      <Sidebar />
-
-      <div className="flex-1 ml-80 p-6 min-h-screen">
+    <div className="p-6 min-h-screen max-w-[1600px] mx-auto">
         <header className="flex flex-wrap items-start justify-between gap-4 mb-8">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-text-primary mb-1">
-              Command Dashboard
+              Main Dashboard
             </h1>
             <p className="text-text-muted text-sm">
-              Threat intelligence and Agent 3 fusion
+              Threat intelligence and fusion analysis
             </p>
           </div>
           <div className="flex gap-2">
@@ -131,7 +127,6 @@ export default function DashboardPage() {
             </div>
           </aside>
         </div>
-      </div>
     </div>
   );
 }

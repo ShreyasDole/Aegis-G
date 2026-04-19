@@ -17,7 +17,7 @@ export const AIManager: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
 
-  // Listen for custom event from Navbar
+  // Custom event from EnterpriseShell "AI Assistant" button
   React.useEffect(() => {
     const handleOpenAI = () => {
       setIsOpen(true);

@@ -1,12 +1,18 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
-import { Sidebar } from '@/components/layout/Sidebar';
 import { NetworkGraph } from '@/components/visual/NetworkGraph';
-import { GraphViz } from '@/components/visual/GraphViz';
+import { Circle, Skull, Globe, Server, Camera, RefreshCw, MousePointer2 } from 'lucide-react';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+function getAuthHeaders(): HeadersInit {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
 
 export default function NetworkPage() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -14,30 +20,59 @@ export default function NetworkPage() {
   const [clusterMode, setClusterMode] = useState(false);
   const [graphKey, setGraphKey] = useState(0);
   const [highlightPatientZero, setHighlightPatientZero] = useState(false);
+  const [nodeCount, setNodeCount] = useState(0);
+  const [typeCounts, setTypeCounts] = useState<Record<string, number>>({});
 
   const handleRefresh = () => setGraphKey((k) => k + 1);
   const handleSnapshot = () => setGraphKey((k) => k + 1);
   const handleTraceOrigin = () => setHighlightPatientZero((v) => !v);
 
-  const stats = [
-    { label: 'Total Nodes', value: '0', icon: '⚪' },
-    { label: 'Threat Actors', value: '0', icon: '🔴' },
-    { label: 'IP Addresses', value: '0', icon: '🟠' },
-    { label: 'Systems', value: '0', icon: '🔵' },
-  ];
+  useEffect(() => {
+    const loadMeta = async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/network/?limit=500`, { headers: getAuthHeaders() });
+        if (!res.ok) return;
+        const data = await res.json();
+        const nodes = data.nodes || [];
+        setNodeCount(nodes.length);
+        const byType: Record<string, number> = {};
+        for (const n of nodes) {
+          const t = (n.type || n.label || 'unknown').toString();
+          byType[t] = (byType[t] || 0) + 1;
+        }
+        setTypeCounts(byType);
+      } catch {
+        setNodeCount(0);
+        setTypeCounts({});
+      }
+    };
+    loadMeta();
+  }, [graphKey]);
+
+  const stats = useMemo(() => {
+    const actorish =
+      (typeCounts.Actor || 0) +
+      (typeCounts.actor || 0) +
+      (typeCounts.ThreatActor || 0) +
+      (typeCounts['Threat Actor'] || 0);
+    const ips = (typeCounts.IP || 0) + (typeCounts.Ip || 0) + (typeCounts.ip || 0);
+    const systems = (typeCounts.System || 0) + (typeCounts.Bot || 0) + (typeCounts.Target || 0);
+    return [
+      { label: 'Total nodes', value: String(nodeCount), icon: Circle },
+      { label: 'Actors / threats', value: String(actorish), icon: Skull },
+      { label: 'IPs', value: String(ips), icon: Globe },
+      { label: 'Systems / bots', value: String(systems), icon: Server },
+    ];
+  }, [nodeCount, typeCounts]);
 
   return (
-    <div className="flex">
-      <Sidebar />
-      <div className="flex-1 ml-80 p-6 min-h-screen">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
+    <div className="p-6 min-h-screen max-w-7xl mx-auto">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold font-display text-glow-blue mb-2">
-            🕸️ Network Analysis
+          <h1 className="text-2xl font-bold tracking-tight text-text-primary mb-1">
+            Graph Intelligence
           </h1>
-          <p className="text-text-secondary">
-            Visualize relationships between threats, actors, and systems
+          <p className="text-text-secondary text-sm">
+            Neo4j-backed relationships — threats, actors, infrastructure
           </p>
         </div>
 
@@ -47,8 +82,7 @@ export default function NetworkPage() {
             {/* Search */}
             <div className="flex-1">
               <Input
-                placeholder="Search nodes..."
-                icon={<span>🔍</span>}
+                placeholder="Search nodes (client filter)..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -90,8 +124,8 @@ export default function NetworkPage() {
 
             {/* Actions */}
             <div className="flex gap-2">
-              <Button variant="secondary" icon={<span>📸</span>} onClick={handleSnapshot}>Snapshot</Button>
-              <Button variant="primary" icon={<span>🔄</span>} onClick={handleRefresh}>Refresh</Button>
+              <Button variant="secondary" icon={<Camera className="w-4 h-4" />} onClick={handleSnapshot}>Snapshot</Button>
+              <Button variant="primary" icon={<RefreshCw className="w-4 h-4" />} onClick={handleRefresh}>Refresh</Button>
             </div>
           </div>
 
@@ -118,59 +152,42 @@ export default function NetworkPage() {
 
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          {stats.map((stat, idx) => (
-            <Card key={idx} hover className="text-center">
-              <div className="text-3xl mb-2">{stat.icon}</div>
-              <div className="text-2xl font-bold text-text-primary mb-1">
-                {stat.value}
-              </div>
-              <div className="text-sm text-text-secondary">{stat.label}</div>
-            </Card>
-          ))}
+          {stats.map((stat, idx) => {
+            const Ico = stat.icon;
+            return (
+              <Card key={idx} hover className="text-center">
+                <div className="flex justify-center mb-2 text-primary">
+                  <Ico className="w-8 h-8 opacity-90" strokeWidth={1.5} />
+                </div>
+                <div className="text-2xl font-bold text-text-primary mb-1 tabular-nums">{stat.value}</div>
+                <div className="text-sm text-text-secondary">{stat.label}</div>
+              </Card>
+            );
+          })}
         </div>
 
         {/* Network Graph */}
         <Card className="p-0 overflow-hidden">
           <div className="h-[600px] relative">
-            <NetworkGraph refreshKey={graphKey} highlightPatientZero={highlightPatientZero} />
+            <NetworkGraph refreshKey={graphKey} highlightPatientZero={highlightPatientZero} dataSource="api" />
           </div>
         </Card>
 
-        {/* Graph summary (alternative view) */}
-        <Card className="mt-6 p-4">
-          <h3 className="text-sm font-semibold uppercase tracking-widest text-text-muted mb-3">Graph summary</h3>
-          <GraphViz nodes={[]} edges={[]} />
-        </Card>
-
-        {/* Graph Controls Info */}
         <Card className="mt-6">
-          <h3 className="text-lg font-semibold mb-3">Graph Controls</h3>
+          <h3 className="text-sm font-semibold uppercase tracking-widest text-text-muted mb-3">Canvas</h3>
+          <p className="text-sm text-text-secondary mb-4">
+            Data from GET /api/network. Refresh updates counts and reloads the force layout.
+          </p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
             <div className="flex items-start gap-3">
-              <span className="text-2xl">🖱️</span>
+              <MousePointer2 className="w-5 h-5 text-primary shrink-0 mt-0.5" />
               <div>
-                <div className="font-medium text-text-primary">Click</div>
-                <div className="text-text-secondary">Select and view node details</div>
-              </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <span className="text-2xl">👆</span>
-              <div>
-                <div className="font-medium text-text-primary">Hover</div>
-                <div className="text-text-secondary">Highlight node and connections</div>
-              </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <span className="text-2xl">🔍</span>
-              <div>
-                <div className="font-medium text-text-primary">Search</div>
-                <div className="text-text-secondary">Find specific nodes by name</div>
+                <div className="font-medium text-text-primary">Click / drag</div>
+                <div className="text-text-secondary">Select nodes and pan the view</div>
               </div>
             </div>
           </div>
         </Card>
-      </div>
-      </div>
     </div>
   );
 }

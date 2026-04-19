@@ -37,6 +37,7 @@ class ThreatOrchestrator:
         content = payload.get("content", "")
         source_platform = payload.get("source_platform", "unknown")
         username = payload.get("username", "anonymous")
+        analyst_id = payload.get("analyst_id")  # For blockchain audit (Agent 5)
         
         # Generate ID if not present
         content_hash = hashlib.sha256(content.encode()).hexdigest()
@@ -149,6 +150,7 @@ class ThreatOrchestrator:
                     recipient_agency="Internal-Audit",
                     content=f"Threat Detected: {risk_score} | Source: {username}",
                     db=db,
+                    analyst_id=analyst_id,
                 )
                 logger.info(f"Blockchain hash: {ledger_hash[:16]}...")
             except Exception as e:
