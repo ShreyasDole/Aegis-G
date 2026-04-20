@@ -30,11 +30,10 @@ export default function ScansPage() {
   const handleManualScan = async () => {
     if (!manualText.trim()) return;
     const mode = typeof window !== 'undefined' ? (localStorage.getItem('inference-mode') || 'local') : 'local';
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     setIsScanning(true);
     try {
-      const response = await fetch(`${API_URL}/api/scan`, {
+      const response = await fetch(`/api/scan`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

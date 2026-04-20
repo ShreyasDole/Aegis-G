@@ -50,11 +50,17 @@ class Neo4jService:
 
     # --- YASH TASK 1: Patient Zero ---
     async def find_patient_zero(self, content_hash: str) -> Dict[str, Any]:
-        """Find the absolute origin of a narrative."""
+        """
+        Advanced Patient Zero: traverses SHARED/REPOSTED relationships backwards
+        to find the true C2 origin, not just earliest timestamp.
+        """
         query = """
-        MATCH (u:User)-[:POSTED]->(p:Post {content_hash: $content_hash})
-        WITH u, p ORDER BY p.timestamp ASC LIMIT 1
-        RETURN u.id as user_id, u.label as username, p.timestamp as timestamp
+        MATCH (p:Post {content_hash: $content_hash})<-[:POSTED]-(u:User)
+        OPTIONAL MATCH path = (u)-[:SHARED|REPOSTED*1..5]->(origin:User)
+        WITH coalesce(origin, u) AS root_actor, p
+        ORDER BY p.timestamp ASC
+        LIMIT 1
+        RETURN root_actor.id AS user_id, root_actor.label AS username, p.timestamp AS timestamp
         """
         async with self.driver.session() as session:
             result = await session.run(query, content_hash=content_hash)
@@ -109,101 +115,99 @@ class Neo4jService:
             
             return {"nodes": list(nodes.values()), "edges": edges}
 
-    # --- YASH TASK 3: Clustering (Narrative Detection) with Neo4j GDS ---
+    # --- YASH TASK 3: Clustering (Narrative Detection) with Neo4j GDS Louvain ---
     async def detect_clusters(self) -> List[Dict]:
         """
-        Finds groups of users posting identical content hashes (Botnets).
-        Uses Neo4j GDS (Graph Data Science) Louvain algorithm for advanced clustering.
+        Narrative Community Clustering via Louvain Modularity.
+        Projects User+Post graph with POSTED/SHARED/SIMILAR_TO rels,
+        runs GDS Louvain to detect Astroturfing / coordinated inauthentic behavior.
+        Falls back to content_hash overlap if GDS unavailable.
         """
-        # First, try GDS Louvain clustering (requires GDS plugin)
         try:
-            # Create a projection for GDS
-            gds_query = """
-            CALL gds.graph.project(
-                'narrative-graph',
-                'User',
-                {
-                    COORDINATED: {
-                        type: 'POSTED',
-                        orientation: 'UNDIRECTED',
-                        properties: {
-                            weight: {
-                                property: 'risk_score',
-                                defaultValue: 1.0
-                            }
-                        }
-                    }
-                }
-            )
-            YIELD graphName, nodeCount, relationshipCount
-            """
-            
-            # Run Louvain community detection
-            louvain_query = """
-            CALL gds.louvain.stream('narrative-graph')
-            YIELD nodeId, communityId
-            RETURN gds.util.asNode(nodeId).id as user_id, 
-                   gds.util.asNode(nodeId).label as username,
-                   communityId
-            ORDER BY communityId, user_id
-            """
-            
             async with self.driver.session() as session:
-                # Try to run GDS (may fail if GDS plugin not installed)
-                try:
-                    await session.run(gds_query)
-                    result = await session.run(louvain_query)
-                    
-                    # Group by community
-                    communities = {}
-                    async for record in result:
-                        comm_id = record["communityId"]
-                        if comm_id not in communities:
-                            communities[comm_id] = []
-                        communities[comm_id].append({
-                            "user_id": record["user_id"],
-                            "username": record["username"]
+                # Drop stale projection (ignore error if not exists)
+                await session.run(
+                    "CALL gds.graph.drop('narrative-graph', false) YIELD graphName"
+                )
+
+                # Project multi-label graph with weighted relationships
+                await session.run("""
+                    CALL gds.graph.project(
+                        'narrative-graph',
+                        ['User', 'Post'],
+                        {
+                            POSTED:     { orientation: 'UNDIRECTED', properties: 'risk_score' },
+                            SHARED:     { orientation: 'UNDIRECTED' },
+                            SIMILAR_TO: { orientation: 'UNDIRECTED', properties: 'similarity_score' }
+                        }
+                    )
+                """)
+
+                result = await session.run("""
+                    CALL gds.louvain.stream('narrative-graph')
+                    YIELD nodeId, communityId
+                    WITH gds.util.asNode(nodeId) AS n, communityId
+                    WHERE 'User' IN labels(n)
+                    RETURN n.id AS user_id, n.label AS username,
+                           n.risk_score AS risk, communityId
+                    ORDER BY communityId, risk DESC
+                """)
+
+                communities: Dict[int, list] = {}
+                async for record in result:
+                    comm_id = record["communityId"]
+                    if comm_id not in communities:
+                        communities[comm_id] = []
+                    communities[comm_id].append({
+                        "user_id": record["user_id"],
+                        "username": record["username"],
+                        "risk": record["risk"],
+                    })
+
+                clusters = []
+                for comm_id, members in communities.items():
+                    if len(members) >= 2:
+                        avg_risk = sum(m.get("risk") or 0 for m in members) / len(members)
+                        clusters.append({
+                            "cluster_id": f"LOUVAIN_{comm_id}",
+                            "nodes": [m["username"] for m in members],
+                            "size": len(members),
+                            "avg_risk": round(avg_risk, 3),
+                            "type": "Botnet_Cluster",
+                            "method": "Louvain_GDS",
                         })
-                    
-                    # Convert to cluster format
-                    clusters = []
-                    for comm_id, members in communities.items():
-                        if len(members) >= 2:  # Only clusters with 2+ members
-                            clusters.append({
-                                "cluster_id": f"GDS_Community_{comm_id}",
-                                "nodes": [m["username"] for m in members],
-                                "size": len(members),
-                                "type": "Botnet",
-                                "method": "Louvain_GDS"
-                            })
-                    
-                    if clusters:
-                        logger.info(f"GDS Louvain found {len(clusters)} communities")
-                        return clusters
-                except Exception as gds_error:
-                    logger.warning(f"GDS not available, falling back to basic clustering: {gds_error}")
-        except Exception as outer_e:
-            logger.warning(f"GDS outer setup failed, using basic clustering: {outer_e}")
-        
-        # Fallback to basic clustering if GDS not available
+
+                if clusters:
+                    logger.info(f"GDS Louvain: {len(clusters)} communities detected")
+                    return clusters
+
+                logger.warning("GDS Louvain returned 0 clusters, falling back")
+
+        except Exception as e:
+            logger.warning(f"GDS Louvain failed, using content_hash fallback: {e}")
+
+        # Fallback: exact content_hash overlap (Level 1)
         query = """
         MATCH (u1:User)-[:POSTED]->(p:Post)<-[:POSTED]-(u2:User)
         WHERE u1.id < u2.id
-        WITH u1, u2, count(p) as overlap
+        WITH u1, u2, count(p) AS overlap
         WHERE overlap >= 2
-        RETURN u1.label as actor_a, u2.label as actor_b, overlap
-        ORDER BY overlap DESC LIMIT 10
+        RETURN u1.label AS actor_a, u2.label AS actor_b,
+               u1.risk_score AS risk_a, u2.risk_score AS risk_b, overlap
+        ORDER BY overlap DESC LIMIT 20
         """
         async with self.driver.session() as session:
             result = await session.run(query)
             clusters = []
             async for record in result:
+                avg_risk = ((record["risk_a"] or 0) + (record["risk_b"] or 0)) / 2
                 clusters.append({
-                    "cluster_id": f"C_{record['actor_a']}_{record['actor_b']}",
-                    "nodes": [record['actor_a'], record['actor_b']],
-                    "size": record['overlap'],
-                    "type": "Botnet",
-                    "method": "Content_Hash_Overlap"
+                    "cluster_id": f"HASH_{record['actor_a']}_{record['actor_b']}",
+                    "nodes": [record["actor_a"], record["actor_b"]],
+                    "size": record["overlap"],
+                    "avg_risk": round(avg_risk, 3),
+                    "type": "Botnet_Cluster",
+                    "method": "Content_Hash_Overlap",
                 })
             return clusters
     

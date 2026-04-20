@@ -97,43 +97,86 @@ class ThreatOrchestrator:
         # PHASE 3: POLICY GUARDRAILS (Agent 4)
         # ---------------------------------------------------------
         logger.info("🛡️ Agent 4 Checking Policies...")
-        
-        # Fetch active policy (simplified)
-        active_dsl = "IF ai_score > 0.85 THEN BLOCK_AND_LOG"  # Default fallback
-        
-        # Try to fetch from database
-        if db:
-            try:
-                from app.models.ai import AIPolicy
-                policy = (
-                    db.query(AIPolicy)
-                    .filter(AIPolicy.is_active == True)
-                    .order_by(AIPolicy.priority.desc())
-                    .first()
-                )
-                if policy and (policy.translated_dsl or policy.content):
-                    active_dsl = policy.translated_dsl or policy.content
-                    logger.info(f"Using active policy: {policy.name}")
-            except Exception as e:
-                logger.warning(f"Could not fetch active policy from DB: {e}")
-        
-        # Prepare context for the policy engine
+
+        guardrail_result = {"should_block": False}
+        matched_policy = None
+        active_dsl = None
+
         policy_context = {
             "content": content,
             "ai_score": risk_score,
-            "graph_cluster_size": 1 if patient_zero_data.get("status") == "not_found" else 5
+            "graph_cluster_size": 5 if patient_zero_data.get("status") == "found" else 1,
         }
 
-        guardrail_result = policy_guardian.execute_dsl_rule(active_dsl, policy_context)
+        if db:
+            try:
+                from app.models.ai import AIPolicy
+                active_policies = (
+                    db.query(AIPolicy)
+                    .filter(AIPolicy.is_active == True)
+                    .order_by(AIPolicy.priority.desc())
+                    .all()
+                )
+                logger.info(f"Loaded {len(active_policies)} active firewall rules.")
 
-        if guardrail_result.get("should_block"):
-            logger.warning(f"🚫 BLOCKED by Policy: {guardrail_result.get('reason', 'Policy violation')}")
+                for policy in active_policies:
+                    active_dsl = policy.translated_dsl or policy.content
+                    if not active_dsl:
+                        continue
+                    result = policy_guardian.execute_dsl_rule(active_dsl, policy_context)
+                    if result.get("should_block"):
+                        guardrail_result = result
+                        guardrail_result["reason"] = f"Violated active policy: {policy.name}"
+                        matched_policy = policy
+                        break
+
+            except Exception as e:
+                logger.warning(f"Could not fetch active policies from DB: {e}")
+
+        if guardrail_result.get("should_block") and matched_policy:
+            logger.warning(f"🚫 BLOCKED by Agent 4: {guardrail_result.get('reason')}")
+
+            try:
+                from app.models.ai import BlockedContent
+                blocked_record = BlockedContent(
+                    content_hash=content_hash,
+                    content_preview=content[:500],
+                    source_platform=source_platform,
+                    source_username=username,
+                    policy_id=matched_policy.id,
+                    policy_name=matched_policy.name,
+                    rule_name=f"rule_{matched_policy.id:02d}.aegis",
+                    dsl_logic=active_dsl,
+                    matched_conditions=str(guardrail_result.get("matched_conditions", [])),
+                    action_taken="BLOCK_AND_LOG",
+                    ai_score=risk_score,
+                    graph_cluster_size=policy_context["graph_cluster_size"],
+                    narrative_keywords=str(guardrail_result.get("matched_conditions", [])),
+                )
+                db.add(blocked_record)
+                db.commit()
+                db.refresh(blocked_record)
+
+                from app.routers.websocket import notify_blocked_content
+                import asyncio
+                asyncio.create_task(notify_blocked_content({
+                    "id": blocked_record.id,
+                    "content_preview": blocked_record.content_preview,
+                    "policy_name": matched_policy.name,
+                    "action_taken": "BLOCK_AND_LOG",
+                    "blocked_at": blocked_record.blocked_at.isoformat() if blocked_record.blocked_at else None,
+                    "source_platform": source_platform,
+                }))
+            except Exception as db_err:
+                logger.error(f"Failed to write block log to DB: {db_err}")
+
             return {
                 "status": "BLOCKED",
                 "risk_score": risk_score,
                 "action": guardrail_result,
                 "forensics": forensics_data,
-                "graph_context": graph_metadata
+                "graph_context": graph_metadata,
+                "content_hash": content_hash,
             }
 
         # ---------------------------------------------------------

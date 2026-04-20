@@ -31,9 +31,7 @@ export default function LedgerExplorerPage() {
   const loadLedger = async () => {
     try {
       const token = localStorage.getItem('token');
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-      
-      const response = await fetch(`${API_URL}/api/sharing/ledger?limit=${limit}&offset=${offset}`, {
+      const response = await fetch(`/api/sharing/ledger?limit=${limit}&offset=${offset}`, {
         headers: { 'Authorization': `Bearer ${token}` },
       });
 
@@ -52,9 +50,7 @@ export default function LedgerExplorerPage() {
   const checkIntegrity = async () => {
     try {
       const token = localStorage.getItem('token');
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-      
-      const response = await fetch(`${API_URL}/api/sharing/ledger/integrity`, {
+      const response = await fetch(`/api/sharing/ledger/integrity`, {
         headers: { 'Authorization': `Bearer ${token}` },
       });
 

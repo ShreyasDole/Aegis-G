@@ -23,13 +23,15 @@ export default function PolicyPage() {
   const [showEditor, setShowEditor] = useState(false);
   const [editingPolicy, setEditingPolicy] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<'author' | 'manage'>('author');
+  const [activePolicies, setActivePolicies] = useState<any[]>([]);
 
   useEffect(() => {
-    // Fetch blocked content on mount
     fetchBlockedContent();
-    
-    // Set up polling for live updates
-    const interval = setInterval(fetchBlockedContent, 5000); // Poll every 5 seconds
+    fetchActivePolicies();
+    const interval = setInterval(() => {
+      fetchBlockedContent();
+      fetchActivePolicies();
+    }, 5000);
     return () => clearInterval(interval);
   }, []);
 
@@ -37,11 +39,8 @@ export default function PolicyPage() {
     try {
       const token = localStorage.getItem('token');
       const response = await fetch('/api/ai/blocked-content/stats', {
-        headers: {
-          'Authorization': `Bearer ${token || ''}`
-        }
+        headers: { 'Authorization': `Bearer ${token || ''}` },
       });
-
       if (response.ok) {
         const data = await response.json();
         setBlockedCount(data.today_count || 0);
@@ -52,9 +51,25 @@ export default function PolicyPage() {
     }
   };
 
+  const fetchActivePolicies = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/ai/policies?is_active=true', {
+        headers: { 'Authorization': `Bearer ${token || ''}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setActivePolicies(data);
+      }
+    } catch (error) {
+      console.error('Error fetching active policies:', error);
+    }
+  };
+
   // WebSocket connection for real-time updates
   useEffect(() => {
-    const ws = new WebSocket('ws://localhost:8000/ws/blocked-content');
+    const host = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+    const ws = new WebSocket(`ws://${host}:8000/ws/blocked-content`);
     
     ws.onmessage = (event) => {
       const message = JSON.parse(event.data);
@@ -249,13 +264,32 @@ export default function PolicyPage() {
         {/* Active Policies Section */}
         <Card className="p-6 mt-6">
           <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest text-primary mb-4">
-            <span className="text-xl">⚡</span> Active Policies
+            <span className="text-xl">⚡</span> Active System Guardrails (Live)
           </h3>
-          <div className="text-text-secondary text-sm">
-            {/* TODO: Fetch and display active policies */}
-            <div className="text-center py-4">
-              No active policies. Create one above to start blocking threats.
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {activePolicies.length === 0 ? (
+              <div className="text-center py-4 text-text-secondary text-sm col-span-full">
+                No dynamic guardrails active. System operating on default heuristics.
+              </div>
+            ) : (
+              activePolicies.map((policy) => (
+                <div
+                  key={policy.id}
+                  className="bg-bg-primary border border-primary/30 rounded p-4 relative overflow-hidden"
+                >
+                  <div className="absolute top-0 left-0 w-1 h-full bg-primary animate-pulse" />
+                  <div className="flex justify-between items-start mb-2 ml-2">
+                    <span className="text-xs font-bold text-text-primary">{policy.name}</span>
+                    <span className="text-[9px] bg-success/20 text-success px-2 py-0.5 rounded uppercase">
+                      Armed
+                    </span>
+                  </div>
+                  <div className="ml-2 font-mono text-[10px] text-emerald-500 bg-black/50 p-2 rounded">
+                    {policy.translated_dsl || policy.content}
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </Card>
       </div>

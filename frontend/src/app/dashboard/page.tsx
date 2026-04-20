@@ -44,7 +44,8 @@ export default function DashboardPage() {
     const interval = setInterval(fetchBlockedCount, 30000); // Update every 30 seconds
     
     // WebSocket for real-time updates
-    const ws = new WebSocket('ws://localhost:8000/ws/blocked-content');
+    const host = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+    const ws = new WebSocket(`ws://${host}:8000/ws/blocked-content`);
     ws.onmessage = (event) => {
       const message = JSON.parse(event.data);
       if (message.type === 'blocked_content') {
@@ -71,8 +72,7 @@ export default function DashboardPage() {
     const loadThreats = async () => {
       try {
         const token = localStorage.getItem('token');
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-        const response = await fetch(`${API_URL}/api/threats`, {
+        const response = await fetch(`/api/threats`, {
           headers: { 'Authorization': `Bearer ${token}` },
         });
         if (response.ok) {

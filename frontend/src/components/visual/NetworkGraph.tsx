@@ -1,143 +1,164 @@
 'use client';
-import React, { useEffect, useRef, useState } from 'react';
-import { Card } from '../ui/Card';
+import React, { useEffect, useRef } from 'react';
 
-interface Node { id: string; label: string; type: string; severity?: string; x?: number; y?: number; vx?: number; vy?: number; }
-interface Edge { source: string; target: string; }
+export interface GraphNode {
+  id: string;
+  label: string;
+  type: string;
+  severity?: string;
+  x?: number;
+  y?: number;
+  vx?: number;
+  vy?: number;
+}
 
-export const NetworkGraph: React.FC = () => {
+export interface GraphEdge {
+  source: string;
+  target: string;
+}
+
+interface NetworkGraphProps {
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+  isLoading: boolean;
+}
+
+export const NetworkGraph: React.FC<NetworkGraphProps> = ({ nodes, edges, isLoading }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [nodes, setNodes] = useState<Node[]>([]);
-  const [edges, setEdges] = useState<Edge[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [selectedNode, setSelectedNode] = useState<Node | null>(null);
 
-  // Fetch Logic
-  useEffect(() => {
-    const loadGraph = async () => {
-      try {
-        // In production: fetch from /api/network/
-        // MOCK DATA for Visual Verification:
-        const mockNodes = Array.from({length: 20}, (_, i) => ({
-            id: `node_${i}`, 
-            label: i === 0 ? "PATIENT_ZERO" : `Bot_${i}`, 
-            type: i === 0 ? "Actor" : "Bot",
-            severity: i === 0 ? "critical" : "medium",
-            x: Math.random() * 800, y: Math.random() * 600, vx: 0, vy: 0
-        }));
-        const mockEdges = mockNodes.slice(1).map(n => ({ source: "node_0", target: n.id }));
-        
-        setNodes(mockNodes);
-        setEdges(mockEdges);
-        setIsLoading(false);
-      } catch (e) { console.error(e); }
-    };
-    loadGraph();
-  }, []);
-
-  // Physics Simulation
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || nodes.length === 0) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Simulation Params
-    const repulsion = 1000;
-    const springLength = 100;
-    const friction = 0.9;
-    
+    // Seed positions once
+    nodes.forEach(n => {
+      if (n.x === undefined) n.x = Math.random() * (canvas.offsetWidth || 800);
+      if (n.y === undefined) n.y = Math.random() * (canvas.offsetHeight || 600);
+      if (n.vx === undefined) n.vx = 0;
+      if (n.vy === undefined) n.vy = 0;
+    });
+
+    let animId: number;
+    const repulsion = 1200;
+    const springLength = 120;
+    const friction = 0.85;
+
     const animate = () => {
-      // 1. Calculate Forces
+      // Repulsion
       nodes.forEach(node => {
-        // Repulsion
         nodes.forEach(other => {
-            if (node === other) return;
-            const dx = (node.x || 0) - (other.x || 0);
-            const dy = (node.y || 0) - (other.y || 0);
-            const dist = Math.sqrt(dx*dx + dy*dy) || 1;
-            const force = repulsion / (dist * dist);
-            node.vx = (node.vx || 0) + (dx / dist) * force;
-            node.vy = (node.vy || 0) + (dy / dist) * force;
+          if (node === other) return;
+          const dx = (node.x ?? 0) - (other.x ?? 0);
+          const dy = (node.y ?? 0) - (other.y ?? 0);
+          const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+          const force = repulsion / (dist * dist);
+          node.vx = (node.vx ?? 0) + (dx / dist) * force;
+          node.vy = (node.vy ?? 0) + (dy / dist) * force;
         });
-        
-        // Center Gravity
-        const dx = canvas.width/2 - (node.x || 0);
-        const dy = canvas.height/2 - (node.y || 0);
-        node.vx = (node.vx || 0) + dx * 0.005;
-        node.vy = (node.vy || 0) + dy * 0.005;
+
+        // Center gravity
+        const cx = canvas.width / 2 - (node.x ?? 0);
+        const cy = canvas.height / 2 - (node.y ?? 0);
+        node.vx = (node.vx ?? 0) + cx * 0.01;
+        node.vy = (node.vy ?? 0) + cy * 0.01;
       });
 
-      // Spring Force
+      // Spring attraction along edges
       edges.forEach(edge => {
-        const source = nodes.find(n => n.id === edge.source);
-        const target = nodes.find(n => n.id === edge.target);
-        if (source && target) {
-            const dx = (target.x || 0) - (source.x || 0);
-            const dy = (target.y || 0) - (source.y || 0);
-            const dist = Math.sqrt(dx*dx + dy*dy) || 1;
-            const force = (dist - springLength) * 0.05;
-            const fx = (dx / dist) * force;
-            const fy = (dy / dist) * force;
-            
-            source.vx = (source.vx || 0) + fx;
-            source.vy = (source.vy || 0) + fy;
-            target.vx = (target.vx || 0) - fx;
-            target.vy = (target.vy || 0) - fy;
-        }
+        const src = nodes.find(n => n.id === edge.source);
+        const tgt = nodes.find(n => n.id === edge.target);
+        if (!src || !tgt) return;
+        const dx = (tgt.x ?? 0) - (src.x ?? 0);
+        const dy = (tgt.y ?? 0) - (src.y ?? 0);
+        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+        const force = (dist - springLength) * 0.03;
+        const fx = (dx / dist) * force;
+        const fy = (dy / dist) * force;
+        src.vx = (src.vx ?? 0) + fx;
+        src.vy = (src.vy ?? 0) + fy;
+        tgt.vx = (tgt.vx ?? 0) - fx;
+        tgt.vy = (tgt.vy ?? 0) - fy;
       });
 
-      // 2. Update Positions
-      nodes.forEach(node => {
-          node.vx = (node.vx || 0) * friction;
-          node.vy = (node.vy || 0) * friction;
-          node.x = (node.x || 0) + node.vx;
-          node.y = (node.y || 0) + node.vy;
-      });
-
-      // 3. Draw
+      // Resize canvas to fill container
       canvas.width = canvas.offsetWidth;
       canvas.height = canvas.offsetHeight;
+
+      // Background
       ctx.fillStyle = '#0a0e1a';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Edges
-      ctx.strokeStyle = 'rgba(59, 130, 246, 0.2)';
-      ctx.lineWidth = 1;
+      // Draw edges
+      ctx.strokeStyle = 'rgba(59, 130, 246, 0.3)';
+      ctx.lineWidth = 1.5;
       edges.forEach(edge => {
-          const source = nodes.find(n => n.id === edge.source);
-          const target = nodes.find(n => n.id === edge.target);
-          if (source && target) {
-              ctx.beginPath();
-              ctx.moveTo(source.x || 0, source.y || 0);
-              ctx.lineTo(target.x || 0, target.y || 0);
-              ctx.stroke();
-          }
+        const src = nodes.find(n => n.id === edge.source);
+        const tgt = nodes.find(n => n.id === edge.target);
+        if (!src || !tgt) return;
+        ctx.beginPath();
+        ctx.moveTo(src.x ?? 0, src.y ?? 0);
+        ctx.lineTo(tgt.x ?? 0, tgt.y ?? 0);
+        ctx.stroke();
       });
 
-      // Nodes
+      // Update positions and draw nodes
       nodes.forEach(node => {
-          ctx.fillStyle = node.severity === 'critical' ? '#ef4444' : '#3b82f6';
-          ctx.beginPath();
-          ctx.arc(node.x || 0, node.y || 0, 5, 0, Math.PI * 2);
-          ctx.fill();
-          
-          // Label
-          ctx.fillStyle = '#64748b';
-          ctx.font = '10px monospace';
-          ctx.fillText(node.label, (node.x || 0) + 8, (node.y || 0) + 3);
+        node.vx = (node.vx ?? 0) * friction;
+        node.vy = (node.vy ?? 0) * friction;
+        node.x = (node.x ?? 0) + node.vx;
+        node.y = (node.y ?? 0) + node.vy;
+
+        const isPatientZero = node.type === 'PATIENT_ZERO';
+        const isCritical = node.severity === 'critical';
+        const radius = isPatientZero ? 9 : isCritical ? 6 : 5;
+
+        ctx.shadowBlur = 0;
+        ctx.shadowColor = 'transparent';
+
+        if (isPatientZero) {
+          ctx.shadowBlur = 18;
+          ctx.shadowColor = '#ef4444';
+          ctx.fillStyle = '#ef4444';
+        } else if (isCritical) {
+          ctx.fillStyle = '#f59e0b';
+        } else if (node.type === 'COMMUNITY') {
+          ctx.fillStyle = '#a855f7';
+        } else {
+          ctx.fillStyle = '#3b82f6';
+        }
+
+        ctx.beginPath();
+        ctx.arc(node.x ?? 0, node.y ?? 0, radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = isPatientZero ? 'bold 11px monospace' : '10px monospace';
+        ctx.fillText(node.label, (node.x ?? 0) + radius + 3, (node.y ?? 0) + 4);
       });
 
-      requestAnimationFrame(animate);
+      animId = requestAnimationFrame(animate);
     };
-    
+
     animate();
+    return () => cancelAnimationFrame(animId);
   }, [nodes, edges]);
 
   return (
-    <div className="relative w-full h-[500px] bg-bg-primary rounded-lg overflow-hidden border border-border-subtle">
-       <canvas ref={canvasRef} className="w-full h-full" />
-       {isLoading && <div className="absolute inset-0 flex items-center justify-center text-primary">Initializing Physics Engine...</div>}
+    <div className="relative w-full h-[600px] bg-bg-primary rounded-lg overflow-hidden border border-border-subtle shadow-inner">
+      <canvas ref={canvasRef} className="w-full h-full" />
+      {isLoading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-bg-primary/80 text-primary font-mono text-sm tracking-widest uppercase">
+          Initializing Graph Topology...
+        </div>
+      )}
+      {!isLoading && nodes.length === 0 && (
+        <div className="absolute inset-0 flex items-center justify-center text-text-muted font-mono text-sm">
+          No graph data. Ingest content to populate network.
+        </div>
+      )}
     </div>
   );
 };

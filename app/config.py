@@ -37,12 +37,6 @@ class Settings(BaseSettings):
     # CORS
     CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:3001"]
     
-    # Keycloak (if using)
-    KEYCLOAK_URL: str = "http://localhost:8080"
-    KEYCLOAK_REALM: str = "aegis"
-    KEYCLOAK_CLIENT_ID: Optional[str] = None
-    KEYCLOAK_CLIENT_SECRET: Optional[str] = None
-    
     # Application
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
     DEBUG: bool = False

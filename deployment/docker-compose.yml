@@ -93,18 +93,6 @@ services:
     command: npm run dev
     restart: unless-stopped
 
-  # ── Keycloak (Optional — enable with: --profile auth) ────────────────────
-  keycloak:
-    image: quay.io/keycloak/keycloak:24.0
-    container_name: aegis-keycloak
-    environment:
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: admin
-    ports:
-      - "8080:8080"
-    command: start-dev
-    profiles:
-      - auth
 
 volumes:
   postgres_data:

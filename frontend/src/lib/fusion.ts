@@ -2,8 +2,7 @@
  * Intelligence fusion (Agent 3) - calls backend /api/analyst/fusion
  */
 
-const getApiUrl = () =>
-  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const getApiUrl = () => '';
 
 export interface FusionParams {
   threat_id: number;

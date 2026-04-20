@@ -1,62 +1,28 @@
 'use client';
-import { useEffect, useState } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useEffect } from 'react';
+
+const DEMO_TOKEN_KEY = 'token';
+const DEMO_USER_KEY = 'user';
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
-
-  // Public routes that don't require authentication
-  const publicRoutes = ['/login', '/register', '/'];
-  const isPublicRoute = publicRoutes.includes(pathname);
-
   useEffect(() => {
-    // Check if user is authenticated
-    const token = localStorage.getItem('token');
-    const user = localStorage.getItem('user');
-
-    if (token && user) {
-      setIsAuthenticated(true);
-    } else {
-      setIsAuthenticated(false);
-      
-      // Redirect to login if trying to access protected route
-      if (!isPublicRoute) {
-        router.push('/login');
-      }
+    // Auto-inject demo credentials so API calls carry a valid Bearer token
+    if (!localStorage.getItem(DEMO_TOKEN_KEY)) {
+      fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: 'admin@aegis.com', password: 'AdminPassword123!' }),
+      })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (data?.access_token) {
+            localStorage.setItem(DEMO_TOKEN_KEY, data.access_token);
+            localStorage.setItem(DEMO_USER_KEY, JSON.stringify({ email: 'admin@aegis.com', role: 'admin' }));
+          }
+        })
+        .catch(() => {});
     }
-  }, [pathname, router, isPublicRoute]);
+  }, []);
 
-  // Show nothing while checking authentication
-  if (isAuthenticated === null) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-bg-primary">
-        <div className="text-text-secondary">Loading...</div>
-      </div>
-    );
-  }
-
-  // If on public route and authenticated, redirect to dashboard
-  if (isPublicRoute && isAuthenticated && pathname === '/') {
-    router.push('/dashboard');
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-bg-primary">
-        <div className="text-text-secondary">Redirecting...</div>
-      </div>
-    );
-  }
-
-  // If not authenticated and trying to access protected route, show nothing (redirecting)
-  if (!isAuthenticated && !isPublicRoute) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-bg-primary">
-        <div className="text-text-secondary">Redirecting to login...</div>
-      </div>
-    );
-  }
-
-  // Allow access
   return <>{children}</>;
 }
-
