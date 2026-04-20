@@ -26,6 +26,12 @@ passlib[bcrypt]>=1.7.4
 bcrypt==4.0.1      # Pinned: passlib 1.7.x is incompatible with bcrypt 5.x
 email-validator>=2.2.0
 
+# MCP (Model Context Protocol) - Google Cloud MCP / remote servers
+# https://modelcontextprotocol.github.io/python-sdk/
+# https://docs.cloud.google.com/mcp
+mcp>=1.0.0
+google-auth>=2.25.0
+
 # AI — google-genai (unified SDK, replaces deprecated google-generativeai)
 google-genai>=1.0.0
 

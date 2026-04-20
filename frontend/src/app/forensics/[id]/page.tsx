@@ -1,270 +1,150 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Badge } from '@/components/ui/Badge';
-import { useParams } from 'next/navigation';
+import { AnalysisCard } from '@/components/reports/AnalysisCard';
 
 export default function ForensicsDetailPage() {
   const params = useParams();
-  const id = params?.id || '1';
+  const id = params?.id as string;
+  const router = useRouter();
+  const [threat, setThreat] = useState<{ id: number; content: string; risk_score: number; source_platform: string; timestamp: string } | null>(null);
+  const [summary, setSummary] = useState<{ threat_id: number; summary: string; status: string } | null>(null);
+  const [analysis, setAnalysis] = useState<{
+    threat_id: number;
+    analysis?: unknown;
+    entities?: unknown;
+    attribution?: unknown;
+    recommendations?: string[];
+  } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const [forensicData] = useState<any>(null);
-  const [timeline] = useState<any[]>([]);
-  const [artifacts] = useState<any[]>([]);
-  const [indicators] = useState<any[]>([]);
-  const [relatedThreats] = useState<any[]>([]);
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+
+  useEffect(() => {
+    if (!id) return;
+    const threatId = parseInt(id, 10);
+    if (Number.isNaN(threatId)) {
+      setError('Invalid threat ID');
+      setLoading(false);
+      return;
+    }
+    const fetchData = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const [threatRes, summaryRes] = await Promise.all([
+          fetch(`/api/threats/${threatId}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} }),
+          fetch(`/api/forensics/${threatId}/summary`, { headers: token ? { Authorization: `Bearer ${token}` } : {} }),
+        ]);
+        if (threatRes.ok) setThreat(await threatRes.json());
+        else setError('Threat not found');
+        if (summaryRes.ok) setSummary(await summaryRes.json());
+      } catch (e) {
+        setError('Failed to load data');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [id, API_URL, token]);
+
+  const runAnalysis = async () => {
+    if (!id) return;
+    setAnalyzing(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/forensics/${id}`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAnalysis({
+          threat_id: data.threat_id,
+          analysis: data.analysis,
+          entities: data.entities,
+          attribution: data.attribution,
+          recommendations: data.recommendations || [],
+        });
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setError(err.detail || 'Analysis failed');
+      }
+    } catch (e) {
+      setError('Analysis request failed');
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="p-6 flex items-center justify-center min-h-screen">
+        <p className="text-text-secondary">Loading...</p>
+      </div>
+    );
+  }
+
+  if (error && !threat) {
+    return (
+      <div className="p-6 min-h-screen max-w-3xl mx-auto">
+        <Card className="p-6">
+          <p className="text-danger mb-4">{error}</p>
+          <Button variant="secondary" onClick={() => router.push('/threats')}>Back to Threats</Button>
+        </Card>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="flex items-start justify-between mb-6">
+    <div className="p-6 min-h-screen max-w-5xl mx-auto">
+        <div className="flex items-center justify-between mb-6">
           <div>
-            <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-3xl font-bold font-display">
-                🔍 Forensic Analysis #{id}
-              </h1>
-              {forensicData && (
-                <>
-                  <Badge variant={forensicData.severity}>
-                    {forensicData.severity.toUpperCase()}
-                  </Badge>
-                  <Badge variant="info">{forensicData.status}</Badge>
-                </>
-              )}
-            </div>
-            {forensicData ? (
-              <>
-                <p className="text-text-secondary">{forensicData.title}</p>
-                <div className="flex items-center gap-4 mt-2 text-sm text-text-muted">
-                  <span>Created: {forensicData.createdAt}</span>
-                  <span>•</span>
-                  <span>Analyst: {forensicData.analyst}</span>
-                </div>
-              </>
-            ) : (
-              <p className="text-text-secondary">No forensic data available for this analysis</p>
-            )}
+            <Link href="/threats" className="text-sm text-primary hover:underline mb-2 inline-block">← Back to Threats</Link>
+            <h1 className="text-2xl font-bold text-text-primary">Forensic Analysis #{id}</h1>
+            <p className="text-text-muted text-sm">Threat detail and deep-dive analysis</p>
           </div>
-          <div className="flex gap-2">
-            <Button variant="secondary" icon="📥" onClick={() => console.log('Export Report clicked', id)}>Export Report</Button>
-            <Button variant="ai" icon="🤖" onClick={() => console.log('AI Analysis clicked', id)}>AI Analysis</Button>
-          </div>
+          <Button variant="primary" onClick={runAnalysis} disabled={analyzing}>
+            {analyzing ? 'Analyzing...' : 'Run forensic analysis'}
+          </Button>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Phase 2.4: Stylometric Evasion Flags */}
-          <Card className="mb-6 border-l-2 border-red-500 bg-red-500/5 col-span-full">
-            <h2 className="text-[10px] font-bold uppercase tracking-widest text-red-500 mb-4">Adversarial Evasion Flags</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="text-center p-3 bg-bg-primary rounded border border-red-900/30">
-                <div className="text-lg font-bold text-red-500">HIGH</div>
-                <div className="text-[10px] text-text-muted uppercase">Invisible Unicode</div>
-                <div className="text-[9px] text-red-400/70 mt-1">Zero-Width Spaces Detected</div>
+        {error && (
+          <div className="mb-4 p-3 rounded bg-red-500/10 border border-red-500/30 text-red-400 text-sm">{error}</div>
+        )}
+
+        <div className="space-y-6">
+          {threat && (
+            <Card className="p-6">
+              <h2 className="text-sm font-semibold uppercase tracking-widest text-text-muted mb-3">Threat content</h2>
+              <p className="text-text-secondary text-sm whitespace-pre-wrap font-mono bg-bg-primary p-4 rounded">{threat.content}</p>
+              <div className="mt-4 flex gap-4 text-xs text-text-muted">
+                <span>Risk: {threat.risk_score?.toFixed(2)}</span>
+                <span>Source: {threat.source_platform}</span>
+                <span>Time: {threat.timestamp}</span>
               </div>
-              <div className="text-center p-3 bg-bg-primary rounded border border-orange-900/30">
-                <div className="text-lg font-bold text-orange-500">0.82</div>
-                <div className="text-[10px] text-text-muted uppercase">L33tSp34k Score</div>
-                <div className="text-[9px] text-orange-400/70 mt-1">Character-Swap Obfuscation</div>
-              </div>
-              <div className="text-center p-3 bg-bg-primary rounded border border-blue-900/30">
-                <div className="text-lg font-bold text-blue-500">LOW</div>
-                <div className="text-[10px] text-text-muted uppercase">Lexical Entropy</div>
-                <div className="text-[9px] text-blue-400/70 mt-1">AI-Consistent Pattern</div>
-              </div>
+            </Card>
+          )}
+
+          {summary && (
+            <Card className="p-6">
+              <h2 className="text-sm font-semibold uppercase tracking-widest text-text-muted mb-2">Summary</h2>
+              <p className="text-text-secondary">{summary.summary}</p>
+              <span className="inline-block mt-2 text-xs text-text-muted">Status: {summary.status}</span>
+            </Card>
+          )}
+
+          {analysis && (
+            <div className="rounded-lg overflow-hidden border border-border-subtle bg-bg-secondary">
+              <AnalysisCard analysis={analysis} />
             </div>
-          </Card>
-
-          {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Timeline */}
-            <Card>
-              <h2 className="text-xl font-semibold mb-4">📅 Attack Timeline</h2>
-              <div className="space-y-4">
-                {timeline.length === 0 ? (
-                  <div className="text-center py-12 text-text-secondary">
-                    <div className="text-4xl mb-4">📅</div>
-                    <h3 className="text-lg font-semibold mb-2">No timeline data available</h3>
-                    <p className="text-sm">Timeline events will appear here when available</p>
-                  </div>
-                ) : (
-                  timeline.map((item, idx) => {
-                  const typeColors = {
-                    detection: 'border-warning',
-                    analysis: 'border-info',
-                    network: 'border-danger',
-                    response: 'border-success',
-                  };
-                  
-                  return (
-                    <div
-                      key={idx}
-                      className={`flex gap-4 p-4 bg-bg-primary rounded-lg border-l-4 ${typeColors[item.type as keyof typeof typeColors]}`}
-                    >
-                      <div className="font-mono text-sm text-text-muted whitespace-nowrap">
-                        {item.time}
-                      </div>
-                      <div className="flex-1">
-                        <div className="font-semibold text-text-primary mb-1">
-                          {item.event}
-                        </div>
-                        <div className="text-sm text-text-secondary">
-                          {item.description}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                  })
-                )}
-              </div>
-            </Card>
-
-            {/* Evidence & Artifacts */}
-            <Card>
-              <h2 className="text-xl font-semibold mb-4">📦 Evidence & Artifacts</h2>
-              <div className="space-y-3">
-                {artifacts.length === 0 ? (
-                  <div className="text-center py-12 text-text-secondary">
-                    <div className="text-4xl mb-4">📦</div>
-                    <h3 className="text-lg font-semibold mb-2">No artifacts available</h3>
-                    <p className="text-sm">Evidence and artifacts will appear here when available</p>
-                  </div>
-                ) : (
-                  artifacts.map((artifact, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-center justify-between p-4 bg-bg-primary rounded-lg hover:bg-bg-tertiary transition-colors"
-                  >
-                    <div className="flex-1">
-                      <div className="font-semibold text-text-primary mb-1">
-                        {artifact.name}
-                      </div>
-                      <div className="text-sm text-text-secondary">
-                        {artifact.type} • {artifact.size}
-                      </div>
-                      <div className="text-xs font-mono text-text-muted mt-1">
-                        {artifact.hash}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <Badge
-                        variant={
-                          artifact.risk === 'critical' ? 'critical' :
-                          artifact.risk === 'high' ? 'high' :
-                          artifact.risk === 'medium' ? 'medium' : 'low'
-                        }
-                      >
-                        {artifact.risk}
-                      </Badge>
-                      <Button variant="secondary" className="text-xs py-1 px-3" onClick={() => console.log('Download artifact clicked', artifact.name)}>
-                        Download
-                      </Button>
-                    </div>
-                  </div>
-                  ))
-                )}
-              </div>
-            </Card>
-
-            {/* Network Activity */}
-            <Card>
-              <h2 className="text-xl font-semibold mb-4">🌐 Network Activity</h2>
-              <div className="bg-bg-primary p-4 rounded-lg font-mono text-sm text-text-secondary overflow-x-auto">
-                {timeline.length === 0 ? (
-                  <div className="text-center py-8 text-text-muted">
-                    No network activity data available
-                  </div>
-                ) : (
-                  <div className="text-text-muted">Network activity will appear here when available</div>
-                )}
-              </div>
-            </Card>
-          </div>
-
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* AI Insights */}
-            <Card className="bg-gradient-to-br from-bg-secondary to-purple-950/10 border-secondary/30">
-              <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                <span>🤖</span> AI Insights
-              </h3>
-              <div className="space-y-3 text-sm">
-                {forensicData ? (
-                  <div className="text-text-secondary text-center py-8">
-                    AI insights will appear here when analysis is available
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-text-secondary">
-                    <div className="text-4xl mb-4">🤖</div>
-                    <h3 className="text-lg font-semibold mb-2">No AI insights available</h3>
-                    <p className="text-sm">AI analysis will appear here when available</p>
-                  </div>
-                )}
-              </div>
-              <Button variant="ai" className="w-full mt-4 text-sm" onClick={() => console.log('Generate Full Report clicked', id)}>
-                Generate Full Report
-              </Button>
-            </Card>
-
-            {/* Indicators of Compromise */}
-            <Card>
-              <h3 className="text-lg font-semibold mb-3">🎯 IOCs</h3>
-              <div className="space-y-3">
-                {indicators.length === 0 ? (
-                  <div className="text-center py-8 text-text-secondary">
-                    <div className="text-4xl mb-4">🎯</div>
-                    <h3 className="text-lg font-semibold mb-2">No IOCs available</h3>
-                    <p className="text-sm">Indicators of compromise will appear here when available</p>
-                  </div>
-                ) : (
-                  indicators.map((ioc, idx) => (
-                  <div key={idx} className="text-sm">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-text-muted">{ioc.type}</span>
-                      <Badge variant={ioc.confidence === 'High' ? 'high' : 'medium'}>
-                        {ioc.confidence}
-                      </Badge>
-                    </div>
-                    <div className="font-mono text-xs text-text-primary bg-bg-primary p-2 rounded break-all">
-                      {ioc.value}
-                    </div>
-                  </div>
-                  ))
-                )}
-              </div>
-              <Button variant="secondary" className="w-full mt-4 text-sm" onClick={() => console.log('Export IOCs clicked', id)}>
-                Export IOCs
-              </Button>
-            </Card>
-
-            {/* Related Threats */}
-            <Card>
-              <h3 className="text-lg font-semibold mb-3">🔗 Related Threats</h3>
-              <div className="space-y-2 text-sm">
-                {relatedThreats.length === 0 ? (
-                  <div className="text-center py-8 text-text-secondary">
-                    <div className="text-4xl mb-4">🔗</div>
-                    <h3 className="text-lg font-semibold mb-2">No related threats</h3>
-                    <p className="text-sm">Related threats will appear here when available</p>
-                  </div>
-                ) : (
-                  relatedThreats.map((threat, idx) => (
-                    <div 
-                      key={idx}
-                      className="p-2 bg-bg-primary rounded hover:bg-bg-tertiary cursor-pointer transition-colors"
-                      onClick={() => console.log('Related threat clicked', threat)}
-                    >
-                      <div className="font-medium text-text-primary">{threat.title || `Threat #${threat.id}`}</div>
-                      <div className="text-xs text-text-muted">{threat.date || 'Unknown date'}</div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </Card>
-          </div>
+          )}
         </div>
-      </div>
     </div>
   );
 }

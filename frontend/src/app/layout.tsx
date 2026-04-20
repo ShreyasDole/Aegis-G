@@ -4,8 +4,8 @@ import { ClientLayout } from '@/components/layout/ClientLayout';
 import { AuthGuard } from '@/components/auth/AuthGuard';
 
 export const metadata: Metadata = {
-  title: 'Aegis-G Command Center',
-  description: 'AI-Powered Cybersecurity Command Center for National Security Operations',
+  title: 'AEGIS-G — Modern Enterprise Security',
+  description: 'Enterprise security operations dashboard with AI and graph intelligence',
 };
 
 export default function RootLayout({

@@ -2,12 +2,208 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.104-green.svg)](https://fastapi.tiangolo.com/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-green.svg)](https://fastapi.tiangolo.com/)
 [![Next.js](https://img.shields.io/badge/Next.js-14-black.svg)](https://nextjs.org/)
 [![Gemini](https://img.shields.io/badge/Gemini-2.5--Flash-orange.svg)](https://aistudio.google.com/)
 [![Neo4j](https://img.shields.io/badge/Neo4j-GDS-lightblue.svg)](https://neo4j.com/)
 
 A **production-ready, enterprise-grade** cybersecurity platform that defends against AI-driven Malign Information Operations (MIO). Combines a **Multi-Agent Defense Pipeline**, graph-based threat intelligence, blockchain audit trails, and Gemini AI for national security operations.
+
+---
+
+## 📋 SIH Problem Statement (Selected)
+
+**Mitigating National Security Risks Posed by Large Language Models (LLMs) in AI-Driven Malign Information Operations**
+
+### Background
+
+Large Language Models (LLMs) — such as OpenAI's GPT series, Anthropic's Claude, Google's Gemini, and Perplexity AI — have transformed digital ecosystems by enabling rapid generation of human-like, contextually coherent, and scalable textual content. These advancements power breakthroughs in research, automation, education, and communication. However, this technological democratization introduces critical national security vulnerabilities. Malicious actors — including state-sponsored cyber units, extremist organizations, and sophisticated criminal networks — are now exploiting LLMs to:
+
+- Generate highly personalized phishing emails with improved linguistic fluency and contextual relevance.
+- Automate large-scale disinformation campaigns to manipulate public sentiment and undermine democratic institutions.
+- Fabricate synthetic extremist propaganda to radicalize individuals and recruit operatives.
+- Engage in influence operations at a scale and speed that traditional human-led misinformation campaigns could not achieve.
+
+The ability to create plausible, non-repetitive, and linguistically diverse narratives significantly complicates detection, attribution, and takedown efforts by national security and cyber defense teams.
+
+### Detailed Description
+
+This problem requires the design and implementation of a multi-layered technical and policy framework to detect, analyze, and mitigate the misuse of LLMs in hostile information operations. The framework must incorporate cutting-edge AI, machine learning, and cyber defense methodologies.
+
+**Key technical requirements include:**
+
+1. **Real-Time AI-Generated Content Detection**
+   - Deploy advanced transformer-based classifiers (e.g., RoBERTa, T5, or GPT detectors) trained on large-scale, labeled datasets of AI-generated vs. human-generated content.
+   - Utilize stylometric and semantic feature extraction to identify LLM-specific language patterns, entropy levels, and token probability distributions.
+   - Implement multi-modal detection by analyzing text, metadata, and social graph propagation patterns simultaneously.
+
+2. **Attribution and Forensics**
+   - Build forensic watermarking and fingerprinting techniques to tag, trace, and verify LLM outputs, leveraging solutions like OpenAI watermarking APIs or cryptographic hashes.
+   - Use reverse engineering and stylometric analysis to attribute content to specific model families or platforms.
+
+3. **Graph-Based Threat Intelligence and Monitoring**
+   - Integrate graph neural networks (GNNs) to map disinformation clusters, actor coordination patterns, and propagation chains across platforms.
+   - Develop APIs for integration with threat intelligence platforms and security information and event management (SIEM) tools for real-time correlation.
+
+4. **Cross-Border Intelligence Sharing**
+   - Create a federated detection and intelligence-sharing protocol that enables secure data exchange between allied nations without violating data localization and privacy laws.
+   - Utilize standardized APIs and blockchain-based audit trails for tamper-proof information sharing.
+
+5. **Automated Risk and Threat Assessment**
+   - Build dashboard-driven analytics with real-time risk scoring and visualization layers for national security agencies.
+   - Include heatmaps, temporal trend analysis, and predictive modelling for proactive threat anticipation.
+
+6. **Vendor Collaboration and Red-Teaming**
+   - Partner with LLM providers to enforce Responsible AI guidelines, such as abuse-limiting guardrails and adversarial testing protocols.
+   - Conduct continuous red-team simulations to expose vulnerabilities and strengthen platform defences.
+
+7. **Privacy and Compliance Integration**
+   - Embed privacy-preserving techniques, including federated learning and differential privacy, to ensure data security and adherence to legal frameworks.
+   - Incorporate transparency reporting and explainable AI (XAI) layers to maintain accountability and public trust.
+
+### Expected Solution (from problem brief)
+
+The envisioned solution is a hybrid platform combining AI-driven analytics, forensic capabilities, and policy integration to support real-time detection, attribution, and response to LLM-driven malign information operations.
+
+**Key deliverables include:**
+
+- A deployable software platform with APIs for integration into national security operations centres (SOCs) and cyber defence networks.
+- High-accuracy detection engines with precision and recall exceeding 90% in detecting AI-generated malicious narratives across text and multimedia formats.
+- Federated intelligence-sharing systems enabling rapid, coordinated response at a national and international level.
+- Comprehensive policy framework outlining governance models, vendor obligations, and oversight mechanisms to balance security with civil liberties.
+
+---
+
+## ✅ Proposed Solution: Aegis-G
+
+Aegis-G is our **proposed solution** to the SIH problem above: a **Cognitive Shield Command Center** — a deployable software platform that implements a multi-layered technical and policy framework to detect, analyze, attribute, and mitigate LLM-driven malign information operations. It is built for integration into national security operations centres (SOCs) and cyber defence networks, with REST APIs, real-time detection, graph-based threat intelligence, and federated intelligence sharing.
+
+---
+
+### What We Have Built
+
+#### 1. Multi-Agent Defense Pipeline (Core Engine)
+
+A **5-stage automated pipeline** runs on every content scan (single or batch). Each stage is implemented and wired in the backend:
+
+| Stage | Name | What It Does |
+|-------|------|--------------|
+| **Phase 1** | Agent 1 — Forensic Scan | Detects AI-generated content: **cloud mode** uses **Gemini 2.5 Flash** (stylometric/semantic analysis); **local/air-gapped mode** uses an **ONNX-based classifier**. Outputs: `risk_score`, `is_ai_generated`, `detected_model`, `confidence`. |
+| **Phase 2** | Agent 2 — Graph Oracle | Creates/updates **User** and **Post** nodes in **Neo4j**; runs **Louvain** community detection (GDS) for botnet/cluster detection; **PageRank** for influence scoring; **Patient Zero** detection for propagation chains. |
+| **Phase 3** | Agent 4 — Policy Guardian | Executes **DSL rules** (IF/THEN/AND/OR/NOT) from the database. Actions: `BLOCK_AND_LOG`, `FLAG_THREAT`, `ALERT`, `LOG_ONLY`. Blocked content returns a BLOCKED response and is pushed over **WebSocket** for real-time alerts. |
+| **Phase 4** | Trust Layer | High-risk items (e.g. score > 0.7) are written to a **SHA-256 linked blockchain ledger** stored in PostgreSQL. Chain integrity is verifiable via API and Ledger Explorer UI. |
+| **Phase 5** | Agent 3 — Intelligence Analyst | Available via **`/api/analyst/fusion`**: fuses forensics + graph data into structured reports with AI reasoning logs; can log to the ledger. |
+
+Trigger: **`POST /api/scan/`** (and **`POST /api/scan/batch`**). Header **`X-Inference-Mode: local`** or **`cloud`** selects detection mode.
+
+**Pipeline overview:**
+
+![Aegis-G Multi-Agent Defense Pipeline](assets/pipeline-diagram.jpeg)
+
+**End-to-end pipeline walkthrough**
+
+1. **Start — Input**  
+   The pipeline receives a payload: `content` (text to analyze), `platform` (source platform), and `username`. This is the trigger for every scan (e.g. from `POST /api/scan/`).
+
+2. **Ingest**  
+   The API payload is received and a **content hash** (SHA-256) is generated from the content. This hash uniquely identifies the piece of content and is used later for graph nodes and ledger records. Outputs: `content hash`, `content`.
+
+3. **Agent 1 — Run AI detection & compute risk**  
+   The content is sent to the detection engine (Gemini in cloud mode or ONNX/stylometry in local mode). The system decides whether the content is AI-generated and computes a **risk score**. Outputs: `risk_score`, `forensics_data` (e.g. burstiness, confidence). This is Phase 1 (Forensic Scan).
+
+4. **Agent 2 — Update Neo4j & find Patient Zero**  
+   Using `risk_score` and `forensics_data`, the graph layer creates or updates **User** and **Post** nodes in Neo4j, then runs **Patient Zero** detection to see if this content is part of a botnet or propagation cluster. Outputs: `graph_metadata`, `cluster_risk` (e.g. High/Low). This is Phase 2 (Graph Oracle).
+
+5. **Agent 3 — Synthesize intelligence & generate report**  
+   Forensics and graph data are fused into a structured **intelligence report** with an AI reasoning log (what was detected, why it matters). Outputs: `fusion_result`, `reasoning_log`. This supports analyst review and optional logging to the ledger.
+
+6. **Agent 4 — Execute DSL rules**  
+   The **Policy Guardian** loads the active policy (e.g. “IF ai_score > 0.85 THEN BLOCK_AND_LOG”) and runs it against the current context (content, risk score, graph cluster size). The result is a decision: **Should block?** (Yes/No).
+
+7. **Decision — Should block?**  
+   - **Yes** → The content is **Blocked**. A BLOCKED response is returned and the event can be pushed over WebSocket for real-time alerts. Pipeline ends here.  
+   - **No** → The content is allowed to proceed to the trust layer.
+
+8. **Agent 5 — Add to ledger & record immutable audit**  
+   For allowed (and optionally high-risk) items, the system calls **add_to_ledger**: it writes an immutable record (e.g. report summary, reasoning log) to the SHA-256 linked blockchain in PostgreSQL. Output: `ledger_hash`. This is the Trust Layer (Phase 4).
+
+9. **Processed**  
+   The pipeline completes with status **Processed**. The response includes `risk_score`, `blockchain_hash`, `graph_context`, and recommendations (e.g. Review vs Ignore). The content is now scanned, graphed, policy-checked, and (when applicable) audited on the ledger.
+
+In short: **Ingest → Detect (Agent 1) → Graph (Agent 2) → Intelligence (Agent 3) → Policy (Agent 4) → Block or Ledger (Agent 5) → Blocked or Processed.**
+
+#### 2. Backend — APIs and Services
+
+| Component | What We Built |
+|-----------|----------------|
+| **API layer** | **FastAPI** app with REST endpoints and **WebSocket** (`/ws/blocked-content`). **Swagger** at `/docs`, **ReDoc** at `/redoc`. |
+| **Authentication** | **JWT** (access tokens), **bcrypt** password hashing, optional **Microsoft Outlook OAuth** for sign-in. |
+| **Authorization** | **RBAC/ABAC** via **`authz.map.json`** (path + method → roles). **Authorization middleware** on every request. **User approval workflow** (pending → approved/rejected) with admin endpoints. |
+| **Detection & scan** | **`/api/scan/`**, **`/api/scan/batch`** — trigger the full pipeline. **`/api/threats`** — list/get threats. |
+| **Forensics** | **`/api/forensics/{threat_id}`** — deep analysis with **Gemini** (entities, attribution, recommendations). **`/api/forensics/{threat_id}/summary`**. |
+| **Graph / network** | **`/api/network/`** — full graph; **`/api/network/campaign/{root_id}`** — campaign lineage; **`/api/network/clusters`** — bot clusters; **`/api/network/pagerank`** — top influencers. **Neo4j** + **GDS** (Louvain, PageRank). |
+| **AI policies & insights** | **`/api/ai/policies`** — CRUD; **natural language → DSL** translation. **`/api/ai/insights`** — generate/list insights. **`/api/ai/chat`** — AI Manager chatbot (context-aware). **Policy Guardian** executes DSL in the pipeline. |
+| **Sharing & ledger** | **`/api/sharing/ledger`** — paginated ledger; **`/api/sharing/ledger/integrity`** — chain verification; **`/api/sharing/export/stix/{threat_id}`** — **STIX 2.1** bundle; **`/api/sharing/share/{report_id}`** — share with **PII redaction** (Gemini). |
+| **Admin & audit** | **`/api/admin/users`**, **`/api/admin/users/pending`**, **`/api/admin/users/{id}/approve`**. **`/api/admin/audit`** — query logs; **`/api/admin/audit/export`** — CSV; **`/api/admin/audit/security`** — security events. **Audit middleware** logs requests, responses, and security events. |
+| **System** | **`/health`** — health check; **`/`** — API status and feature list. |
+| **Databases** | **PostgreSQL** — users, threats, reports, ledger, audit logs, AI policies/insights, blocked content. **Neo4j** — graph (users, posts, relationships). **Redis** — caching (graceful fallback if unavailable). |
+
+#### 3. Frontend — What We Built
+
+| Page / feature | Route | Description |
+|----------------|-------|-------------|
+| **Home** | `/` | Landing with system status. |
+| **Dashboard** | `/dashboard` | Command center: top threats, 3D threat globe, intelligence brief, Agent 3 fusion trigger. |
+| **Threats** | `/threats` | Threat list with filters; link to forensics. |
+| **Network** | `/network` | Force-directed graph (nodes/edges), campaign view, cluster and influencer data. |
+| **Forensics** | `/forensics/[id]` | Deep-dive per threat: timeline, artifacts, AI analysis. |
+| **Sharing** | `/sharing` | Intelligence sharing, STIX export, blockchain audit. |
+| **Ledger** | `/ledger` | Blockchain explorer: blocks, hashes, integrity status. |
+| **Policy** | `/policy` | AI policy management (create, list, NL → DSL). |
+| **Scans** | `/scans` | Live content scan UI (single/batch, mode selection). |
+| **Login / Register** | `/login`, `/register` | Auth; register creates pending user (admin approval). |
+| **Auth callback** | `/auth/callback` | OAuth callback (e.g. Outlook). |
+| **Components** | — | **ThreatMapGlobe** (3D globe), **NetworkGraph** (force-directed), **AIManager** (floating chat, Ctrl+M), **IntelligenceBrief**, **ReasoningTerminal**. |
+
+**Stack:** Next.js 14 (App Router), React 18, TypeScript, Tailwind CSS, Axios, Lucide React.
+
+#### 4. Security, Compliance & Deployment
+
+- **Auth:** JWT, optional Outlook OAuth, role-based access (**admin**, **analyst**, **viewer**).
+- **Audit:** Every request logged (method, path, user, status, time, IP, user agent); sensitive fields masked; security events (failed auth, denials); CSV export for compliance.
+- **Sharing:** PII redaction before share; STIX 2.1 for inter-agency standards; blockchain for tamper-proof audit trail.
+- **Deployment:** **Docker** and **docker-compose** (dev and prod); **Alembic** migrations; **Makefile** targets (`make up`, `make migrate`, `make up-prod`, etc.). Production: **Gunicorn**, **Nginx**, multi-stage Dockerfiles.
+
+---
+
+### How This Maps to the SIH Requirements
+
+| SIH Requirement / Deliverable | How Aegis-G Addresses It |
+|-------------------------------|---------------------------|
+| **1. Real-Time AI-Generated Content Detection** | **Agent 1**: Gemini 2.5 Flash (cloud) or ONNX classifier (local/air-gapped). Risk score, AI-generated flag, confidence. Pipeline runs on every scan; graph phase adds propagation context. |
+| **2. Attribution and Forensics** | **Forensics API** with Gemini (entities, attribution, recommendations). **SHA-256 content hashing** and **blockchain ledger** for fingerprinting and traceability. **Agent 3** fusion reports with reasoning logs. |
+| **3. Graph-Based Threat Intelligence** | **Neo4j + GDS**: Louvain clusters, PageRank, Patient Zero, campaign lineage. **REST APIs** under `/api/network/*` for SIEM and threat-intel integration. |
+| **4. Cross-Border Intelligence Sharing** | **STIX 2.1** export, **blockchain audit trail**, **PII redaction** (Gemini) before share. **`/api/sharing/*`** for secure, auditable exchange. |
+| **5. Automated Risk and Threat Assessment** | **Dashboard**, risk scoring, **3D globe**, **network graph**, **AI Insights**. **Policy Guardian** automates block/flag/alert via DSL rules. |
+| **6. Vendor Collaboration and Red-Teaming** | **Policy Guardian** guardrails (NL → DSL). **Local vs cloud** inference for red-team and air-gapped testing. Audit and blocked-content tracking for accountability. |
+| **7. Privacy and Compliance** | **PII redaction**, full **audit logging** with CSV export, **RBAC**, user-approval workflow. **Explainable** reasoning in Agent 3 and policy decisions. |
+| **Deliverable: Deployable platform + APIs** | **FastAPI** REST + **WebSocket**, **/docs** and **/redoc**, **Docker**/compose for SOC deployment. |
+| **Deliverable: High-accuracy detection** | **Gemini** + optional **ONNX** detection; pipeline combines forensics, graph, and policy for holistic risk scoring. |
+| **Deliverable: Federated intelligence sharing** | **STIX 2.1**, **blockchain ledger**, **sharing APIs** with PII redaction for national/international response. |
+| **Deliverable: Policy framework** | **AI policies** (NL → DSL), **Policy Guardian**, **audit trail** for governance and oversight. |
+
+---
+
+## 🛠️ Tech Stack
+
+| Layer | Technologies |
+|-------|---------------|
+| **Backend** | Python 3.11+, FastAPI 0.115+, Uvicorn, Gunicorn, Pydantic, SQLAlchemy 2, Alembic |
+| **Frontend** | Next.js 14, React 18, TypeScript, Tailwind CSS, Axios, Lucide React |
+| **AI** | Google Gemini 2.5 Flash (google-genai), ONNX local classifier, MCP (Model Context Protocol) |
+| **Databases** | PostgreSQL (primary + pgvector), Neo4j (graph + GDS), Redis (caching) |
+| **Standards & Integrations** | STIX 2.1, JWT (python-jose), bcrypt, Microsoft Outlook OAuth (optional) |
+| **Infrastructure** | Docker & Docker Compose, Nginx (production), GitHub Actions (CI/CD) |
 
 ---
 

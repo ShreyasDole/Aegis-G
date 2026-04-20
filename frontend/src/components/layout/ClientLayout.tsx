@@ -1,22 +1,24 @@
 'use client';
 import { usePathname } from 'next/navigation';
-import { Navbar } from '@/components/layout/Navbar';
+import { EnterpriseShell } from '@/components/layout/EnterpriseShell';
 import { AIManager } from '@/components/ai/AIManager';
 
 export function ClientLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  
-  // Don't show navbar on login/register pages
-  const publicRoutes = ['/login', '/register'];
-  const showNavbar = !publicRoutes.includes(pathname);
+  const publicRoutes = ['/login', '/register', '/'];
+  const noShell = publicRoutes.includes(pathname) || pathname?.startsWith('/stitch-embed');
+  const useShell = !noShell;
 
   return (
     <>
-      {showNavbar && <Navbar />}
-      <main className={showNavbar ? "pt-16" : ""}>
-        {children}
-      </main>
-      {showNavbar && <AIManager />}
+      {useShell ? (
+        <EnterpriseShell>
+          <main className="min-h-screen">{children}</main>
+        </EnterpriseShell>
+      ) : (
+        <main className="min-h-screen">{children}</main>
+      )}
+      {useShell && <AIManager />}
     </>
   );
 }
