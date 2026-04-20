@@ -1,8 +1,8 @@
 'use client';
-import React, { useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
-export default function AuthCallbackPage() {
+function AuthCallbackInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
@@ -14,7 +14,6 @@ export default function AuthCallbackPage() {
       setTimeout(() => router.replace('/login'), 2000);
       return;
     }
-    const API_URL = '';
     localStorage.setItem('token', token);
     fetch(`/api/auth/me`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -50,5 +49,17 @@ export default function AuthCallbackPage() {
     <div className="min-h-screen flex items-center justify-center bg-bg-primary">
       <p className="text-text-secondary">Signing you in...</p>
     </div>
+  );
+}
+
+export default function AuthCallbackPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-bg-primary">
+        <p className="text-text-secondary">Loading...</p>
+      </div>
+    }>
+      <AuthCallbackInner />
+    </Suspense>
   );
 }

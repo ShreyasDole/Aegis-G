@@ -25,6 +25,9 @@ export const CampaignView: React.FC = () => {
   const [graphKey, setGraphKey] = useState(0);
   const [loadingClusters, setLoadingClusters] = useState(true);
   const [clustersError, setClustersError] = useState<string | null>(null);
+  const [graphNodes, setGraphNodes] = useState<import('./NetworkGraph').GraphNode[]>([]);
+  const [graphEdges, setGraphEdges] = useState<import('./NetworkGraph').GraphEdge[]>([]);
+  const [graphLoading, setGraphLoading] = useState(false);
 
   useEffect(() => {
     const loadClusters = async () => {
@@ -50,9 +53,30 @@ export const CampaignView: React.FC = () => {
     loadClusters();
   }, []);
 
+  const loadCampaignGraph = async (rootId: string) => {
+    setGraphLoading(true);
+    try {
+      const res = await fetch(`/api/network/campaign/${rootId}`, { headers: getAuthHeaders() });
+      if (res.ok) {
+        const data = await res.json();
+        const nodes = (data.nodes || []).map((n: import('./NetworkGraph').GraphNode) =>
+          n.id === rootId ? { ...n, type: 'PATIENT_ZERO' } : n
+        );
+        setGraphNodes(nodes);
+        setGraphEdges(data.edges || []);
+      }
+    } catch {
+      setGraphNodes([]);
+      setGraphEdges([]);
+    } finally {
+      setGraphLoading(false);
+    }
+  };
+
   const handleSelectRoot = (rootId: string) => {
     setSelectedRootId(rootId);
     setGraphKey((k) => k + 1);
+    loadCampaignGraph(rootId);
   };
 
   return (
@@ -138,10 +162,9 @@ export const CampaignView: React.FC = () => {
             </div>
             <NetworkGraph
               key={graphKey}
-              dataSource={selectedRootId ? 'campaign' : 'mock'}
-              campaignRootId={selectedRootId}
-              highlightPatientZero
-              refreshKey={graphKey}
+              nodes={graphNodes}
+              edges={graphEdges}
+              isLoading={graphLoading}
             />
             {selectedRootId && (
               <p className="text-[10px] text-text-muted mt-2 font-mono">
