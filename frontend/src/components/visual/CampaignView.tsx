@@ -138,10 +138,9 @@ export const CampaignView: React.FC = () => {
             </div>
             <NetworkGraph
               key={graphKey}
-              dataSource={selectedRootId ? 'campaign' : 'mock'}
-              campaignRootId={selectedRootId}
-              highlightPatientZero
-              refreshKey={graphKey}
+              nodes={[]}
+              edges={[]}
+              isLoading={false}
             />
             {selectedRootId && (
               <p className="text-[10px] text-text-muted mt-2 font-mono">

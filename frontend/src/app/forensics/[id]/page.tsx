@@ -51,7 +51,7 @@ export default function ForensicsDetailPage() {
       }
     };
     fetchData();
-  }, [id, API_URL, token]);
+  }, [id, token]);
 
   const runAnalysis = async () => {
     if (!id) return;
