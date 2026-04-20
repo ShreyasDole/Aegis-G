@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { Card } from '../ui/Card';
+import { AgentHeartbeat } from './AgentHeartbeat';
 
 export const Sidebar: React.FC = () => {
   const [activities] = useState<any[]>([]);
@@ -122,6 +123,8 @@ export const Sidebar: React.FC = () => {
         </div>
       </Card>
 
+      {/* Agent Neural Heartbeat */}
+      <AgentHeartbeat />
 
       {/* Quick AI Insights */}
       <Card className="mt-4 bg-primary/5 border-primary/30">

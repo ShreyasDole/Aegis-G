@@ -23,6 +23,7 @@ export default function ForensicsDetailPage() {
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
   useEffect(() => {
@@ -38,8 +39,8 @@ export default function ForensicsDetailPage() {
       setError(null);
       try {
         const [threatRes, summaryRes] = await Promise.all([
-          fetch(`/api/threats/${threatId}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} }),
-          fetch(`/api/forensics/${threatId}/summary`, { headers: token ? { Authorization: `Bearer ${token}` } : {} }),
+          fetch(`${API_URL}/api/threats/${threatId}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} }),
+          fetch(`${API_URL}/api/forensics/${threatId}/summary`, { headers: token ? { Authorization: `Bearer ${token}` } : {} }),
         ]);
         if (threatRes.ok) setThreat(await threatRes.json());
         else setError('Threat not found');
@@ -51,14 +52,14 @@ export default function ForensicsDetailPage() {
       }
     };
     fetchData();
-  }, [id, token]);
+  }, [id, API_URL, token]);
 
   const runAnalysis = async () => {
     if (!id) return;
     setAnalyzing(true);
     setError(null);
     try {
-      const res = await fetch(`/api/forensics/${id}`, {
+      const res = await fetch(`${API_URL}/api/forensics/${id}`, {
         method: 'POST',
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });

@@ -19,104 +19,72 @@ const latLngToSphere = (lat: number, lng: number) => {
   };
 };
 
-const PLATFORM_TO_GEO: Record<string, { lat: number; lng: number; label: string }> = {
-  twitter: { lat: 40.7128, lng: -74.006, label: 'USA' },
-  facebook: { lat: 37.7749, lng: -122.4194, label: 'USA' },
-  telegram: { lat: 55.7558, lng: 37.6173, label: 'Russia' },
-  vk: { lat: 55.7558, lng: 37.6173, label: 'Russia' },
-  weibo: { lat: 39.9042, lng: 116.4074, label: 'China' },
-  wechat: { lat: 39.9042, lng: 116.4074, label: 'China' },
-  unknown: { lat: 51.5074, lng: -0.1278, label: 'UK' },
-};
-const DEFAULT_TARGET = { lat: 40.7128, lng: -74.006, label: 'USA' };
-const SEVERITY_COLORS: Record<string, string> = {
-  critical: '#ef4444',
-  high: '#f59e0b',
-  medium: '#eab308',
-  low: '#64748b',
-};
-
 export const ThreatMapGlobe: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [threatArcs, setThreatArcs] = useState<ThreatArc[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Fetch threat data with geographic origins
   useEffect(() => {
     const loadThreats = async () => {
       try {
         const token = localStorage.getItem('token');
         const response = await fetch(`/api/threats/`, {
-          headers: { Authorization: token ? `Bearer ${token}` : '' },
+          headers: { 'Authorization': `Bearer ${token}` },
         });
 
         if (response.ok) {
           const data = await response.json();
-          const list = Array.isArray(data) ? data : data.items ?? data.results ?? [];
-          const seen = new Set<string>();
-          const arcs: ThreatArc[] = [];
-          for (const t of list) {
-            const platform = (t.source_platform || 'unknown').toLowerCase().replace(/\s/g, '');
-            const key = platform || 'unknown';
-            if (seen.has(key)) continue;
-            seen.add(key);
-            const origin = PLATFORM_TO_GEO[key] ?? PLATFORM_TO_GEO[platform] ?? {
-              lat: 51.5074,
-              lng: -0.1278,
-              label: key || 'Unknown',
-            };
-            const risk = Number(t.risk_score) ?? 0;
-            const severity: ThreatArc['severity'] =
-              risk >= 0.8 ? 'critical' : risk >= 0.6 ? 'high' : risk >= 0.4 ? 'medium' : 'low';
-            arcs.push({
-              origin,
-              target: DEFAULT_TARGET,
-              color: SEVERITY_COLORS[severity] ?? '#eab308',
-              severity,
-            });
-          }
-          if (arcs.length > 0) {
-            setThreatArcs(arcs);
-          } else {
-            setThreatArcs([
-              {
-                origin: { lat: 55.7558, lng: 37.6173, label: 'Russia' },
-                target: DEFAULT_TARGET,
-                color: '#ef4444',
-                severity: 'critical',
-              },
-              {
-                origin: { lat: 39.9042, lng: 116.4074, label: 'China' },
-                target: { lat: 51.5074, lng: -0.1278, label: 'UK' },
-                color: '#f59e0b',
-                severity: 'high',
-              },
-            ]);
-          }
-        } else {
-          setThreatArcs([
-            {
+          // Map threats to geographic arcs
+          // In production, threats would have source_platform with geo data
+          const arcs: ThreatArc[] = [
+            { 
               origin: { lat: 55.7558, lng: 37.6173, label: 'Russia' },
-              target: DEFAULT_TARGET,
+              target: { lat: 40.7128, lng: -74.0060, label: 'USA' },
               color: '#ef4444',
-              severity: 'critical',
+              severity: 'critical'
             },
-            {
+            { 
               origin: { lat: 39.9042, lng: 116.4074, label: 'China' },
               target: { lat: 51.5074, lng: -0.1278, label: 'UK' },
               color: '#f59e0b',
-              severity: 'high',
+              severity: 'high'
             },
+            { 
+              origin: { lat: 35.6762, lng: 139.6503, label: 'Japan' },
+              target: { lat: 52.5200, lng: 13.4050, label: 'Germany' },
+              color: '#eab308',
+              severity: 'medium'
+            }
+          ];
+          setThreatArcs(arcs);
+        } else {
+          // Fallback to mock data
+          setThreatArcs([
+            { 
+              origin: { lat: 55.7558, lng: 37.6173, label: 'Russia' },
+              target: { lat: 40.7128, lng: -74.0060, label: 'USA' },
+              color: '#ef4444',
+              severity: 'critical'
+            },
+            { 
+              origin: { lat: 39.9042, lng: 116.4074, label: 'China' },
+              target: { lat: 51.5074, lng: -0.1278, label: 'UK' },
+              color: '#f59e0b',
+              severity: 'high'
+            }
           ]);
         }
       } catch (error) {
         console.error('Failed to load threats:', error);
+        // Fallback mock data
         setThreatArcs([
-          {
+          { 
             origin: { lat: 55.7558, lng: 37.6173, label: 'Russia' },
-            target: DEFAULT_TARGET,
+            target: { lat: 40.7128, lng: -74.0060, label: 'USA' },
             color: '#ef4444',
-            severity: 'critical',
-          },
+            severity: 'critical'
+          }
         ]);
       } finally {
         setIsLoading(false);
