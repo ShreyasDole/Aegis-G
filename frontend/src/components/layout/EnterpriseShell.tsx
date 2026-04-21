@@ -14,11 +14,13 @@ import {
   LogOut,
   Sparkles,
   Radio,
+  Search,
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 
 const PRIMARY_NAV: { href: string; label: string; icon: React.ElementType }[] = [
   { href: '/dashboard', label: 'Main Dashboard', icon: LayoutDashboard },
+  { href: '/scans', label: 'Incoming Scans', icon: Search },
   { href: '/network', label: 'Graph Intelligence', icon: Network },
   { href: '/policy', label: 'Policy Engine', icon: Shield },
   { href: '/reports', label: 'Reports Overview', icon: FileText },
@@ -26,7 +28,6 @@ const PRIMARY_NAV: { href: string; label: string; icon: React.ElementType }[] = 
 ];
 
 const SECONDARY_NAV: { href: string; label: string }[] = [
-  { href: '/scans', label: 'Incoming Scans' },
   { href: '/campaign', label: 'Campaign' },
   { href: '/ledger', label: 'Ledger' },
   { href: '/sharing', label: 'Sharing' },

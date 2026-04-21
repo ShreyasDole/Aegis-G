@@ -7,7 +7,7 @@ router = APIRouter()
 def _normalize_edges(edges: list) -> list:
     """Ensure each edge has 'relationship' for GraphResponse schema."""
     return [
-        {"source": e["source"], "target": e["target"], "relationship": e.get("type") or e.get("relationship") or "RELATED"}
+        {"source": e["source"], "target": e["target"], "relationship": e.get("type") or e.get("relationship") or "RELATED", "properties": e.get("properties")}
         for e in edges
     ]
 
