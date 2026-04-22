@@ -1,7 +1,6 @@
 "use client";
 import React, { useState, useRef, useEffect } from 'react';
-import { Shield, Paperclip, Send, Bot, User, Brain, X, Image as ImageIcon } from 'lucide-react';
-import { Badge } from '@/components/ui/Badge';
+import { Paperclip, Send, Bot, User, Brain, X, Image as ImageIcon } from 'lucide-react';
 
 interface Message {
   id: string;
@@ -143,7 +142,7 @@ export default function ForensicChatPage() {
         <div className={`flex flex-col gap-2 max-w-[85%] ${isAssistant ? 'items-start' : 'items-end'}`}>
           <div className="flex items-center gap-2 text-[10px] font-space uppercase tracking-widest text-white/40">
             <span>{isAssistant ? 'Antigravity Agent' : 'Analyst'}</span>
-            <span>//</span>
+            {/* // */}
             <span>{msg.timestamp}</span>
           </div>
 
@@ -245,7 +244,7 @@ export default function ForensicChatPage() {
              </div>
              <div className="flex flex-col gap-2">
                <div className="flex items-center gap-2 text-[10px] font-space uppercase tracking-widest text-white/40">
-                  <span>Antigravity Agent</span> // <span>Processing Neural Weights...</span>
+                  <span>Antigravity Agent</span> {/* // */} <span>Processing Neural Weights...</span>
                </div>
                <div className="p-4 rounded-xl border border-neon-magenta/30 bg-black-true/60 rounded-tl-none font-satoshi text-sm text-neon-magenta flex items-center gap-2 w-max shadow-glow-magenta">
                   <div className="w-1.5 h-1.5 rounded-full bg-neon-magenta animate-bounce" style={{ animationDelay: '0ms' }} />

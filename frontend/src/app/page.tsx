@@ -1,6 +1,6 @@
 "use client";
 import Link from 'next/link';
-import { Shield, Zap, Workflow, Server, Activity, Lock, Search, Network } from 'lucide-react';
+import { Shield, Activity, Lock, Network } from 'lucide-react';
 
 export default function LandingPage() {
   return (

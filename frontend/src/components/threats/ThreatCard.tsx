@@ -1,8 +1,6 @@
 'use client';
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import { Badge } from '../ui/Badge';
-import { Button } from '../ui/Button';
 
 interface ThreatCardProps {
   id: number;

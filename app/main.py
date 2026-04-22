@@ -44,6 +44,25 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"Seed users skipped: {e}")
 
+    # ── Step 4: Seed Neo4j demo data to suppress empty graph warnings ─────
+    try:
+        from app.services.graph.neo4j import neo4j_service
+        # Add a quick dummy edge to suppress 'INTERACTED_WITH' warnings
+        async def seed_graph():
+            await neo4j_service.seed_demo_data()
+            try:
+                # Ensure the INTERACTED_WITH relationship type is registered
+                async with neo4j_service.driver.session() as session:
+                    await session.run("MERGE (u1:User {id:'dummy'}) MERGE (u2:User {id:'dummy'}) MERGE (u1)-[:INTERACTED_WITH]->(u2)")
+            except Exception:
+                pass
+        
+        import asyncio
+        # Schedule it as a task so it doesn't block startup
+        asyncio.create_task(seed_graph())
+    except Exception as e:
+        logger.warning(f"Neo4j seed skipped: {e}")
+
     yield
     # ── Shutdown (nothing to clean up currently) ───────────────────────────
 

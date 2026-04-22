@@ -1,8 +1,5 @@
 'use client';
 import React, { useState } from 'react';
-import { Card } from '../ui/Card';
-import { Badge } from '../ui/Badge';
-import { Button } from '../ui/Button';
 import { ReasoningTerminal } from './ReasoningTerminal';
 import { Search, ShieldAlert, Cpu, Brain, FileSearch } from 'lucide-react';
 
@@ -33,9 +30,7 @@ export const IntelligenceBrief: React.FC<IntelligenceBriefProps> = ({ report, th
     );
   }
 
-  // Map risk level to badge variant
-  const riskVariant = report.risk_level?.toLowerCase() as 'critical' | 'high' | 'medium' | 'low' | undefined;
-
+  // risk level mapped logic (removed unused var)
   return (
     <div className="bg-white/5 backdrop-blur-md border border-white/10 h-full flex flex-col rounded-xl p-6 relative overflow-hidden group">
       <div className="absolute top-0 left-0 w-1 h-full bg-neon-cyan shadow-glow-cyan" />
