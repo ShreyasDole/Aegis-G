@@ -31,6 +31,14 @@
   .glass-panel {
     @apply bg-glass-bg border border-glass-border backdrop-blur-[10px];
   }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
   
   /* Text gradient utility for the 3-color hero */
   .text-gradient-hero {

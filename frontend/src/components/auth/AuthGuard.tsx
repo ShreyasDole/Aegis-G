@@ -4,30 +4,30 @@ import { useEffect, useState } from 'react';
 const TOKEN_KEY = 'token';
 const USER_KEY = 'user';
 
-// Module-level cache — persists across page navigations (SPA)
-let tokenValidatedAt = 0;
 const TOKEN_CACHE_MS = 5 * 60 * 1000; // 5 minutes
+const TOKEN_VALIDATED_KEY = 'token_validated_at';
 
 async function ensureValidToken(): Promise<void> {
   const now = Date.now();
   const existing = localStorage.getItem(TOKEN_KEY);
 
-  // Skip network check if token was validated recently
-  if (existing && now - tokenValidatedAt < TOKEN_CACHE_MS) {
-    return;
+  // sessionStorage persists within browser session across SPA navigations
+  const validatedAt = parseInt(sessionStorage.getItem(TOKEN_VALIDATED_KEY) || '0');
+  if (existing && now - validatedAt < TOKEN_CACHE_MS) {
+    return; // skip network call
   }
 
   if (existing) {
     try {
       const r = await fetch('/api/auth/me', { headers: { Authorization: `Bearer ${existing}` } });
       if (r.ok) {
-        tokenValidatedAt = now;
+        sessionStorage.setItem(TOKEN_VALIDATED_KEY, String(now));
         return;
       }
     } catch {/* fall through */}
   }
 
-  // Fetch fresh token
+  // Get fresh token
   const r = await fetch('/api/auth/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -38,21 +38,21 @@ async function ensureValidToken(): Promise<void> {
     if (d?.access_token) {
       localStorage.setItem(TOKEN_KEY, d.access_token);
       localStorage.setItem(USER_KEY, JSON.stringify({ email: 'admin@aegis.com', role: 'admin' }));
-      tokenValidatedAt = now;
+      sessionStorage.setItem(TOKEN_VALIDATED_KEY, String(now));
     }
   }
 }
 
-// Singleton promise — prevents duplicate calls on React Strict Mode double-invoke
 let initPromise: Promise<void> | null = null;
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
-  // Always start false — same on server and client (prevents hydration mismatch)
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    // If token recently validated, skip network call and show immediately
-    if (tokenValidatedAt > 0 && Date.now() - tokenValidatedAt < TOKEN_CACHE_MS) {
+    // Check sessionStorage immediately (synchronous) — avoids loading flash on navigation
+    const existing = localStorage.getItem(TOKEN_KEY);
+    const validatedAt = parseInt(sessionStorage.getItem(TOKEN_VALIDATED_KEY) || '0');
+    if (existing && Date.now() - validatedAt < TOKEN_CACHE_MS) {
       setReady(true);
       return;
     }
