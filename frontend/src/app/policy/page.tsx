@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/Button';
 import { PolicyAuthor } from '@/components/policy/PolicyAuthor';
 import { PolicyList } from '@/components/policy/PolicyList';
 import { PolicyEditor } from '@/components/policy/PolicyEditor';
-import { Sidebar } from '@/components/layout/Sidebar';
 
 interface BlockedItem {
   id: number;
@@ -90,12 +89,7 @@ export default function PolicyPage() {
   }, []);
 
   return (
-    <div className="flex">
-      {/* Sidebar */}
-      <Sidebar />
-
-      {/* Main Content */}
-      <div className="flex-1 ml-80 p-6 min-h-screen">
+    <div className="p-6 max-w-[1600px] mx-auto min-h-screen">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -291,8 +285,7 @@ export default function PolicyPage() {
               ))
             )}
           </div>
-        </Card>
-      </div>
+      </Card>
     </div>
   );
 }

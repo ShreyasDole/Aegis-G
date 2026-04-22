@@ -1,6 +1,5 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { Sidebar } from '@/components/layout/Sidebar';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -61,10 +60,8 @@ export default function ScansPage() {
   };
 
   return (
-    <div className="flex">
-      <Sidebar />
-      <div className="flex-1 ml-80 p-6">
-        <h1 className="text-2xl font-bold font-display tracking-tight mb-6 uppercase">
+    <div className="p-6 max-w-[1600px] mx-auto">
+      <h1 className="text-2xl font-bold tracking-tight text-text-primary mb-6">
           📥 Ingestion Hub / Incoming Scans
         </h1>
 
@@ -127,7 +124,6 @@ export default function ScansPage() {
               </div>
             </Card>
           </div>
-        </div>
       </div>
     </div>
   );
