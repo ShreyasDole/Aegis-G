@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { ShieldCheck, LogOut } from 'lucide-react';
 import { ScanlineOverlay } from '@/components/cyber/ScanlineOverlay';
 
@@ -10,16 +10,15 @@ const NAVIGATION = [
   { href: '/dashboard', label: 'COMMAND_CENTER' },
   { href: '/scans', label: 'FORENSICS' },
   { href: '/network', label: 'GRAPH_INTEL' },
+  { href: '/policy', label: 'POLICY' },
+  { href: '/threats', label: 'THREATS' },
+  { href: '/ledger', label: 'LEDGER' },
+  { href: '/sharing', label: 'SHARING' },
 ];
 
 export function EnterpriseShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const logout = () => {
     localStorage.removeItem('token');
