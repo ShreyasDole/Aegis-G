@@ -28,7 +28,7 @@ export default function ScansPage() {
 
   const handleManualScan = async () => {
     if (!manualText.trim()) return;
-    const mode = typeof window !== 'undefined' ? (localStorage.getItem('inference-mode') || 'local') : 'local';
+    const mode = typeof window !== 'undefined' ? (localStorage.getItem('inference-mode') || 'cloud') : 'cloud';
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     setIsScanning(true);
     try {

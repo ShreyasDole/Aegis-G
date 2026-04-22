@@ -12,6 +12,7 @@ def _normalize_edges(edges: list) -> list:
     ]
 
 
+@router.get("", response_model=GraphResponse)
 @router.get("/", response_model=GraphResponse)
 async def get_network(limit: int = 100):
     try:

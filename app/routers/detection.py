@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+@router.post("", response_model=ScanResponse)
 @router.post("/", response_model=ScanResponse)
 async def scan_content(
     request: ScanRequest, 
@@ -51,11 +52,36 @@ async def scan_content(
             db=db,
             mode=mode
         )
-        
-        # 4. Handle blocked threats
+
+        # 4. Persist threat to PostgreSQL (idempotent — skip if hash already stored)
+        threat_id = None
+        try:
+            from app.models.threat import Threat
+            existing = db.query(Threat).filter(
+                Threat.content_hash == result.get("content_hash")
+            ).first()
+            if not existing:
+                threat_record = Threat(
+                    content_hash=result.get("content_hash", ""),
+                    content=request.content,
+                    risk_score=result.get("risk_score", 0.0),
+                    source_platform=payload["source_platform"],
+                    detected_by=result.get("forensics", {}).get("detected_model", mode),
+                )
+                db.add(threat_record)
+                db.commit()
+                db.refresh(threat_record)
+                threat_id = threat_record.id
+            else:
+                threat_id = existing.id
+        except Exception as save_err:
+            logger.warning(f"Threat DB save error: {save_err}")
+
+        # 5. Handle blocked threats
         if result.get("status") == "BLOCKED":
             logger.warning("🚫 Threat blocked by Policy Guardian")
             return ScanResponse(
+                threat_id=threat_id,
                 content_hash=result.get("content_hash", ""),
                 risk_score=result.get("risk_score", 0.0),
                 is_ai_generated=result.get("forensics", {}).get("is_ai_generated", False),
@@ -64,10 +90,11 @@ async def scan_content(
                 timestamp=datetime.utcnow(),
                 recommendation=f"BLOCKED: {result.get('action', {}).get('reason', 'Policy violation')}"
             )
-        
-        # 5. Format Response for processed threats
+
+        # 6. Format Response
         forensics = result.get("forensics", {})
         return ScanResponse(
+            threat_id=threat_id,
             content_hash=result.get("content_hash", ""),
             risk_score=result.get("risk_score", 0.0),
             is_ai_generated=result.get("is_ai_generated", False),

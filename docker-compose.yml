@@ -1,51 +1,24 @@
 name: aegis-g
 
 services:
-  backend:
-    build:
-      context: ./app
-      dockerfile: Dockerfile
-    container_name: aegis_backend
-    ports:
-      - "8000:8000"
-    volumes:
-      - ./app:/workspace/app
-    environment:
-      - DATABASE_URL=postgresql://user:password@db:5432/aegis_db
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-    depends_on:
-      - db
-      - redis
-
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: aegis_frontend
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-      - /app/.next
-    environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
-    depends_on:
-      - backend
-    command: npm run dev
-
   db:
     image: postgres:15-alpine
     container_name: aegis_db
     environment:
-      - POSTGRES_USER=user
-      - POSTGRES_PASSWORD=password
-      - POSTGRES_DB=aegis_db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: aegis_db
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d aegis_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
 
   redis:
     image: redis:7-alpine
@@ -55,7 +28,81 @@ services:
     command: redis-server --appendonly yes
     volumes:
       - redis_data:/data
+    restart: unless-stopped
+
+  neo4j:
+    image: neo4j:5-community
+    container_name: aegis_neo4j
+    environment:
+      NEO4J_AUTH: neo4j/password
+      NEO4J_PLUGINS: '["apoc"]'
+      NEO4J_server_memory_heap_initial__size: 256m
+      NEO4J_server_memory_heap_max__size: 512m
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:7474 || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: aegis_backend
+    environment:
+      DATABASE_URL: postgresql://user:password@db:5432/aegis_db
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASSWORD: password
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      GEMINI_FLASH_MODEL: ${GEMINI_FLASH_MODEL:-gemini-2.5-flash}
+      SECRET_KEY: ${SECRET_KEY:-3e070bf1daa7f940ee39ba5f5d0eada0965f0521661add557cd39934e6f6aebc}
+      ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: "30"
+      ENVIRONMENT: development
+      LOG_LEVEL: INFO
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./app:/workspace/app
+      - ./storage:/workspace/storage
+    depends_on:
+      db:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: aegis_frontend
+    environment:
+      # Server-side proxy target (Docker internal network)
+      NEXT_PUBLIC_API_URL: http://backend:8000
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+    depends_on:
+      - backend
+    command: npm run dev
+    restart: unless-stopped
 
 volumes:
   postgres_data:
   redis_data:
+  neo4j_data:
+  neo4j_logs:
