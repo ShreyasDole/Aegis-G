@@ -29,17 +29,41 @@ class GeminiClient:
             raise Exception("Gemini API key not configured")
 
         try:
+            from google.genai import types as gtypes
             response = self.client.models.generate_content(
                 model=settings.GEMINI_FLASH_MODEL,
-                contents=prompt
+                contents=prompt,
+                config=gtypes.GenerateContentConfig(
+                    temperature=0.0,
+                    response_mime_type="application/json",
+                )
             )
-            return {
-                "is_ai_generated": True,
-                "confidence": 0.85,
-                "risk_score": 0.75,
-                "detected_model": "gpt-3.5",
-                "reasoning": response.text or "High perplexity and low burstiness detected"
-            }
+            raw = response.text or ""
+
+            # Strip markdown fences if present
+            import json, re
+            cleaned = re.sub(r"```(?:json)?", "", raw).strip().strip("`").strip()
+            try:
+                parsed = json.loads(cleaned)
+                return {
+                    "is_ai_generated": bool(parsed.get("is_ai_generated", False)),
+                    "confidence": float(parsed.get("confidence", 0.5)),
+                    "risk_score": float(parsed.get("risk_score", 0.5)),
+                    "detected_model": parsed.get("detected_model") or "unknown",
+                    "reasoning": parsed.get("reasoning", ""),
+                    "indicators": parsed.get("indicators", {}),
+                }
+            except (json.JSONDecodeError, ValueError):
+                # Fallback: infer score from text
+                lower = raw.lower()
+                score = 0.9 if "high" in lower and "ai" in lower else 0.5
+                return {
+                    "is_ai_generated": "ai-generated" in lower or "ai generated" in lower,
+                    "confidence": score,
+                    "risk_score": score,
+                    "detected_model": "unknown",
+                    "reasoning": raw[:300],
+                }
         except Exception as e:
             raise Exception(f"Gemini detection failed: {str(e)}")
 
@@ -64,11 +88,10 @@ class GeminiClient:
             raise Exception("Gemini API key not configured")
 
         try:
-            response = self.client.models.generate_content(
+            self.client.models.generate_content(
                 model=settings.GEMINI_FLASH_MODEL,
                 contents=prompt
             )
-            reasoning = (response.text or "").strip()
             return {
                 "entities": {
                     "persons": [],
@@ -82,8 +105,7 @@ class GeminiClient:
                 "recommendations": [
                     "Monitor related accounts",
                     "Flag for further investigation"
-                ],
-                "reasoning": reasoning or "Forensic analysis completed; see model output above."
+                ]
             }
         except Exception as e:
             raise Exception(f"Forensic analysis failed: {str(e)}")

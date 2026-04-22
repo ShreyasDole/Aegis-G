@@ -87,96 +87,112 @@ export default function ReportsPage() {
   }, []);
 
   return (
-    <div className="p-6 max-w-7xl mx-auto min-h-screen">
-      <header className="flex flex-wrap items-start justify-between gap-4 mb-8">
+    <div className="h-full w-full flex flex-col p-6 space-y-6 overflow-y-auto">
+      <header className="flex flex-wrap items-start justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-text-primary">Reports Overview</h1>
-          <p className="text-text-muted text-sm mt-1">AI insights, ledger integrity, and threat volume</p>
+          <h1 className="text-3xl font-space font-bold tracking-wider uppercase text-neon-cyan drop-shadow-[0_0_10px_rgba(0,183,255,0.5)]">
+            Risk & Threat Intelligence
+          </h1>
+          <p className="text-text-muted mt-2 font-space text-sm tracking-wider uppercase">
+            COMMAND_CENTER // Real-time insights, ledger integrity, and aggregated threats
+          </p>
         </div>
-        <Button variant="primary" onClick={load} disabled={loading}>
-          Refresh
+        <Button variant="primary" onClick={load} disabled={loading} className="font-space tracking-widest text-[10px] uppercase border-neon-cyan/30 hover:border-neon-cyan/80">
+          Sync Intelligence
         </Button>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-        <Card className="p-4 border-l-4 border-l-primary">
-          <div className="flex items-center gap-2 text-text-muted text-xs uppercase tracking-wider mb-2">
-            <AlertTriangle className="w-4 h-4" />
-            Active threats
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
+        <div className="bg-black/40 border border-neon-magenta/30 hover:border-neon-magenta shadow-[0_0_10px_rgba(255,0,255,0.1)] rounded p-6 relative overflow-hidden transition-all duration-300">
+          <div className="flex items-center gap-2 text-neon-magenta font-space text-xs uppercase tracking-widest mb-4">
+            <AlertTriangle className="w-4 h-4 animate-pulse" />
+            Active Threats
           </div>
-          <div className="text-3xl font-bold text-text-primary tabular-nums">
+          <div className="text-4xl font-space font-bold text-text-primary tabular-nums">
             {threatCount === null ? '—' : threatCount}
           </div>
-          <Link href="/threats" className="text-xs text-primary mt-2 inline-block hover:underline">
-            Open threat analysis →
+          <Link href="/threats" className="text-[10px] font-space tracking-widest uppercase text-text-muted mt-4 inline-block hover:text-neon-cyan transition-colors">
+            Access Analysis Matrix →
           </Link>
-        </Card>
-        <Card className="p-4 border-l-4 border-l-success">
-          <div className="flex items-center gap-2 text-text-muted text-xs uppercase tracking-wider mb-2">
+        </div>
+        
+        <div className="bg-black/40 border border-neon-cyan/30 hover:border-neon-cyan shadow-[0_0_10px_rgba(0,183,255,0.1)] rounded p-6 relative overflow-hidden transition-all duration-300">
+          <div className="flex items-center gap-2 text-neon-cyan font-space text-xs uppercase tracking-widest mb-4">
             <FileText className="w-4 h-4" />
-            AI insights
+            AI Intelligence Insights
           </div>
-          <div className="text-3xl font-bold text-text-primary tabular-nums">{insights.length}</div>
-          <p className="text-xs text-text-muted mt-2">Latest generated intelligence</p>
-        </Card>
-        <Card className="p-4 border-l-4 border-l-secondary">
-          <div className="flex items-center gap-2 text-text-muted text-xs uppercase tracking-wider mb-2">
+          <div className="text-4xl font-space font-bold text-text-primary tabular-nums">{insights.length}</div>
+          <p className="text-[10px] font-space uppercase tracking-widest text-text-muted mt-4">Automated narrative summaries</p>
+        </div>
+        
+        <div className="bg-black/40 border border-[#00ff9d]/30 hover:border-[#00ff9d] shadow-[0_0_10px_rgba(0,255,157,0.1)] rounded p-6 relative overflow-hidden transition-all duration-300">
+          <div className="flex items-center gap-2 text-[#00ff9d] font-space text-xs uppercase tracking-widest mb-4">
             <Shield className="w-4 h-4" />
-            Ledger chain
+            Ledger Validation
           </div>
-          <div className="text-sm font-medium text-text-primary">
-            {integrity?.status || (integrity?.is_valid === false ? 'Check failed' : integrity?.is_valid ? 'Verified' : 'Unknown')}
+          <div className="text-lg font-space font-bold uppercase tracking-widest text-text-primary mt-1 mb-2">
+            {integrity?.status || (integrity?.is_valid === false ? 'Integrity Failed' : integrity?.is_valid ? 'Verified Secure' : 'Scanning...')}
           </div>
-          <Link href="/ledger" className="text-xs text-primary mt-2 inline-block hover:underline">
-            Ledger explorer →
+          <Link href="/ledger" className="text-[10px] font-space tracking-widest uppercase text-text-muted mt-3 inline-block hover:text-neon-cyan transition-colors">
+            Open Blockchain Explorer →
           </Link>
-        </Card>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <h2 className="text-sm font-semibold uppercase tracking-widest text-text-muted mb-4">Recent AI insights</h2>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1 min-h-0">
+        <div className="bg-bg-primary/60 border border-white/5 shadow-[0_0_15px_rgba(0,183,255,0.05)] rounded-lg p-6 flex flex-col h-full">
+          <h2 className="text-sm font-space font-bold uppercase tracking-widest text-neon-cyan mb-6 flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-neon-cyan animate-pulse"></span>
+            Recent AI Insights
+          </h2>
           {insights.length === 0 && !loading ? (
-            <p className="text-sm text-text-muted">No insights yet. An admin can generate them from the API.</p>
+            <p className="text-[10px] font-space uppercase text-text-muted mt-4 border border-dashed border-white/10 p-4 text-center">No intelligence summaries generated yet. Run a network scan.</p>
           ) : (
-            <ul className="space-y-3 max-h-[480px] overflow-y-auto scrollbar-thin">
+            <ul className="space-y-3 overflow-y-auto custom-scrollbar pr-2 flex-1">
               {insights.map((i) => (
-                <li key={i.id} className="p-3 rounded-lg bg-bg-primary border border-border-subtle">
-                  <div className="flex items-start justify-between gap-2 mb-1">
-                    <span className="text-sm font-medium text-text-primary">{i.title}</span>
-                    <Badge variant={insightBadgeVariant(String(i.severity))}>
+                <li key={i.id} className="p-4 rounded bg-black/40 border border-white/5 hover:border-white/20 transition-colors group">
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <span className="text-xs font-space font-bold uppercase text-text-primary group-hover:text-neon-cyan transition-colors">{i.title}</span>
+                    <Badge variant={insightBadgeVariant(String(i.severity))} className="text-[9px] font-space px-2">
                       {String(i.severity)}
                     </Badge>
                   </div>
-                  <p className="text-xs text-text-secondary line-clamp-2">{i.description}</p>
+                  <p className="text-xs text-text-muted leading-relaxed font-mono mt-2">{i.description}</p>
                 </li>
               ))}
             </ul>
           )}
-        </Card>
+        </div>
 
-        <Card>
-          <h2 className="text-sm font-semibold uppercase tracking-widest text-text-muted mb-4">Ledger activity</h2>
+        <div className="bg-bg-primary/60 border border-white/5 shadow-[0_0_15px_rgba(0,183,255,0.05)] rounded-lg p-6 flex flex-col h-full">
+          <h2 className="text-sm font-space font-bold uppercase tracking-widest text-[#00ff9d] mb-6 flex items-center gap-2">
+            <Link2 className="w-4 h-4" />
+            Blockchain Ledger Activity
+          </h2>
           {ledger.length === 0 && !loading ? (
-            <p className="text-sm text-text-muted">No ledger entries returned.</p>
+            <p className="text-[10px] font-space uppercase text-text-muted mt-4 border border-dashed border-white/10 p-4 text-center">No blocks mined yet in the federation.</p>
           ) : (
-            <ul className="space-y-2 max-h-[480px] overflow-y-auto scrollbar-thin">
+            <ul className="space-y-3 overflow-y-auto custom-scrollbar pr-2 flex-1">
               {ledger.map((row) => (
                 <li
                   key={row.id}
-                  className="flex items-start gap-3 p-3 rounded-lg bg-bg-primary border border-border-subtle text-xs"
+                  className="flex items-center gap-4 p-3 rounded bg-black/40 border border-white/10 hover:border-[#00ff9d]/30 transition-colors"
                 >
-                  <Link2 className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                  <div className="min-w-0">
-                    <div className="font-mono text-text-primary truncate">#{row.report_id}</div>
-                    <div className="text-text-muted truncate">{row.recipient_agency}</div>
-                    <div className="text-text-muted">{row.timestamp}</div>
+                  <div className="w-8 h-8 rounded bg-[#00ff9d]/10 flex items-center justify-center shrink-0 border border-[#00ff9d]/20">
+                    <span className="text-[#00ff9d] text-xs font-space font-bold">#{row.id}</span>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="font-space text-xs uppercase tracking-widest text-text-primary mb-1">Report ID: R-{row.report_id}</div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-[10px] font-space text-text-muted uppercase">To: {row.recipient_agency || 'Internal'}</span>
+                      <span className="text-[10px] font-space text-text-secondary opacity-50">{row.timestamp ? new Date(row.timestamp).toLocaleTimeString() : ''}</span>
+                    </div>
                   </div>
                 </li>
               ))}
             </ul>
           )}
-        </Card>
+        </div>
       </div>
     </div>
   );

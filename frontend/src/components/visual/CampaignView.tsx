@@ -4,8 +4,6 @@ import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { NetworkGraph } from './NetworkGraph';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-
 function getAuthHeaders(): HeadersInit {
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
   return token ? { Authorization: `Bearer ${token}` } : {};
@@ -25,13 +23,16 @@ export const CampaignView: React.FC = () => {
   const [graphKey, setGraphKey] = useState(0);
   const [loadingClusters, setLoadingClusters] = useState(true);
   const [clustersError, setClustersError] = useState<string | null>(null);
+  const [graphNodes, setGraphNodes] = useState<import('./NetworkGraph').GraphNode[]>([]);
+  const [graphEdges, setGraphEdges] = useState<import('./NetworkGraph').GraphEdge[]>([]);
+  const [graphLoading, setGraphLoading] = useState(false);
 
   useEffect(() => {
     const loadClusters = async () => {
       setLoadingClusters(true);
       setClustersError(null);
       try {
-        const res = await fetch(`${API_URL}/api/network/clusters`, { headers: getAuthHeaders() });
+        const res = await fetch(`/api/network/clusters`, { headers: getAuthHeaders() });
         if (!res.ok) throw new Error(res.statusText || 'Failed to load clusters');
         const data = await res.json();
         setClusters(data.clusters || []);
@@ -48,11 +49,33 @@ export const CampaignView: React.FC = () => {
       }
     };
     loadClusters();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const loadCampaignGraph = async (rootId: string) => {
+    setGraphLoading(true);
+    try {
+      const res = await fetch(`/api/network/campaign/${rootId}`, { headers: getAuthHeaders() });
+      if (res.ok) {
+        const data = await res.json();
+        const nodes = (data.nodes || []).map((n: import('./NetworkGraph').GraphNode) =>
+          n.id === rootId ? { ...n, type: 'PATIENT_ZERO' } : n
+        );
+        setGraphNodes(nodes);
+        setGraphEdges(data.edges || []);
+      }
+    } catch {
+      setGraphNodes([]);
+      setGraphEdges([]);
+    } finally {
+      setGraphLoading(false);
+    }
+  };
 
   const handleSelectRoot = (rootId: string) => {
     setSelectedRootId(rootId);
     setGraphKey((k) => k + 1);
+    loadCampaignGraph(rootId);
   };
 
   return (
@@ -138,10 +161,9 @@ export const CampaignView: React.FC = () => {
             </div>
             <NetworkGraph
               key={graphKey}
-              dataSource={selectedRootId ? 'campaign' : 'mock'}
-              campaignRootId={selectedRootId}
-              highlightPatientZero
-              refreshKey={graphKey}
+              nodes={graphNodes}
+              edges={graphEdges}
+              isLoading={graphLoading}
             />
             {selectedRootId && (
               <p className="text-[10px] text-text-muted mt-2 font-mono">

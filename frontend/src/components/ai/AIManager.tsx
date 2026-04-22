@@ -57,7 +57,6 @@ export const AIManager: React.FC = () => {
 
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
       const res = await fetch('/api/ai/chat', {
         method: 'POST',
         headers: {
@@ -108,29 +107,29 @@ export const AIManager: React.FC = () => {
       {/* Floating Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-6 right-6 z-50 px-4 py-3 rounded-lg glass-panel bg-black/80 border border-neon-cyan/40 text-neon-cyan shadow-lg shadow-black hover:shadow-neon-cyan/30 hover:bg-neon-cyan/10 transition-all flex items-center gap-2 font-mono tracking-widest text-[10px]"
+        className="fixed bottom-6 right-8 z-50 px-4 py-2.5 rounded-xl bg-primary/90 backdrop-blur text-white shadow-lg hover:bg-blue-600 hover:shadow-glow-blue transition-all flex items-center gap-2 font-medium text-sm border border-primary/40"
         title="AI Assistant (⌘M)"
       >
-        <span>AI_AGENT</span>
-        {!isOpen && <kbd className="px-1.5 py-0.5 bg-neon-cyan/20 border border-neon-cyan/40 rounded text-[9px]">⌘M</kbd>}
+        <span>AI Assistant</span>
+        {!isOpen && <kbd className="px-1.5 py-0.5 bg-white/20 rounded text-xs">⌘M</kbd>}
       </button>
 
       {/* Chat Panel */}
       {isOpen && (
-        <div className="fixed bottom-24 right-6 z-50 w-96 h-[600px] animate-slide-up">
-          <div className="h-full flex flex-col p-0 overflow-hidden shadow-2xl glass-panel bg-black/80 border-white/10 rounded-xl">
+        <div className="fixed bottom-20 right-8 z-50 w-96 h-[600px] animate-slide-up">
+          <Card className="h-full flex flex-col p-0 overflow-hidden shadow-modal">
             {/* Header */}
-            <div className="glass-panel bg-black/60 p-4 flex items-center justify-between border-b border-white/10 rounded-t-xl shadow-none">
+            <div className="bg-primary p-4 flex items-center justify-between border-b border-primary/20">
               <div className="flex items-center gap-3">
-                <div className="w-2 h-2 bg-neon-cyan rounded-full animate-pulse shadow-neon-cyan"></div>
+                <div className="w-2 h-2 bg-success rounded-full animate-pulse"></div>
                 <div>
-                  <h3 className="font-bold tracking-widest text-[#00f2ff] text-[10px] uppercase">AI Security Assistant</h3>
-                  <div className="text-[10px] font-mono text-white/60">Online</div>
+                  <h3 className="font-semibold text-white text-sm">AI Security Assistant</h3>
+                  <div className="text-xs text-white/80">Online</div>
                 </div>
               </div>
               <button 
                 onClick={() => setIsOpen(false)}
-                className="text-white/40 hover:text-white transition-colors"
+                className="text-white/80 hover:text-white transition-colors"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -139,39 +138,39 @@ export const AIManager: React.FC = () => {
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin bg-black/40 backdrop-blur-sm">
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin bg-bg-primary">
               {messages.map((msg) => (
                 <div
                   key={msg.id}
                   className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
                   <div
-                    className={`max-w-[85%] rounded-lg p-3 ${
+                    className={`max-w-[80%] rounded p-3 ${
                       msg.role === 'user'
-                        ? 'border border-white/10 bg-white/5 text-white shadow-inner'
-                        : 'border border-neon-cyan/20 bg-neon-cyan/5 text-white/90 shadow-[0_0_15px_rgba(0,242,255,0.05)]'
+                        ? 'bg-primary text-white'
+                        : 'bg-bg-secondary text-text-primary border border-border-subtle'
                     }`}
                   >
                     {msg.role === 'assistant' && (
-                      <div className="flex items-center gap-2 mb-2 text-[9px] text-[#00f2ff] font-bold uppercase tracking-[0.2em]">
-                        AI_AGENT <span className="opacity-50">#AUTH</span>
+                      <div className="flex items-center gap-2 mb-2 text-xs text-primary font-semibold uppercase tracking-wider">
+                        AI ASSISTANT
                       </div>
                     )}
-                    <p className="text-sm whitespace-pre-wrap font-mono leading-relaxed">{msg.content}</p>
+                    <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
                     {msg.actions && (
-                      <div className="flex gap-2 mt-3 flex-wrap">
+                      <div className="flex gap-2 mt-3">
                         {msg.actions.map((action, idx) => (
                           <button
                             key={idx}
                             onClick={action.onClick}
-                            className="text-[10px] uppercase tracking-widest px-3 py-1.5 bg-neon-cyan/5 hover:bg-neon-cyan/20 rounded transition-colors border border-neon-cyan/30 text-neon-cyan font-bold"
+                            className="text-xs px-3 py-1.5 bg-primary/10 hover:bg-primary/20 rounded transition-colors border border-primary/30 text-primary font-medium"
                           >
                             {action.label}
                           </button>
                         ))}
                       </div>
                     )}
-                    <div className="text-[9px] font-mono uppercase text-white/30 mt-2 text-right tracking-widest">
+                    <div className="text-xs text-text-muted mt-2">
                       {msg.timestamp.toLocaleTimeString()}
                     </div>
                   </div>
@@ -179,11 +178,11 @@ export const AIManager: React.FC = () => {
               ))}
               {isTyping && (
                 <div className="flex justify-start">
-                  <div className="bg-neon-cyan/5 rounded-lg p-3 border border-neon-cyan/20 shadow-[0_0_15px_rgba(0,242,255,0.05)]">
-                    <div className="flex gap-1.5 p-1">
-                      <span className="w-1.5 h-1.5 bg-neon-cyan rounded-full animate-bounce shadow-neon-cyan text-transparent"></span>
-                      <span className="w-1.5 h-1.5 bg-neon-cyan rounded-full animate-bounce shadow-neon-cyan text-transparent" style={{ animationDelay: '0.1s' }}></span>
-                      <span className="w-1.5 h-1.5 bg-neon-cyan rounded-full animate-bounce shadow-neon-cyan text-transparent" style={{ animationDelay: '0.2s' }}></span>
+                  <div className="bg-bg-secondary rounded p-3 border border-border-subtle">
+                    <div className="flex gap-1">
+                      <span className="w-2 h-2 bg-text-muted rounded-full animate-bounce"></span>
+                      <span className="w-2 h-2 bg-text-muted rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></span>
+                      <span className="w-2 h-2 bg-text-muted rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></span>
                     </div>
                   </div>
                 </div>
@@ -191,22 +190,22 @@ export const AIManager: React.FC = () => {
             </div>
 
             {/* Input */}
-            <div className="p-4 border-t border-white/10 bg-black/80 rounded-b-xl shadow-none">
-              <div className="flex gap-2 mb-3">
+            <div className="p-4 border-t border-border-subtle bg-bg-secondary">
+              <div className="flex gap-2 mb-2">
                 <button 
-                  className="text-[9px] uppercase tracking-widest px-2 py-1 bg-white/5 hover:bg-white/10 rounded transition-colors text-white/50 border border-white/5"
+                  className="text-xs px-3 py-1 bg-bg-tertiary hover:bg-bg-primary rounded transition-colors text-text-secondary"
                   onClick={() => window.location.href = '/threats'}
                 >
                   Show threats
                 </button>
                 <button 
-                  className="text-[9px] uppercase tracking-widest px-2 py-1 bg-white/5 hover:bg-white/10 rounded transition-colors text-white/50 border border-white/5"
+                  className="text-xs px-3 py-1 bg-bg-tertiary hover:bg-bg-primary rounded transition-colors text-text-secondary"
                   onClick={() => window.location.href = '/dashboard'}
                 >
                   Dashboard
                 </button>
                 <button 
-                  className="text-[9px] uppercase tracking-widest px-2 py-1 bg-white/5 hover:bg-white/10 rounded transition-colors text-white/50 border border-white/5"
+                  className="text-xs px-3 py-1 bg-bg-tertiary hover:bg-bg-primary rounded transition-colors text-text-secondary"
                   onClick={() => window.location.href = '/scans'}
                 >
                   Scans
@@ -218,19 +217,20 @@ export const AIManager: React.FC = () => {
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  placeholder="[AWAITING COMMAND] Ask me anything..."
-                  className="flex-1 bg-black/50 border border-white/10 rounded-md px-3 py-2 text-sm text-white font-mono placeholder-white/20 focus:outline-none focus:border-neon-cyan focus:ring-1 focus:ring-neon-cyan/30 shadow-inner transition-all"
+                  placeholder="Ask me anything..."
+                  className="input flex-1 text-sm"
                 />
-                <button
+                <Button
+                  variant="primary"
                   onClick={handleSend}
                   disabled={!message.trim()}
-                  className="px-4 py-2 bg-white/5 border border-white/10 hover:border-neon-cyan text-white hover:text-neon-cyan hover:bg-neon-cyan/10 rounded-md transition-all font-mono tracking-widest uppercase text-[10px] disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="px-4"
                 >
                   Send
-                </button>
+                </Button>
               </div>
             </div>
-          </div>
+          </Card>
         </div>
       )}
     </>

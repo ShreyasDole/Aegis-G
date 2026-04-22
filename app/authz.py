@@ -188,18 +188,22 @@ class AuthorizationEngine:
         return False
     
     def _find_matching_rule(self, path: str) -> Optional[Dict[str, List[str]]]:
-        """Find authorization rule for path (supports wildcards)"""
-        # Exact match
+        """Find authorization rule for path (supports wildcards and trailing-slash normalization)"""
+        norm = path.rstrip("/") or "/"
+
+        # Exact match (with and without trailing slash)
         if path in self.authz_rules:
             return self.authz_rules[path]
-        
+        if norm in self.authz_rules:
+            return self.authz_rules[norm]
+
         # Wildcard match
         for rule_path, rule in self.authz_rules.items():
             if rule_path.endswith("*"):
                 prefix = rule_path.rstrip("*")
-                if path.startswith(prefix):
+                if path.startswith(prefix) or norm.startswith(prefix.rstrip("/")):
                     return rule
-        
+
         return None
     
     def add_rule(self, path: str, method: str, roles: List[str]):

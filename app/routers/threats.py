@@ -10,6 +10,7 @@ from app.models.threat import Threat
 router = APIRouter()
 
 
+@router.get("")
 @router.get("/")
 def get_threats(db: Session = Depends(get_db)) -> list:
     """Get the 50 most recent threats"""

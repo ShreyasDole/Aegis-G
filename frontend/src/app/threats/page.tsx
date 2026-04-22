@@ -18,9 +18,8 @@ export default function ThreatsPage() {
     const loadThreats = async () => {
       try {
         const token = localStorage.getItem('token');
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-        const response = await fetch(`${API_URL}/api/threats`, {
+        const response = await fetch('/api/threats', {
           headers: { 'Authorization': `Bearer ${token}` },
         });
 
@@ -73,7 +72,7 @@ export default function ThreatsPage() {
   }));
 
   return (
-    <div className="p-6 min-h-screen max-w-7xl mx-auto">
+    <div className="w-full flex-1 flex flex-col relative bg-transparent space-y-6">
         {/* Header */}
         <div className="mb-6">
           <h1 className="text-2xl font-bold tracking-tight text-text-primary mb-2">

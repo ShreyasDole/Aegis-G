@@ -100,12 +100,16 @@ class ChatService:
                 if use_tools and db:
                     response_text, tool_calls = await self._chat_with_tools(client, messages, db)
                 else:
-                    contents = [{"role": m["role"], "parts": [{"text": m["parts"][0]}]} for m in messages]
+                    contents = []
+                    for m in messages:
+                        role = "user" if m["role"] == "user" else "model"
+                        contents.append({"role": role, "parts": [{"text": m["parts"][0]}]})
+                    
                     response = client.models.generate_content(
                         model=settings.GEMINI_FLASH_MODEL,
                         contents=contents
                     )
-                    response_text = response.text
+                    response_text = response.text if response.text else "I am unable to generate a response at this time."
                     tool_calls = None
                     
             except Exception as e:

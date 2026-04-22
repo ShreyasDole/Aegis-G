@@ -10,6 +10,7 @@ from datetime import datetime
 class ScanRequest(BaseModel):
     """Request schema for content scanning"""
     content: str = Field(..., description="Text content to analyze")
+    image_base64: Optional[str] = Field(None, description="Base64 encoded image data for visual multimodal scans")
     source_platform: Optional[str] = Field("web", description="Platform where content was found")
     username: Optional[str] = Field("anonymous", description="Username or identifier of the content source")
     metadata: Optional[dict] = Field(None, description="Additional metadata")
@@ -25,11 +26,6 @@ class ScanResponse(BaseModel):
     detected_model: Optional[str] = None
     timestamp: datetime
     recommendation: str = Field(..., description="Recommended action")
-    denoised_text: Optional[str] = None
-    attribution: Optional[dict] = None
-
-    class Config:
-        extra = "allow"
 
 
 class BatchScanRequest(BaseModel):

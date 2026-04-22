@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { Suspense, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
@@ -15,7 +15,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   account_disabled: 'Your account is not active. Contact your administrator.',
 };
 
-export default function LoginPage() {
+function LoginInner() {
   const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -29,8 +29,7 @@ export default function LoginPage() {
   }, [searchParams]);
 
   const handleMicrosoftLogin = () => {
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-    window.location.href = `${API_URL}/api/auth/outlook`;
+    window.location.href = '/api/auth/outlook';
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -38,8 +37,7 @@ export default function LoginPage() {
     e.preventDefault();
     setIsLoading(true);
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-      const loginResponse = await fetch(`${API_URL}/api/auth/login`, {
+      const loginResponse = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
@@ -51,7 +49,7 @@ export default function LoginPage() {
       }
       const data = await loginResponse.json();
       localStorage.setItem('token', data.access_token);
-      const userResponse = await fetch(`${API_URL}/api/auth/me`, {
+      const userResponse = await fetch('/api/auth/me', {
         headers: { Authorization: `Bearer ${data.access_token}` },
       });
       if (userResponse.ok) {
@@ -180,5 +178,13 @@ export default function LoginPage() {
         <p className="mt-8 text-[11px] text-text-muted z-10">National Security Operations Platform</p>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-bg-base flex items-center justify-center"><span className="text-neon-cyan font-mono text-sm animate-pulse">Loading...</span></div>}>
+      <LoginInner />
+    </Suspense>
   );
 }

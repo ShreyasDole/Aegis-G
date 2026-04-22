@@ -14,9 +14,8 @@ export default function AuthCallbackPage() {
       setTimeout(() => router.replace('/login'), 2000);
       return;
     }
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
     localStorage.setItem('token', token);
-    fetch(`${API_URL}/api/auth/me`, {
+    fetch('/api/auth/me', {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((r) => (r.ok ? r.json() : null))

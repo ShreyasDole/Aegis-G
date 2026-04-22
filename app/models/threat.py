@@ -19,10 +19,6 @@ class Threat(Base):
     timestamp = Column(DateTime, default=datetime.utcnow, index=True)
     detected_by = Column(String(50), default="gemini-2.5-flash")
     
-    # RAG memory embedding (384-dimensional for local sentence-transformers)
-    from pgvector.sqlalchemy import Vector
-    embedding = Column(Vector(384))
-    
     # Relationships
     reports = relationship("Report", back_populates="threat")
 

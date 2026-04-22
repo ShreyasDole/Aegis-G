@@ -1,193 +1,314 @@
 'use client';
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
-import { NetworkGraph } from '@/components/visual/NetworkGraph';
-import { Circle, Skull, Globe, Server, Camera, RefreshCw, MousePointer2 } from 'lucide-react';
+import { NetworkGraph, GraphNode, GraphEdge } from '@/components/visual/NetworkGraph';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+function getToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('token');
+}
 
-function getAuthHeaders(): HeadersInit {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-  return token ? { Authorization: `Bearer ${token}` } : {};
+async function apiFetch(endpoint: string) {
+  const res = await fetch(endpoint, {
+    headers: { Authorization: `Bearer ${getToken()}` },
+  });
+  if (!res.ok) throw new Error(`API error ${res.status}`);
+  return res.json();
 }
 
 export default function NetworkPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [clusterMode, setClusterMode] = useState(false);
-  const [graphKey, setGraphKey] = useState(0);
-  const [highlightPatientZero, setHighlightPatientZero] = useState(false);
-  const [nodeCount, setNodeCount] = useState(0);
-  const [typeCounts, setTypeCounts] = useState<Record<string, number>>({});
+  const [nodes, setNodes] = useState<GraphNode[]>([]);
+  const [edges, setEdges] = useState<GraphEdge[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [patientZeroId, setPatientZeroId] = useState<string | null>(null);
+  const [seedStatus, setSeedStatus] = useState<string | null>(null);
+  const [patientZeroInfo, setPatientZeroInfo] = useState<{username: string; origin_time: string} | null>(null);
 
-  const handleRefresh = () => setGraphKey((k) => k + 1);
-  const handleSnapshot = () => setGraphKey((k) => k + 1);
-  const handleTraceOrigin = () => setHighlightPatientZero((v) => !v);
+  const loadNetwork = useCallback(async () => {
+    setIsLoading(true);
+    setClusterMode(false);
+    setPatientZeroId(null);
+    try {
+      const data = await apiFetch('/api/network/');
+      setNodes(data.nodes || []);
+      setEdges(data.edges || []);
+    } catch (e) {
+      console.error('Network fetch failed:', e);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const loadMeta = async () => {
-      try {
-        const res = await fetch(`${API_URL}/api/network/?limit=500`, { headers: getAuthHeaders() });
-        if (!res.ok) return;
-        const data = await res.json();
-        const nodes = data.nodes || [];
-        setNodeCount(nodes.length);
-        const byType: Record<string, number> = {};
-        for (const n of nodes) {
-          const t = (n.type || n.label || 'unknown').toString();
-          byType[t] = (byType[t] || 0) + 1;
-        }
-        setTypeCounts(byType);
-      } catch {
-        setNodeCount(0);
-        setTypeCounts({});
-      }
-    };
-    loadMeta();
-  }, [graphKey]);
+    loadNetwork();
+  }, [loadNetwork]);
 
-  const stats = useMemo(() => {
-    const actorish =
-      (typeCounts.Actor || 0) +
-      (typeCounts.actor || 0) +
-      (typeCounts.ThreatActor || 0) +
-      (typeCounts['Threat Actor'] || 0);
-    const ips = (typeCounts.IP || 0) + (typeCounts.Ip || 0) + (typeCounts.ip || 0);
-    const systems = (typeCounts.System || 0) + (typeCounts.Bot || 0) + (typeCounts.Target || 0);
-    return [
-      { label: 'Total nodes', value: String(nodeCount), icon: Circle },
-      { label: 'Actors / threats', value: String(actorish), icon: Skull },
-      { label: 'IPs', value: String(ips), icon: Globe },
-      { label: 'Systems / bots', value: String(systems), icon: Server },
-    ];
-  }, [nodeCount, typeCounts]);
+  const handleTraceOrigin = async () => {
+    setIsLoading(true);
+    setPatientZeroInfo(null);
+    setClusterMode(false);
+
+    try {
+      // Step 1: Temporal traversal — confirmed C2 origin via Cypher
+      const pzData = await apiFetch('/api/network/patient-zero/demo_astroturf_election_2024_h1');
+      const originId: string = pzData.status === 'found' ? pzData.user_id : 'c2_master';
+
+      if (pzData.status === 'found') {
+        setPatientZeroInfo({ username: pzData.username, origin_time: pzData.origin_time });
+      }
+
+      // Step 2: Get the full C2 propagation tree from the confirmed origin
+      const treeData = await apiFetch(`/api/network/campaign/${originId}`);
+      const rawNodes: GraphNode[] = treeData.nodes || [];
+      const treeNodes: GraphNode[] = rawNodes.map((n: GraphNode) =>
+        n.id === originId
+          ? { ...n, type: 'PATIENT_ZERO', label: `🚨 PATIENT ZERO: ${n.label}` }
+          : n
+      );
+
+      if (treeNodes.length > 0) {
+        setNodes(treeNodes);
+        setEdges(treeData.edges || []);
+      } else {
+        // Tree empty — mark origin in existing view
+        setNodes(prev =>
+          prev.map(n =>
+            n.id === originId
+              ? { ...n, type: 'PATIENT_ZERO', label: `🚨 PATIENT ZERO: ${n.label}` }
+              : n
+          )
+        );
+      }
+      setPatientZeroId(originId);
+    } catch (e) {
+      console.error('Patient zero trace failed:', e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSeedDemoData = async () => {
+    setSeedStatus('Seeding...');
+    try {
+      const res = await fetch('/api/network/seed', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${getToken()}` },
+      });
+      if (res.ok) {
+        setSeedStatus('✅ Demo data loaded! Refreshing graph...');
+        setTimeout(() => setSeedStatus(null), 4000);
+        await loadNetwork();
+      } else {
+        setSeedStatus('❌ Seed failed');
+        setTimeout(() => setSeedStatus(null), 3000);
+      }
+    } catch {
+      setSeedStatus('❌ Network error');
+      setTimeout(() => setSeedStatus(null), 3000);
+    }
+  };
+
+  const toggleClusterMode = async () => {
+    if (clusterMode) {
+      setClusterMode(false);
+      await loadNetwork();
+      return;
+    }
+
+    setIsLoading(true);
+    setClusterMode(true);
+    setPatientZeroId(null);
+    try {
+      const data = await apiFetch('/api/network/clusters');
+      const clusterNodes: GraphNode[] = [];
+      const clusterEdges: GraphEdge[] = [];
+
+      (data.clusters || []).forEach((cluster: {
+        cluster_id: string;
+        nodes: string[];
+        avg_risk?: number;
+      }) => {
+        const commId = `COMM_${cluster.cluster_id}`;
+        clusterNodes.push({
+          id: commId,
+          label: cluster.cluster_id,
+          type: 'COMMUNITY',
+          severity: (cluster.avg_risk ?? 0) > 0.7 ? 'critical' : 'medium',
+        });
+        cluster.nodes.forEach((username: string) => {
+          const uid = `user_${username}`;
+          clusterNodes.push({ id: uid, label: username, type: 'User' });
+          clusterEdges.push({ source: uid, target: commId });
+        });
+      });
+
+      setNodes(clusterNodes);
+      setEdges(clusterEdges);
+    } catch (e) {
+      console.error('Cluster fetch failed:', e);
+      setClusterMode(false);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const visibleNodes = searchQuery
+    ? nodes.filter(n => n.label.toLowerCase().includes(searchQuery.toLowerCase()))
+    : nodes;
+
+  const stats = [
+    { label: 'Total Nodes', value: nodes.length.toString(), icon: '⚪' },
+    { label: 'Threat Actors', value: nodes.filter(n => n.severity === 'critical').length.toString(), icon: '🔴' },
+    { label: 'Communities', value: nodes.filter(n => n.type === 'COMMUNITY').length.toString(), icon: '🟠' },
+    { label: 'Edges', value: edges.length.toString(), icon: '🔵' },
+  ];
 
   return (
-    <div className="p-6 min-h-screen max-w-7xl mx-auto">
+    <div className="w-full flex-1 flex flex-col relative bg-transparent space-y-6">
+      <div className="w-full mx-auto">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold tracking-tight text-text-primary mb-1">
-            Graph Intelligence
+          <h1 className="text-3xl font-bold font-display text-glow-blue mb-2">
+            🕸️ Network Analysis
           </h1>
-          <p className="text-text-secondary text-sm">
-            Neo4j-backed relationships — threats, actors, infrastructure
+          <p className="text-text-secondary">
+            Topological Graph Intelligence — Louvain Community Detection & Patient Zero Tracing
           </p>
         </div>
 
-        {/* Controls */}
         <Card className="mb-6">
           <div className="flex flex-col lg:flex-row gap-4">
-            {/* Search */}
             <div className="flex-1">
               <Input
-                placeholder="Search nodes (client filter)..."
+                placeholder="Search nodes..."
+                icon={<span>🔍</span>}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
 
-            {/* Filters */}
             <div className="flex gap-2">
-              <button
-                onClick={() => setSelectedFilter('all')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                  selectedFilter === 'all'
-                    ? 'bg-primary text-white'
-                    : 'bg-bg-tertiary text-text-secondary hover:bg-bg-primary'
-                }`}
-              >
-                All Nodes
-              </button>
-              <button
-                onClick={() => setSelectedFilter('actors')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                  selectedFilter === 'actors'
-                    ? 'bg-danger text-white'
-                    : 'bg-bg-tertiary text-text-secondary hover:bg-bg-primary'
-                }`}
-              >
-                Actors
-              </button>
-              <button
-                onClick={() => setSelectedFilter('systems')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                  selectedFilter === 'systems'
-                    ? 'bg-primary text-white'
-                    : 'bg-bg-tertiary text-text-secondary hover:bg-bg-primary'
-                }`}
-              >
-                Systems
-              </button>
+              {(['all', 'actors', 'systems'] as const).map(f => (
+                <button
+                  key={f}
+                  onClick={() => setSelectedFilter(f)}
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                    selectedFilter === f
+                      ? 'bg-primary text-white'
+                      : 'bg-bg-tertiary text-text-secondary hover:bg-bg-primary'
+                  }`}
+                >
+                  {f.charAt(0).toUpperCase() + f.slice(1)}
+                </button>
+              ))}
             </div>
 
-            {/* Actions */}
             <div className="flex gap-2">
-              <Button variant="secondary" icon={<Camera className="w-4 h-4" />} onClick={handleSnapshot}>Snapshot</Button>
-              <Button variant="primary" icon={<RefreshCw className="w-4 h-4" />} onClick={handleRefresh}>Refresh</Button>
+              <Button variant="secondary" icon={<span>🔄</span>} onClick={loadNetwork}>
+                Refresh
+              </Button>
             </div>
           </div>
 
-          {/* Phase 2.4: Advanced Network Logic */}
           <div className="flex flex-wrap gap-3 mt-4 pt-4 border-t border-border-subtle">
             <button
-              onClick={() => setClusterMode(!clusterMode)}
-              className={`px-3 py-1.5 rounded text-[10px] font-bold transition-all border ${clusterMode ? 'bg-secondary/20 border-secondary text-secondary shadow-glow-purple' : 'bg-bg-tertiary border-border-medium text-text-muted'}`}
+              onClick={toggleClusterMode}
+              className={`px-3 py-1.5 rounded text-[10px] font-bold transition-all border ${
+                clusterMode
+                  ? 'bg-secondary/20 border-secondary text-secondary shadow-glow-purple'
+                  : 'bg-bg-tertiary border-border-medium text-text-muted hover:border-secondary hover:text-secondary'
+              }`}
             >
               COMMUNITY_VIEW (LOUVAIN)
             </button>
             <button
-              className={`px-3 py-1.5 rounded text-[10px] font-bold border transition-all ${highlightPatientZero ? 'bg-warning/20 border-warning text-warning' : 'bg-bg-tertiary border-border-medium text-text-muted hover:border-danger hover:text-danger'}`}
               onClick={handleTraceOrigin}
+              disabled={isLoading}
+              className={`px-3 py-1.5 rounded text-[10px] font-bold transition-all border ${
+                patientZeroId
+                  ? 'bg-danger/20 border-danger text-danger shadow-[0_0_8px_rgba(239,68,68,0.4)]'
+                  : 'bg-bg-tertiary border-border-medium text-text-muted hover:border-danger hover:text-danger'
+              } disabled:opacity-40 disabled:cursor-not-allowed`}
             >
               HIGHLIGHT_PATIENT_ZERO
             </button>
+            <button
+              onClick={handleSeedDemoData}
+              className="px-3 py-1.5 rounded text-[10px] font-bold border bg-warning/10 border-warning/40 text-warning hover:bg-warning/20 transition-all"
+            >
+              INJECT_DEMO_DATA
+            </button>
+            {seedStatus && (
+              <span className="text-[10px] font-mono text-warning self-center">{seedStatus}</span>
+            )}
             <div className="ml-auto flex items-center gap-2">
               <span className="text-[9px] text-text-muted font-mono uppercase">GDS Engine:</span>
               <Badge variant="info">ACTIVE</Badge>
             </div>
           </div>
+          {patientZeroInfo && (
+            <div className="mt-3 p-3 bg-danger/10 border border-danger/30 rounded-lg flex items-center gap-3">
+              <span className="text-xl">🚨</span>
+              <div>
+                <p className="text-xs font-bold text-danger uppercase tracking-wider">C2 Origin Identified</p>
+                <p className="text-sm text-text-primary font-mono">
+                  <span className="text-danger font-bold">{patientZeroInfo.username}</span>
+                  {patientZeroInfo.origin_time && (
+                    <span className="text-text-muted ml-2 text-xs">@ {patientZeroInfo.origin_time}</span>
+                  )}
+                </p>
+                <p className="text-[10px] text-text-secondary">Narrative origin traced via REPOSTED/SHARED temporal traversal</p>
+              </div>
+            </div>
+          )}
         </Card>
 
-        {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          {stats.map((stat, idx) => {
-            const Ico = stat.icon;
-            return (
-              <Card key={idx} hover className="text-center">
-                <div className="flex justify-center mb-2 text-primary">
-                  <Ico className="w-8 h-8 opacity-90" strokeWidth={1.5} />
-                </div>
-                <div className="text-2xl font-bold text-text-primary mb-1 tabular-nums">{stat.value}</div>
-                <div className="text-sm text-text-secondary">{stat.label}</div>
-              </Card>
-            );
-          })}
+          {stats.map((stat, idx) => (
+            <Card key={idx} hover className="text-center">
+              <div className="text-3xl mb-2">{stat.icon}</div>
+              <div className="text-2xl font-bold text-text-primary mb-1">{stat.value}</div>
+              <div className="text-sm text-text-secondary">{stat.label}</div>
+            </Card>
+          ))}
         </div>
 
-        {/* Network Graph */}
         <Card className="p-0 overflow-hidden">
-          <div className="h-[600px] relative">
-            <NetworkGraph refreshKey={graphKey} highlightPatientZero={highlightPatientZero} dataSource="api" />
-          </div>
+          <NetworkGraph nodes={visibleNodes} edges={edges} isLoading={isLoading} />
         </Card>
 
         <Card className="mt-6">
-          <h3 className="text-sm font-semibold uppercase tracking-widest text-text-muted mb-3">Canvas</h3>
-          <p className="text-sm text-text-secondary mb-4">
-            Data from GET /api/network. Refresh updates counts and reloads the force layout.
-          </p>
+          <h3 className="text-lg font-semibold mb-3">Graph Controls</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
             <div className="flex items-start gap-3">
-              <MousePointer2 className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+              <span className="text-2xl">🧩</span>
               <div>
-                <div className="font-medium text-text-primary">Click / drag</div>
-                <div className="text-text-secondary">Select nodes and pan the view</div>
+                <div className="font-medium text-text-primary">Community View</div>
+                <div className="text-text-secondary">Runs Louvain Modularity via Neo4j GDS — clusters coordinated actors</div>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <span className="text-2xl">🎯</span>
+              <div>
+                <div className="font-medium text-text-primary">Patient Zero</div>
+                <div className="text-text-secondary">Traverses SHARED/REPOSTED chains backwards to find C2 origin</div>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <span className="text-2xl">🔍</span>
+              <div>
+                <div className="font-medium text-text-primary">Search</div>
+                <div className="text-text-secondary">Filter visible nodes by label in real-time</div>
               </div>
             </div>
           </div>
         </Card>
+      </div>
     </div>
   );
 }

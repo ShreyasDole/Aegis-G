@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "Aegis-G: AI Threat Scanner",
+  "version": "1.0",
+  "description": "Air-Gapped AI Threat Detection for social media and text content.",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "contextMenus",
+    "notifications"
+  ],
+  "host_permissions": [
+    "http://localhost:8000/*",
+    "http://127.0.0.1:8000/*",
+    "https://*/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Scan with Aegis-G"
+  }
+}

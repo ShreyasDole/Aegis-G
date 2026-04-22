@@ -24,11 +24,15 @@ def _gemini_configured() -> bool:
 @router.get("/health", response_model=SystemStatus)
 def health_check():
     """Health check endpoint - tests basic connectivity"""
-    from app.services.mcp_client import is_mcp_enabled
+    try:
+        from app.services.mcp_client import is_mcp_enabled
+        mcp = is_mcp_enabled()
+    except Exception:
+        mcp = False
     return {
         "database": True,
         "ai_engine": _gemini_configured(),
-        "mcp_enabled": is_mcp_enabled(),
+        "mcp_enabled": mcp,
         "version": "0.1.0-alpha"
     }
 

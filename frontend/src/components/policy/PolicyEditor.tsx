@@ -16,7 +16,7 @@ interface Policy {
 
 interface PolicyEditorProps {
   policy?: Policy | null;
-  onSave: (policy: Policy) => void;
+  onSave: (_policy: Policy) => void;
   onCancel: () => void;
 }
 
