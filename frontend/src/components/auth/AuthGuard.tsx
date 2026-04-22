@@ -47,18 +47,20 @@ async function ensureValidToken(): Promise<void> {
 let initPromise: Promise<void> | null = null;
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
-  const [ready, setReady] = useState(() => {
-    // If already validated in this session, skip loading screen
-    return tokenValidatedAt > 0 && Date.now() - tokenValidatedAt < TOKEN_CACHE_MS;
-  });
+  // Always start false — same on server and client (prevents hydration mismatch)
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    if (ready) return;
+    // If token recently validated, skip network call and show immediately
+    if (tokenValidatedAt > 0 && Date.now() - tokenValidatedAt < TOKEN_CACHE_MS) {
+      setReady(true);
+      return;
+    }
     if (!initPromise) {
       initPromise = ensureValidToken().finally(() => { initPromise = null; });
     }
     initPromise.finally(() => setReady(true));
-  }, [ready]);
+  }, []);
 
   if (!ready) {
     return (
