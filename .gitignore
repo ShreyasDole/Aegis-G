@@ -86,3 +86,5 @@ temp/
 
 # OS files
 Thumbs.db
+digest.txt
+env.example

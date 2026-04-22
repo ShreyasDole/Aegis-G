@@ -2,12 +2,8 @@
  * STIX export - downloads threat as STIX 2.1 JSON via backend /api/sharing/export/stix/:id
  */
 
-const getApiUrl = () =>
-  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-
 export async function exportToSTIX(id: number): Promise<void> {
-  const base = getApiUrl();
-  const url = `${base}/api/sharing/export/stix/${id}`;
+  const url = `/api/sharing/export/stix/${id}`;
   const token =
     typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 

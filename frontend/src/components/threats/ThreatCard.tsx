@@ -14,9 +14,9 @@ interface ThreatCardProps {
   firstSeen: string;
   affectedSystems: number;
   riskScore: number;
-  onAnalyze?: (id: number, content: string) => void;
-  onExportSTIX?: (id: number) => void;
-  onDismiss?: (id: number) => void;
+  onAnalyze?: (_id: number, _content: string) => void;
+  onExportSTIX?: (_id: number) => void;
+  onDismiss?: (_id: number) => void;
 }
 
 export const ThreatCard: React.FC<ThreatCardProps> = ({

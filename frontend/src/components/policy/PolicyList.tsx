@@ -18,9 +18,9 @@ interface Policy {
 }
 
 interface PolicyListProps {
-  onEdit?: (policy: Policy) => void;
-  onDelete?: (policyId: number) => void;
-  onToggleActive?: (policyId: number, isActive: boolean) => void;
+  onEdit?: (_policy: Policy) => void;
+  onDelete?: (_policyId: number) => void;
+  onToggleActive?: (_policyId: number, _isActive: boolean) => void;
 }
 
 export const PolicyList: React.FC<PolicyListProps> = ({
@@ -34,6 +34,7 @@ export const PolicyList: React.FC<PolicyListProps> = ({
 
   useEffect(() => {
     fetchPolicies();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter]);
 
   const fetchPolicies = async () => {

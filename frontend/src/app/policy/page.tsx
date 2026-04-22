@@ -18,17 +18,19 @@ interface BlockedItem {
 export default function PolicyPage() {
   const [blockedItems, setBlockedItems] = useState<BlockedItem[]>([]);
   const [blockedCount, setBlockedCount] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
+
   const [showEditor, setShowEditor] = useState(false);
   const [editingPolicy, setEditingPolicy] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<'author' | 'manage'>('author');
+  const [activePolicies, setActivePolicies] = useState<any[]>([]);
 
   useEffect(() => {
-    // Fetch blocked content on mount
     fetchBlockedContent();
-    
-    // Set up polling for live updates
-    const interval = setInterval(fetchBlockedContent, 5000); // Poll every 5 seconds
+    fetchActivePolicies();
+    const interval = setInterval(() => {
+      fetchBlockedContent();
+      fetchActivePolicies();
+    }, 5000);
     return () => clearInterval(interval);
   }, []);
 
@@ -36,11 +38,8 @@ export default function PolicyPage() {
     try {
       const token = localStorage.getItem('token');
       const response = await fetch('/api/ai/blocked-content/stats', {
-        headers: {
-          'Authorization': `Bearer ${token || ''}`
-        }
+        headers: { 'Authorization': `Bearer ${token || ''}` },
       });
-
       if (response.ok) {
         const data = await response.json();
         setBlockedCount(data.today_count || 0);
@@ -51,40 +50,57 @@ export default function PolicyPage() {
     }
   };
 
+  const fetchActivePolicies = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/ai/policies?is_active=true', {
+        headers: { 'Authorization': `Bearer ${token || ''}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setActivePolicies(data);
+      }
+    } catch (error) {
+      console.error('Error fetching active policies:', error);
+    }
+  };
+
   // WebSocket connection for real-time updates
   useEffect(() => {
-    const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-    const wsUrl = apiBase.replace(/^http/, 'ws') + '/ws/blocked-content';
-    const ws = new WebSocket(wsUrl);
-    
+    if (typeof window === 'undefined') return;
+    const host = window.location.hostname;
+    const wsPort = process.env.NEXT_PUBLIC_WS_PORT || '8000';
+    const ws = new WebSocket(`ws://${host}:${wsPort}/ws/blocked-content`);
+
     ws.onmessage = (event) => {
-      const message = JSON.parse(event.data);
-      if (message.type === 'blocked_content') {
-        // Add new blocked item to the list
-        setBlockedItems(prev => [message.data, ...prev].slice(0, 50));
-        setBlockedCount(prev => prev + 1);
-      }
+      try {
+        const message = JSON.parse(event.data);
+        if (message.type === 'blocked_content') {
+          setBlockedItems(prev => [message.data, ...prev].slice(0, 50));
+          setBlockedCount(prev => prev + 1);
+        }
+      } catch { /* ignore malformed messages */ }
     };
 
-    ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
-    };
+    ws.onerror = () => { /* suppress console noise — WS is best-effort */ };
 
     return () => {
-      ws.close();
+      if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
+        ws.close();
+      }
     };
   }, []);
 
   return (
-    <div className="p-6 min-h-screen max-w-7xl mx-auto">
+    <div className="p-6 max-w-[1600px] mx-auto min-h-screen">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-text-primary mb-2">
-              Policy Engine
+            <h1 className="text-2xl font-bold tracking-wider uppercase mb-2">
+              Policy Guardian Console
             </h1>
             <p className="text-text-secondary text-sm">
-              Natural-language rules, blocked content, and live enforcement
+              Agent 4: Automated Mitigation - Translate intent into real-time defense rules
             </p>
           </div>
           <div className="flex items-center gap-4">
@@ -245,15 +261,34 @@ export default function PolicyPage() {
         {/* Active Policies Section */}
         <Card className="p-6 mt-6">
           <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest text-primary mb-4">
-            <span className="text-xl">⚡</span> Active Policies
+            <span className="text-xl">⚡</span> Active System Guardrails (Live)
           </h3>
-          <div className="text-text-secondary text-sm">
-            {/* TODO: Fetch and display active policies */}
-            <div className="text-center py-4">
-              No active policies. Create one above to start blocking threats.
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {activePolicies.length === 0 ? (
+              <div className="text-center py-4 text-text-secondary text-sm col-span-full">
+                No dynamic guardrails active. System operating on default heuristics.
+              </div>
+            ) : (
+              activePolicies.map((policy) => (
+                <div
+                  key={policy.id}
+                  className="bg-bg-primary border border-primary/30 rounded p-4 relative overflow-hidden"
+                >
+                  <div className="absolute top-0 left-0 w-1 h-full bg-primary animate-pulse" />
+                  <div className="flex justify-between items-start mb-2 ml-2">
+                    <span className="text-xs font-bold text-text-primary">{policy.name}</span>
+                    <span className="text-[9px] bg-success/20 text-success px-2 py-0.5 rounded uppercase">
+                      Armed
+                    </span>
+                  </div>
+                  <div className="ml-2 font-mono text-[10px] text-emerald-500 bg-black/50 p-2 rounded">
+                    {policy.translated_dsl || policy.content}
+                  </div>
+                </div>
+              ))
+            )}
           </div>
-        </Card>
+      </Card>
     </div>
   );
 }

@@ -1,0 +1,17 @@
+{
+  "extends": ["next/core-web-vitals"],
+  "rules": {
+    "react/no-unescaped-entities": "off",
+    "react-hooks/exhaustive-deps": "warn",
+    "@next/next/no-img-element": "warn",
+    "prefer-const": "warn",
+    "no-unused-vars": ["warn", {
+      "vars": "all",
+      "args": "after-used",
+      "argsIgnorePattern": "^_",
+      "varsIgnorePattern": "^_",
+      "destructuredArrayIgnorePattern": "^_",
+      "ignoreRestSiblings": true
+    }]
+  }
+}

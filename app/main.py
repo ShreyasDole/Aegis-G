@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from app.routers import system, auth, admin, ai, analyst, websocket, graph, threats, sharing, detection, forensics, worker, scan_core
+from app.routers import system, auth, admin, ai, analyst, websocket, graph, threats, sharing, detection
 from app.middleware import AuthorizationMiddleware
 from app.middleware.audit import AuditMiddleware
 import logging
@@ -26,15 +26,8 @@ async def lifespan(app: FastAPI):
     try:
         import app.models  # registers all ORM models with Base.metadata
         from app.models.database import Base, engine
-        from sqlalchemy import text
-        
-        # Initialize pgvector extension BEFORE creating tables
-        with engine.connect() as conn:
-            conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
-            conn.commit()
-            
         Base.metadata.create_all(bind=engine)
-        logger.info("Database tables verified / created (including pgvector).")
+        logger.info("Database tables verified / created.")
     except Exception as e:
         logger.error(f"Database table creation failed: {e}")
 
@@ -62,13 +55,20 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
     lifespan=lifespan,
+    redirect_slashes=False,
 )
 
 # CORS Configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Update for production
-    allow_credentials=False,
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "http://localhost:8000",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:8000",
+    ],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -95,10 +95,8 @@ app.include_router(graph.router, prefix="/api/network", tags=["Graph"])
 app.include_router(threats.router, prefix="/api/threats", tags=["Threats"])
 app.include_router(sharing.router, prefix="/api/sharing", tags=["Intelligence Sharing"])
 app.include_router(detection.router, prefix="/api/scan", tags=["Detection"])
-app.include_router(scan_core.router, prefix="/api/scan", tags=["Detection Core"])
-app.include_router(forensics.router, prefix="/api/forensics", tags=["Forensics"])
-app.include_router(worker.router, prefix="/api/worker", tags=["Workers"])
 app.include_router(websocket.router, tags=["WebSocket"])
+
 
 
 @app.get("/")

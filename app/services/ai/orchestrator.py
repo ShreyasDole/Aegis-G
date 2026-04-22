@@ -1,63 +1,37 @@
-# app/services/ai/orchestrator.py
-"""Threat Orchestrator – core pipeline for Phase 1.
-
-Coordinates the multi‑agent defense workflow:
-1️⃣ Denoising + attribution (local or ONNX)
-2️⃣ Graph mapping (Neo4j)
-3️⃣ Policy guardrails
-4️⃣ Immutable audit (blockchain)
 """
-
+Threat Orchestrator - Mission Control
+Coordinates the Multi-Agent Defense Pipeline (Agents 1-5)
+"""
 import logging
-from datetime import datetime
 import hashlib
 from typing import Dict, Any
 from sqlalchemy.orm import Session
 
-# Real services imports
-from app.services.gemini.client import GeminiClient  # Cloud AI fallback
-from app.services.graph.neo4j import Neo4jService  # Graph mapping
-from app.services.ai.fusion_service import AnalystAgent  # Analyst agent (placeholder)
-from app.services.ai.policy_guardian import policy_guardian  # Policy engine
-from app.core.blockchain import add_to_ledger  # Trust layer
-
-# Phase 1 components (optional heavy deps handled inside the classes)
-from app.services.ai.denoiser import AdversarialDenoiser
-from app.services.ai.attribution import MultiClassAttributor
-from app.services.ai.onnx_runtime import ONNXAttributor
-from app.services.ai.explainability import token_explainer
-from app.services.vector.embeddings import EmbeddingService
+# --- REAL SERVICES IMPORT ---
+from app.services.ai.local_detection import local_classifier  # Agent 1 (Local)
+from app.services.gemini.client import GeminiClient           # Agent 1 (Cloud)
+from app.services.graph.neo4j import Neo4jService             # Agent 2 (Graph)
+from app.services.ai.fusion_service import AnalystAgent       # Agent 3 (Analyst)
+from app.services.ai.policy_guardian import policy_guardian   # Agent 4 (Guardian)
+from app.core.blockchain import add_to_ledger                 # Trust Layer
 
 logger = logging.getLogger(__name__)
 
 
 class ThreatOrchestrator:
-    """Mission Control – coordinates the multi‑agent defense pipeline.
+    """
+    Mission Control: Coordinates the Multi-Agent Defense Pipeline.
+    This is the heart of Aegis-G.
     """
 
     def __init__(self):
-        # Core services
         self.gemini_client = GeminiClient()
         self.neo4j_service = Neo4jService()
-        self.analyst_agent = AnalystAgent()
-        self.policy_guardian = policy_guardian
 
-        # Phase 1 & 2 services – ONNX is optional
-        self.denoiser = AdversarialDenoiser()
-        self.attributor = MultiClassAttributor()
-        self.embedding_service = EmbeddingService()
-        try:
-            self.onnx_attributor = ONNXAttributor()
-        except Exception as e:
-            self.onnx_attributor = None
-            logger.warning(f"ONNXAttributor not available ({e}); will use PyTorch fallback.")
-
-    async def process_incoming_threat(
-        self, payload: Dict[str, Any], db: Session, mode: str = "local"
-    ) -> Dict[str, Any]:
-        """Run the full pipeline for a single incoming threat.
-
-        Returns a dict suitable for the API response.
+    async def process_incoming_threat(self, payload: Dict[str, Any], db: Session, mode: str = "local") -> Dict[str, Any]:
+        """
+        The Master Pipeline:
+        1. Ingest -> 2. Forensic Scan -> 3. Graph Mapping -> 4. Policy Check -> 5. Blockchain Log
         """
         content = payload.get("content", "")
         image_base64 = payload.get("image_base64", None)
@@ -146,110 +120,157 @@ class ThreatOrchestrator:
             forensics_data["rag_memory"] = []
 
         # ---------------------------------------------------------
-        # ASYNC SAVE FOR RAG MEMORY RECORDING
-        # ---------------------------------------------------------
-        try:
-            await self._save_to_pgvector(content_hash, content, risk_score, source_platform, db)
-        except Exception as e:
-            logger.warning(f"Could not persist to memory bank: {e}")
-
-        # ---------------------------------------------------------
-        # PHASE 2 – GRAPH MAPPING (Neo4j)
+        # PHASE 2: GRAPH MAPPING (Agent 2)
         # ---------------------------------------------------------
         logger.info("🕸️ Agent 2 Mapping Nodes...")
-        graph_metadata = {
-            "node_created": False,
-            "patient_zero": "Self",
-            "cluster_risk": "Low",
-        }
-        patient_zero_data = {}
-        try:
-            await self.neo4j_service.create_node(
-                {
-                    "id": username,
-                    "label": username,
-                    "type": "User",
-                    "properties": {
-                        "risk_score": risk_score,
-                        "platform": source_platform,
-                        "last_seen": "now()",
-                    },
-                }
-            )
-            await self.neo4j_service.create_post_node(
-                content_hash=content_hash,
-                user_id=username,
-                timestamp=datetime.utcnow(),
-                risk_score=risk_score,
-            )
-            patient_zero_data = await self.neo4j_service.find_patient_zero(content_hash)
-            graph_metadata = {
-                "node_created": True,
-                "patient_zero": (
-                    patient_zero_data.get("username", "Self")
-                    if patient_zero_data.get("status") == "found"
-                    else "Self"
-                ),
-                "cluster_risk": "High"
-                if patient_zero_data.get("status") == "found"
-                else "Low",
+        
+        # Create/Update the User Node in Neo4j
+        await self.neo4j_service.create_node({
+            "id": username,
+            "label": username,
+            "type": "User",
+            "properties": {
+                "risk_score": risk_score,
+                "platform": source_platform,
+                "last_seen": "now()"
             }
-        except Exception as e:
-            logger.warning(f"Neo4j Agent 2 mapping failed ({e}). Graph metadata will be limited.")
+        })
+
+        # Create Post node and link to User
+        from datetime import datetime
+        await self.neo4j_service.create_post_node(
+            content_hash=content_hash,
+            user_id=username,
+            timestamp=datetime.utcnow(),
+            risk_score=risk_score
+        )
+
+        # Create SIMILAR_TO edges to other high-risk posts on same platform (Louvain signal)
+        if risk_score > 0.5:
+            await self.neo4j_service.create_similar_to_edges(
+                post_hash=content_hash,
+                platform=source_platform,
+                risk_score=risk_score
+            )
+
+        # Check for Botnet Clusters (Patient Zero)
+        patient_zero_data = await self.neo4j_service.find_patient_zero(content_hash)
+        
+        graph_metadata = {
+            "node_created": True,
+            "patient_zero": patient_zero_data.get("username", "Self") if patient_zero_data.get("status") == "found" else "Self",
+            "cluster_risk": "High" if patient_zero_data.get("status") == "found" else "Low"
+        }
 
         # ---------------------------------------------------------
-        # PHASE 3 – POLICY GUARDRAILS
+        # PHASE 3: POLICY GUARDRAILS (Agent 4)
         # ---------------------------------------------------------
         logger.info("🛡️ Agent 4 Checking Policies...")
-        active_dsl = "IF ai_score > 0.85 THEN BLOCK_AND_LOG"  # Default fallback
+
+        guardrail_result = {"should_block": False}
+        matched_policy = None
+        active_dsl = None
+
+        policy_context = {
+            "content": content,
+            "ai_score": round(risk_score * 100, 2),  # normalize to 0-100 to match DSL syntax (e.g. ai_score > 85)
+            "graph_cluster_size": 5 if patient_zero_data.get("status") == "found" else 1,
+        }
+
         if db:
             try:
                 from app.models.ai import AIPolicy
-
-                policy = (
+                active_policies = (
                     db.query(AIPolicy)
                     .filter(AIPolicy.is_active == True)
                     .order_by(AIPolicy.priority.desc())
-                    .first()
+                    .all()
                 )
-                if policy and (policy.translated_dsl or policy.content):
+                logger.info(f"Loaded {len(active_policies)} active firewall rules.")
+
+                for policy in active_policies:
                     active_dsl = policy.translated_dsl or policy.content
-                    logger.info(f"Using active policy: {policy.name}")
+                    if not active_dsl:
+                        continue
+                    result = policy_guardian.execute_dsl_rule(active_dsl, policy_context)
+                    if result.get("should_block"):
+                        guardrail_result = result
+                        guardrail_result["reason"] = f"Violated active policy: {policy.name}"
+                        matched_policy = policy
+                        break
+
             except Exception as e:
-                logger.warning(f"Could not fetch active policy from DB: {e}")
-        policy_context = {
-            "content": content,
-            "ai_score": risk_score,
-            "graph_cluster_size": 1
-            if patient_zero_data.get("status") == "not_found"
-            else 5,
-        }
-        guardrail_result = self.policy_guardian.execute_dsl_rule(active_dsl, policy_context)
-        if guardrail_result.get("should_block"):
-            logger.warning(
-                f"🚫 BLOCKED by Policy: {guardrail_result.get('reason', 'Policy violation')}"
-            )
+                logger.warning(f"Could not fetch active policies from DB: {e}")
+
+        if guardrail_result.get("should_block") and matched_policy:
+            logger.warning(f"🚫 BLOCKED by Agent 4: {guardrail_result.get('reason')}")
+
+            try:
+                from app.models.ai import BlockedContent
+                blocked_record = BlockedContent(
+                    content_hash=content_hash,
+                    content_preview=content[:500],
+                    source_platform=source_platform,
+                    source_username=username,
+                    policy_id=matched_policy.id,
+                    policy_name=matched_policy.name,
+                    rule_name=f"rule_{matched_policy.id:02d}.aegis",
+                    dsl_logic=active_dsl,
+                    matched_conditions=str(guardrail_result.get("matched_conditions", [])),
+                    action_taken="BLOCK_AND_LOG",
+                    ai_score=risk_score,
+                    graph_cluster_size=policy_context["graph_cluster_size"],
+                    narrative_keywords=str(guardrail_result.get("matched_conditions", [])),
+                )
+                db.add(blocked_record)
+                db.commit()
+                db.refresh(blocked_record)
+
+                from app.routers.websocket import notify_blocked_content
+                import asyncio
+                asyncio.create_task(notify_blocked_content({
+                    "id": blocked_record.id,
+                    "content_preview": blocked_record.content_preview,
+                    "policy_name": matched_policy.name,
+                    "action_taken": "BLOCK_AND_LOG",
+                    "blocked_at": blocked_record.blocked_at.isoformat() if blocked_record.blocked_at else None,
+                    "source_platform": source_platform,
+                }))
+            except Exception as db_err:
+                logger.error(f"Failed to write block log to DB: {db_err}")
+
+            # Also mint a blockchain block for blocked content
+            try:
+                ledger_hash = await add_to_ledger(
+                    report_id=0,
+                    recipient_agency="Policy-Enforcement",
+                    content=f"BLOCKED | Policy: {matched_policy.name} | Score: {risk_score} | Source: {username}"
+                )
+                logger.info(f"Blockchain block minted for blocked content: {ledger_hash[:16]}...")
+            except Exception as e:
+                logger.error(f"Blockchain logging failed for blocked content: {e}")
+
             return {
                 "status": "BLOCKED",
                 "risk_score": risk_score,
                 "action": guardrail_result,
                 "forensics": forensics_data,
                 "graph_context": graph_metadata,
+                "content_hash": content_hash,
             }
 
         # ---------------------------------------------------------
-        # PHASE 4 – IMMUTABLE AUDIT (blockchain)
+        # PHASE 4: IMMUTABLE AUDIT (Trust Layer)
         # ---------------------------------------------------------
+        # Only log High Risk items to Blockchain to save resources
         ledger_hash = None
         if risk_score > 0.7:
             logger.info("🔗 High Risk Detected - Mining Block...")
             try:
                 ledger_hash = await add_to_ledger(
-                    report_id=0,
+                    report_id=0,  # In prod, this comes from DB ID
                     recipient_agency="Internal-Audit",
-                    content=f"Threat Detected: {risk_score} | Source: {username}",
-                    db=db,
-                    analyst_id=analyst_id,
+                    content=f"Threat Detected: {risk_score} | Source: {username}"
                 )
                 logger.info(f"Blockchain hash: {ledger_hash[:16]}...")
             except Exception as e:
@@ -263,43 +284,9 @@ class ThreatOrchestrator:
             "blockchain_hash": ledger_hash,
             "recommendation": "Review" if risk_score > 0.5 else "Ignore",
             "forensics": forensics_data,
-            "content_hash": content_hash,
-            # UI‑friendly extra fields
-            "denoised_text": forensics_data.get("denoised_text", ""),
-            "attribution": forensics_data.get("attribution", {}),
-            "explainability": forensics_data.get("explainability", []),
-            "rag_memory": forensics_data.get("rag_memory", []),
-            "timestamp": datetime.utcnow(),
+            "content_hash": content_hash
         }
-        
-    async def _save_to_pgvector(self, content_hash: str, content: str, risk: float, platform: str, db: Session):
-        """Save threat to PGVector to power future RAG searches."""
-        if not db:
-            return
-        try:
-            from app.models.threat import Threat
-            import numpy as np
-            
-            # Use real sentence-transformers to calculate the pgvector array
-            vector = await self.embedding_service.generate_embedding(content)
-            
-            # Upsert into PostgreSQL Database
-            threat_entry = db.query(Threat).filter(Threat.content_hash == content_hash).first()
-            if not threat_entry:
-                new_threat = Threat(
-                    content_hash=content_hash,
-                    content=content,
-                    risk_score=risk,
-                    source_platform=platform,
-                    embedding=vector
-                )
-                db.add(new_threat)
-                db.commit()
-        except Exception as e:
-            logger.error(f"Failed to save RAG vector: {e}")
-            if db:
-                db.rollback()
 
 
-# Global singleton instance used by the API router
+# Global Instance
 orchestrator = ThreatOrchestrator()

@@ -26,11 +26,6 @@ class ScanResponse(BaseModel):
     detected_model: Optional[str] = None
     timestamp: datetime
     recommendation: str = Field(..., description="Recommended action")
-    denoised_text: Optional[str] = None
-    attribution: Optional[dict] = None
-
-    class Config:
-        extra = "allow"
 
 
 class BatchScanRequest(BaseModel):

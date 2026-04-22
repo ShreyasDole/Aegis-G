@@ -9,7 +9,6 @@ export const PolicyAuthor = () => {
   const [isArming, setIsArming] = useState(false);
   const [isTranslating, setIsTranslating] = useState(false);
   const [translationResult, setTranslationResult] = useState<any>(null);
-  const [blockedCount, setBlockedCount] = useState(0);
 
   const handleTranslate = async () => {
     if (!intent.trim()) return;

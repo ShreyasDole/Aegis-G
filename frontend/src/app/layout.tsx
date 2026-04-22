@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { ClientLayout } from '@/components/layout/ClientLayout';
-import { AuthGuard } from '@/components/auth/AuthGuard';
 
 export const metadata: Metadata = {
   title: 'AEGIS-G — Modern Enterprise Security',
@@ -14,13 +13,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className="bg-bg-primary text-text-primary">
-        <AuthGuard>
-          <ClientLayout>
-            {children}
-          </ClientLayout>
-        </AuthGuard>
+    <html lang="en" suppressHydrationWarning>
+      <body className="bg-bg-base text-white/60" suppressHydrationWarning>
+        <ClientLayout>
+          {children}
+        </ClientLayout>
       </body>
     </html>
   );
