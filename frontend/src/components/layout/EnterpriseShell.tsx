@@ -78,12 +78,12 @@ export function EnterpriseShell({ children }: { children: React.ReactNode }) {
       {/* Background & Effects */}
       <div className="fixed inset-0 bg-grid opacity-100 z-0 pointer-events-none" />
       <div className="fixed inset-0 scanline pointer-events-none z-10" />
-      <div className="fixed top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-neon-cyan/5 blur-[120px] pointer-events-none z-0" />
-      <div className="fixed bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-neon-magenta/5 blur-[120px] pointer-events-none z-0" />
+      <div className="fixed top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-neon-cyan/10 via-neon-cyan/5 to-transparent pointer-events-none z-0 will-change-transform" />
+      <div className="fixed bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-neon-magenta/10 via-neon-magenta/5 to-transparent pointer-events-none z-0 will-change-transform" />
 
       {/* TOP NAVIGATION */}
-      <nav className="fixed top-8 left-1/2 -translate-x-1/2 w-full max-w-[1024px] z-50 px-4">
-        <div className="flex items-center justify-between px-6 py-3 bg-white/5 backdrop-blur-xl border border-white/10 rounded-full shadow-2xl">
+      <nav className="fixed top-6 left-1/2 -translate-x-1/2 w-full max-w-[1024px] z-50 px-4">
+        <div className="flex items-center justify-between px-6 py-4 bg-black-true/60 backdrop-blur-md border border-white/10 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.8)]">
           {/* Logo */}
           <Link href="/dashboard" className="flex items-center gap-3 hover:scale-105 transition-transform group">
             <div className="w-8 h-8 rounded bg-white flex items-center justify-center group-hover:bg-neon-cyan transition-colors">
@@ -93,14 +93,23 @@ export function EnterpriseShell({ children }: { children: React.ReactNode }) {
           </Link>
 
           {/* Center Links */}
-          <div className="hidden md:flex items-center gap-8 font-space text-[10px] tracking-[0.2em] uppercase font-bold text-white/60">
-            {navLinks.map((link) => {
+          <div className="hidden lg:flex items-center gap-5 font-space text-[10px] tracking-[0.1em] uppercase font-bold text-white/60">
+            {[
+              { href: '/dashboard', label: 'Home' },
+              { href: '/scans', label: 'Scans' },
+              { href: '/threats', label: 'Threats' },
+              { href: '/network', label: 'Graph' },
+              { href: '/policy', label: 'Policy' },
+              { href: '/reports', label: 'Reports' },
+              { href: '/campaign', label: 'Campaign' },
+              { href: '/ledger', label: 'Ledger' },
+            ].map((link) => {
               const isActive = pathname === link.href || pathname?.startsWith(link.href + '/');
               return (
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`transition-colors ${
+                  className={`transition-colors whitespace-nowrap ${
                     isActive ? 'text-neon-cyan' : 'hover:text-neon-cyan'
                   }`}
                 >

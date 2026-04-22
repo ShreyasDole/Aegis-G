@@ -170,8 +170,8 @@ export default function NetworkPage() {
   ];
 
   return (
-    <div className="min-h-screen p-6">
-      <div className="max-w-7xl mx-auto">
+    <div className="w-full flex-1 flex flex-col relative bg-transparent space-y-6">
+      <div className="w-full mx-auto">
         <div className="mb-6">
           <h1 className="text-3xl font-bold font-display text-glow-blue mb-2">
             🕸️ Network Analysis

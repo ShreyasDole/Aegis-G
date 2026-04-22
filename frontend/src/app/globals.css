@@ -178,5 +178,7 @@
     z-index: 50;
     pointer-events: none;
     animation: scanline 8s linear infinite;
+    will-change: transform;
+    transform: translateZ(0); /* Hardware acceleration */
   }
 }

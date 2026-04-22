@@ -217,7 +217,7 @@ export default function ForensicChatPage() {
   };
 
   return (
-    <div className="h-[calc(100vh-64px)] flex flex-col relative bg-transparent">
+    <div className="flex-1 w-full flex flex-col relative bg-transparent min-h-[600px]">
       
       {/* Header */}
       <div className="shrink-0 flex items-center justify-between pb-4 border-b border-white/10 mb-4 z-10 relative">

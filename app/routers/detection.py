@@ -17,6 +17,7 @@ router = APIRouter()
 
 @router.post("", response_model=ScanResponse)
 @router.post("/", response_model=ScanResponse)
+@router.post("/core", response_model=ScanResponse)
 async def scan_content(
     request: ScanRequest, 
     req: Request,
@@ -42,8 +43,10 @@ async def scan_content(
         payload = {
             "content": request.content,
             "source_platform": request.source_platform or "web",
-            "username": request.username or "anonymous"
+            "username": request.username or "anonymous",
         }
+        if request.image_base64:
+            payload["image_base64"] = request.image_base64
         
         # 3. Execute Orchestrator Pipeline
         logger.info(f"🚀 Starting Defense Pipeline for content (mode: {mode})...")
