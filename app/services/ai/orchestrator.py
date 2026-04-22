@@ -119,8 +119,9 @@ class ThreatOrchestrator:
         # RAG Memory Context
         logger.info("🧠 Agent 1b Contextualizing with RAG Memory...")
         try:
-            # We skip real embeddings generation and just pass mock vector array for performance in dev
-            similar_hits = await self.embedding_service.find_similar([]) 
+            # Generate the true embedding using the updated local inference module
+            vector = await self.embedding_service.generate_embedding(content)
+            similar_hits = await self.embedding_service.find_similar(vector) 
             forensics_data["rag_memory"] = similar_hits
         except Exception as e:
             logger.warning(f"RAG lookup failed: {e}")

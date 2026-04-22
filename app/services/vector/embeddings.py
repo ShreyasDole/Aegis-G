@@ -67,20 +67,7 @@ class EmbeddingService:
                         "timestamp": r.timestamp.strftime("%Y-%m-%d %H:%M") if r.timestamp else "Unknown"
                     })
                 
-                # If database is completely empty (no previous threats yet), return a dummy to keep UI nice.
-                if len(output) == 0:
-                    import random
-                    from datetime import datetime
-                    return [
-                        {
-                            "threat_id": 99999,
-                            "similarity": 0.95,
-                            "summary": "Similar obfuscated injection payload disguised as policy inquiry. (Historical Prototype)",
-                            "action_taken": "BLOCKED",
-                            "timestamp": datetime.utcnow().strftime("%Y-%m-%d %H:%M")
-                        }
-                    ][:limit]
-                    
+                # Return actual results; if it's empty, it correctly means no historical threats present.
                 return output
         except Exception as e:
             logger.error(f"Failed to run pgvector RAG: {e}")

@@ -1,20 +1,28 @@
 import React from 'react';
+import { motion, HTMLMotionProps } from 'framer-motion';
 
-interface CardProps {
+export interface CardProps extends HTMLMotionProps<"div"> {
   children: React.ReactNode;
   className?: string;
   hover?: boolean;
 }
 
-export const Card: React.FC<CardProps> = ({ 
+export const Card = React.forwardRef<HTMLDivElement, CardProps>(({ 
   children, 
   className = '',
-  hover = false 
-}) => {
+  hover = false,
+  ...props
+}, ref) => {
   return (
-    <div className={`${hover ? 'card-hover' : 'card'} ${className}`}>
+    <motion.div 
+      ref={ref}
+      className={`bg-bg-secondary rounded-xl border border-border-subtle p-6 shadow-card transition-colors ${hover ? 'hover:border-primary/50 hover:shadow-glow-blue' : ''} ${className}`}
+      whileHover={hover ? { y: -2, transition: { duration: 0.2 } } : undefined}
+      {...props}
+    >
       {children}
-    </div>
+    </motion.div>
   );
-};
+});
 
+Card.displayName = 'Card';
