@@ -10,7 +10,8 @@ class GraphNode(BaseModel):
     """Graph node representation"""
     id: str
     label: str
-    type: str  # User, Post, Narrative, IP_Address
+    type: str  # User, Post, Narrative, IP_Address, PATIENT_ZERO, COMMUNITY
+    severity: Optional[str] = None   # critical | medium | low
     properties: Optional[dict] = None
 
 

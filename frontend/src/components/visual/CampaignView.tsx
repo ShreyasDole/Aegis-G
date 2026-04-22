@@ -4,8 +4,6 @@ import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { NetworkGraph } from './NetworkGraph';
 
-const API_URL = '';
-
 function getAuthHeaders(): HeadersInit {
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
   return token ? { Authorization: `Bearer ${token}` } : {};
@@ -51,6 +49,7 @@ export const CampaignView: React.FC = () => {
       }
     };
     loadClusters();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadCampaignGraph = async (rootId: string) => {

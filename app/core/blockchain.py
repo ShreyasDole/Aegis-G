@@ -84,22 +84,19 @@ async def add_to_ledger(
             new_index = 1
             logger.info("Creating Genesis Block (first entry in chain)")
 
-        # 2. Prepare Data Payload
-        timestamp = datetime.utcnow().isoformat()
-        # We hash the critical data: Agency + Report ID + Redacted Content
+        # 2. Prepare Data Payload — use single timestamp for both hash and DB
+        ts = datetime.utcnow()
+        timestamp = ts.isoformat()
         payload_dict = {
             "report_id": report_id,
             "agency": recipient_agency,
             "content_snapshot": content[:100] if content else "meta_only",
         }
-        if analyst_id is not None:
-            payload_dict["analyst_id"] = analyst_id
-        if thought_process:
-            payload_dict["thought_process"] = thought_process[:200]
+        # NOTE: analyst_id and thought_process intentionally excluded from hash
+        # so verify_full_chain can reconstruct without optional fields
         data_payload = json.dumps(payload_dict, sort_keys=True)
 
         # 3. Mine the Block (Calculate Hash)
-        # This is where the cryptographic link is created
         current_hash = calculate_hash(new_index, previous_hash, timestamp, data_payload)
         
         logger.debug(f"Block #{new_index} hash: {current_hash[:16]}... (linked to {previous_hash[:16]}...)")
@@ -112,7 +109,7 @@ async def add_to_ledger(
             recipient_agency=recipient_agency,
             redacted_content=content,
             thought_process=thought_process,
-            timestamp=datetime.utcnow(),
+            timestamp=ts,
             verified="verified"
         )
         

@@ -6,6 +6,11 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { AnalysisCard } from '@/components/reports/AnalysisCard';
 
+function authHdr(): HeadersInit {
+  const t = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  return t ? { Authorization: `Bearer ${t}` } : {};
+}
+
 export default function ForensicsDetailPage() {
   const params = useParams();
   const id = params?.id as string;
@@ -23,9 +28,6 @@ export default function ForensicsDetailPage() {
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-
   useEffect(() => {
     if (!id) return;
     const threatId = parseInt(id, 10);
@@ -39,8 +41,8 @@ export default function ForensicsDetailPage() {
       setError(null);
       try {
         const [threatRes, summaryRes] = await Promise.all([
-          fetch(`${API_URL}/api/threats/${threatId}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} }),
-          fetch(`${API_URL}/api/forensics/${threatId}/summary`, { headers: token ? { Authorization: `Bearer ${token}` } : {} }),
+          fetch(`/api/threats/${threatId}`, { headers: authHdr() }),
+          fetch(`/api/forensics/${threatId}/summary`, { headers: authHdr() }),
         ]);
         if (threatRes.ok) setThreat(await threatRes.json());
         else setError('Threat not found');
@@ -52,16 +54,16 @@ export default function ForensicsDetailPage() {
       }
     };
     fetchData();
-  }, [id, API_URL, token]);
+  }, [id]);
 
   const runAnalysis = async () => {
     if (!id) return;
     setAnalyzing(true);
     setError(null);
     try {
-      const res = await fetch(`${API_URL}/api/forensics/${id}`, {
+      const res = await fetch(`/api/forensics/${id}`, {
         method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        headers: authHdr(),
       });
       if (res.ok) {
         const data = await res.json();

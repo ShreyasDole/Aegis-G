@@ -84,6 +84,14 @@ class ThreatOrchestrator:
             risk_score=risk_score
         )
 
+        # Create SIMILAR_TO edges to other high-risk posts on same platform (Louvain signal)
+        if risk_score > 0.5:
+            await self.neo4j_service.create_similar_to_edges(
+                post_hash=content_hash,
+                platform=source_platform,
+                risk_score=risk_score
+            )
+
         # Check for Botnet Clusters (Patient Zero)
         patient_zero_data = await self.neo4j_service.find_patient_zero(content_hash)
         
@@ -104,7 +112,7 @@ class ThreatOrchestrator:
 
         policy_context = {
             "content": content,
-            "ai_score": risk_score,
+            "ai_score": round(risk_score * 100, 2),  # normalize to 0-100 to match DSL syntax (e.g. ai_score > 85)
             "graph_cluster_size": 5 if patient_zero_data.get("status") == "found" else 1,
         }
 
@@ -169,6 +177,17 @@ class ThreatOrchestrator:
                 }))
             except Exception as db_err:
                 logger.error(f"Failed to write block log to DB: {db_err}")
+
+            # Also mint a blockchain block for blocked content
+            try:
+                ledger_hash = await add_to_ledger(
+                    report_id=0,
+                    recipient_agency="Policy-Enforcement",
+                    content=f"BLOCKED | Policy: {matched_policy.name} | Score: {risk_score} | Source: {username}"
+                )
+                logger.info(f"Blockchain block minted for blocked content: {ledger_hash[:16]}...")
+            except Exception as e:
+                logger.error(f"Blockchain logging failed for blocked content: {e}")
 
             return {
                 "status": "BLOCKED",

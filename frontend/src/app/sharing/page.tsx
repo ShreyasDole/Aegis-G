@@ -9,7 +9,6 @@ export default function SharingPage() {
   const [ledgerHash, setLedgerHash] = useState('');
   const [ledgerResult, setLedgerResult] = useState<{ verified: boolean; timestamp?: string } | null>(null);
 
-  const API_URL = '';
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
   const verifyLedger = async () => {
@@ -30,12 +29,12 @@ export default function SharingPage() {
 
   return (
     <div className="p-6 min-h-screen max-w-4xl mx-auto">
-        <h1 className="text-2xl font-bold text-text-primary mb-2">Intelligence Sharing</h1>
-        <p className="text-text-muted text-sm mb-6">
-          Export STIX 2.1 bundles and verify ledger entries.
-        </p>
+      <h1 className="text-2xl font-bold text-text-primary mb-2">Intelligence Sharing</h1>
+      <p className="text-text-muted text-sm mb-6">
+        Export STIX 2.1 bundles and verify ledger entries.
+      </p>
 
-        <div className="grid gap-6 max-w-2xl">
+      <div className="grid gap-6">
           <Card className="p-6">
             <h2 className="text-sm font-semibold uppercase tracking-widest text-primary mb-3">Export STIX</h2>
             <p className="text-text-secondary text-sm mb-4">
@@ -66,7 +65,7 @@ export default function SharingPage() {
               </div>
             )}
           </Card>
-        </div>
+      </div>
     </div>
   );
 }

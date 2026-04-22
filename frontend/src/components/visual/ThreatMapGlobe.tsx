@@ -34,7 +34,7 @@ export const ThreatMapGlobe: React.FC = () => {
         });
 
         if (response.ok) {
-          const data = await response.json();
+          await response.json();
           // Map threats to geographic arcs
           // In production, threats would have source_platform with geo data
           const arcs: ThreatArc[] = [
@@ -117,8 +117,8 @@ export const ThreatMapGlobe: React.FC = () => {
       });
     }
 
-    // Convert threat arcs to sphere coordinates
-    const threatPoints = threatArcs.flatMap(arc => [
+    // Convert threat arcs to sphere coordinates (pre-computed, used in arc rendering)
+    const _threatPoints = threatArcs.flatMap(arc => [
       { ...latLngToSphere(arc.origin.lat, arc.origin.lng), label: arc.origin.label, color: arc.color },
       { ...latLngToSphere(arc.target.lat, arc.target.lng), label: arc.target.label, color: arc.color }
     ]);
@@ -144,7 +144,7 @@ export const ThreatMapGlobe: React.FC = () => {
         const z1 = dot.x * Math.sin(rotation) + dot.z * Math.cos(rotation);
         
         // Perspective projection
-        const scale = 300 / (300 - z1 * r); 
+        const _scale = 300 / (300 - z1 * r); 
         return {
           x: w/2 + x1 * r,
           y: h/2 + dot.y * r,
@@ -162,7 +162,7 @@ export const ThreatMapGlobe: React.FC = () => {
       });
 
       // Draw Threat Arcs (connecting geographic origins to targets)
-      threatArcs.forEach((arc, idx) => {
+      threatArcs.forEach((arc) => {
         const origin3d = latLngToSphere(arc.origin.lat, arc.origin.lng);
         const target3d = latLngToSphere(arc.target.lat, arc.target.lng);
         
@@ -177,8 +177,8 @@ export const ThreatMapGlobe: React.FC = () => {
         const targetRot = rotate3D(target3d);
         
         // Project to 2D
-        const scale1 = 300 / (300 - originRot.z * r);
-        const scale2 = 300 / (300 - targetRot.z * r);
+        const _scale1 = 300 / (300 - originRot.z * r);
+        const _scale2 = 300 / (300 - targetRot.z * r);
         const p1 = {
           x: w/2 + originRot.x * r,
           y: h/2 + originRot.y * r,

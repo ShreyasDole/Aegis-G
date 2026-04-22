@@ -87,35 +87,24 @@ async def share_intelligence(
         raise HTTPException(status_code=500, detail=f"Sharing failed: {str(e)}")
 
 
-@router.get("/ledger/{hash}")
-async def verify_ledger_entry(hash: str, db: Session = Depends(get_db)):
+@router.get("/ledger/integrity")
+async def check_chain_integrity(
+    current_user=Depends(get_current_active_user)
+):
     """
-    Verify a ledger entry by hash.
-    Agent 5: Trust Layer - Blockchain verification
+    Check blockchain integrity - verifies all blocks are linked correctly.
     """
+    from app.core.blockchain import verify_chain_integrity
+    
     try:
-        is_valid = verify_ledger_integrity(db, hash)
-        
-        # Get entry details
-        from app.models.ledger import LedgerEntry
-        entry = db.query(LedgerEntry).filter(LedgerEntry.current_hash == hash).first()
-        
-        if not entry:
-            raise HTTPException(status_code=404, detail="Ledger entry not found")
-        
+        is_valid = verify_chain_integrity()
         return {
-            "hash": hash,
-            "verified": is_valid,
-            "report_id": entry.report_id,
-            "recipient_agency": entry.recipient_agency,
-            "timestamp": entry.timestamp.isoformat() if entry.timestamp else None,
-            "previous_hash": entry.previous_hash,
-            "status": entry.verified
+            "is_valid": is_valid,
+            "status": "INTACT" if is_valid else "TAMPERED",
+            "timestamp": datetime.utcnow().isoformat()
         }
-    except HTTPException:
-        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Verification failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Integrity check failed: {str(e)}")
 
 
 @router.get("/ledger/verify/chain")
@@ -146,13 +135,9 @@ async def get_ledger_history(
     from sqlalchemy import desc
     
     try:
-        # Get ledger entries
         entries = db.query(LedgerEntry).order_by(desc(LedgerEntry.timestamp)).offset(offset).limit(limit).all()
-        
-        # Get total count
         total = db.query(LedgerEntry).count()
         
-        # Format response
         ledger_data = []
         for entry in entries:
             ledger_data.append({
@@ -176,21 +161,31 @@ async def get_ledger_history(
         raise HTTPException(status_code=500, detail=f"Failed to retrieve ledger: {str(e)}")
 
 
-@router.get("/ledger/integrity")
-async def check_chain_integrity(
-    current_user=Depends(get_current_active_user)
-):
+@router.get("/ledger/{hash}")
+async def verify_ledger_entry(hash: str, db: Session = Depends(get_db)):
     """
-    Check blockchain integrity - verifies all blocks are linked correctly.
+    Verify a ledger entry by hash.
+    Agent 5: Trust Layer - Blockchain verification
     """
-    from app.core.blockchain import verify_chain_integrity
-    
     try:
-        is_valid = verify_chain_integrity()
+        is_valid = verify_ledger_integrity(db, hash)
+        
+        from app.models.ledger import LedgerEntry
+        entry = db.query(LedgerEntry).filter(LedgerEntry.current_hash == hash).first()
+        
+        if not entry:
+            raise HTTPException(status_code=404, detail="Ledger entry not found")
+        
         return {
-            "is_valid": is_valid,
-            "status": "INTACT" if is_valid else "TAMPERED",
-            "timestamp": datetime.utcnow().isoformat()
+            "hash": hash,
+            "verified": is_valid,
+            "report_id": entry.report_id,
+            "recipient_agency": entry.recipient_agency,
+            "timestamp": entry.timestamp.isoformat() if entry.timestamp else None,
+            "previous_hash": entry.previous_hash,
+            "status": entry.verified
         }
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Integrity check failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Verification failed: {str(e)}")

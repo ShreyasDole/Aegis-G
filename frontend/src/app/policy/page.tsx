@@ -18,7 +18,7 @@ interface BlockedItem {
 export default function PolicyPage() {
   const [blockedItems, setBlockedItems] = useState<BlockedItem[]>([]);
   const [blockedCount, setBlockedCount] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
+
   const [showEditor, setShowEditor] = useState(false);
   const [editingPolicy, setEditingPolicy] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<'author' | 'manage'>('author');
@@ -67,24 +67,27 @@ export default function PolicyPage() {
 
   // WebSocket connection for real-time updates
   useEffect(() => {
-    const host = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
-    const ws = new WebSocket(`ws://${host}:8000/ws/blocked-content`);
-    
+    if (typeof window === 'undefined') return;
+    const host = window.location.hostname;
+    const wsPort = process.env.NEXT_PUBLIC_WS_PORT || '8000';
+    const ws = new WebSocket(`ws://${host}:${wsPort}/ws/blocked-content`);
+
     ws.onmessage = (event) => {
-      const message = JSON.parse(event.data);
-      if (message.type === 'blocked_content') {
-        // Add new blocked item to the list
-        setBlockedItems(prev => [message.data, ...prev].slice(0, 50));
-        setBlockedCount(prev => prev + 1);
-      }
+      try {
+        const message = JSON.parse(event.data);
+        if (message.type === 'blocked_content') {
+          setBlockedItems(prev => [message.data, ...prev].slice(0, 50));
+          setBlockedCount(prev => prev + 1);
+        }
+      } catch { /* ignore malformed messages */ }
     };
 
-    ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
-    };
+    ws.onerror = () => { /* suppress console noise — WS is best-effort */ };
 
     return () => {
-      ws.close();
+      if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
+        ws.close();
+      }
     };
   }, []);
 

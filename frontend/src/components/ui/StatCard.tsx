@@ -28,7 +28,7 @@ export const StatCard: React.FC<StatCardProps> = ({
       <div className="text-xs font-semibold uppercase tracking-wider text-text-muted mb-2">
         {label}
       </div>
-      <div className="text-3xl font-bold text-text-primary mb-2">{value}</div>
+      <div className="text-2xl font-bold text-text-primary mb-2 break-words leading-tight">{value}</div>
       {trend && (
         <div className="flex items-center gap-1">
           <svg 

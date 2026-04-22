@@ -1,28 +1,48 @@
 'use client';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
-const DEMO_TOKEN_KEY = 'token';
-const DEMO_USER_KEY = 'user';
+const TOKEN_KEY = 'token';
+const USER_KEY = 'user';
+
+async function ensureValidToken(): Promise<void> {
+  const existing = localStorage.getItem(TOKEN_KEY);
+  if (existing) {
+    try {
+      const r = await fetch('/api/auth/me', { headers: { Authorization: `Bearer ${existing}` } });
+      if (r.ok) return; // token still valid
+    } catch {/* fall through */}
+  }
+  // Fetch fresh token
+  const r = await fetch('/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: 'admin@aegis.com', password: 'AdminPassword123!' }),
+  });
+  if (r.ok) {
+    const d = await r.json();
+    if (d?.access_token) {
+      localStorage.setItem(TOKEN_KEY, d.access_token);
+      localStorage.setItem(USER_KEY, JSON.stringify({ email: 'admin@aegis.com', role: 'admin' }));
+    }
+  }
+}
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
+  const [ready, setReady] = useState(false);
+
   useEffect(() => {
-    // Auto-inject demo credentials so API calls carry a valid Bearer token
-    if (!localStorage.getItem(DEMO_TOKEN_KEY)) {
-      fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: 'admin@aegis.com', password: 'AdminPassword123!' }),
-      })
-        .then(r => r.ok ? r.json() : null)
-        .then(data => {
-          if (data?.access_token) {
-            localStorage.setItem(DEMO_TOKEN_KEY, data.access_token);
-            localStorage.setItem(DEMO_USER_KEY, JSON.stringify({ email: 'admin@aegis.com', role: 'admin' }));
-          }
-        })
-        .catch(() => {});
-    }
+    ensureValidToken().finally(() => setReady(true));
   }, []);
+
+  if (!ready) {
+    return (
+      <div className="min-h-screen bg-bg-primary flex items-center justify-center">
+        <div className="text-primary font-mono text-sm tracking-widest uppercase animate-pulse">
+          Authenticating...
+        </div>
+      </div>
+    );
+  }
 
   return <>{children}</>;
 }

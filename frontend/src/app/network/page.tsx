@@ -27,6 +27,8 @@ export default function NetworkPage() {
   const [edges, setEdges] = useState<GraphEdge[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [patientZeroId, setPatientZeroId] = useState<string | null>(null);
+  const [seedStatus, setSeedStatus] = useState<string | null>(null);
+  const [patientZeroInfo, setPatientZeroInfo] = useState<{username: string; origin_time: string} | null>(null);
 
   const loadNetwork = useCallback(async () => {
     setIsLoading(true);
@@ -48,37 +50,67 @@ export default function NetworkPage() {
   }, [loadNetwork]);
 
   const handleTraceOrigin = async () => {
-    if (nodes.length === 0) return;
-    // Use highest-risk node as the trace target, or first node
-    const target = [...nodes].sort((a, b) =>
-      (a.severity === 'critical' ? 0 : 1) - (b.severity === 'critical' ? 0 : 1)
-    )[0];
-
     setIsLoading(true);
+    setPatientZeroInfo(null);
+    setClusterMode(false);
+
     try {
-      const data = await apiFetch(`/api/network/campaign/${target.id}`);
-      const newNodes: GraphNode[] = (data.nodes || []).map((n: GraphNode) =>
-        n.id === target.id
-          ? { ...n, type: 'PATIENT_ZERO', label: `PATIENT ZERO: ${n.label}` }
+      // Step 1: Temporal traversal — confirmed C2 origin via Cypher
+      const pzData = await apiFetch('/api/network/patient-zero/demo_astroturf_election_2024_h1');
+      const originId: string = pzData.status === 'found' ? pzData.user_id : 'c2_master';
+
+      if (pzData.status === 'found') {
+        setPatientZeroInfo({ username: pzData.username, origin_time: pzData.origin_time });
+      }
+
+      // Step 2: Get the full C2 propagation tree from the confirmed origin
+      const treeData = await apiFetch(`/api/network/campaign/${originId}`);
+      const rawNodes: GraphNode[] = treeData.nodes || [];
+      const treeNodes: GraphNode[] = rawNodes.map((n: GraphNode) =>
+        n.id === originId
+          ? { ...n, type: 'PATIENT_ZERO', label: `🚨 PATIENT ZERO: ${n.label}` }
           : n
       );
-      setNodes(newNodes);
-      setEdges(data.edges || []);
-      setPatientZeroId(target.id);
-      setClusterMode(false);
+
+      if (treeNodes.length > 0) {
+        setNodes(treeNodes);
+        setEdges(treeData.edges || []);
+      } else {
+        // Tree empty — mark origin in existing view
+        setNodes(prev =>
+          prev.map(n =>
+            n.id === originId
+              ? { ...n, type: 'PATIENT_ZERO', label: `🚨 PATIENT ZERO: ${n.label}` }
+              : n
+          )
+        );
+      }
+      setPatientZeroId(originId);
     } catch (e) {
-      console.error('Campaign trace failed:', e);
-      // Mark locally if API fails
-      setNodes(prev =>
-        prev.map(n =>
-          n.id === target.id
-            ? { ...n, type: 'PATIENT_ZERO', label: `PATIENT ZERO: ${n.label}` }
-            : n
-        )
-      );
-      setPatientZeroId(target.id);
+      console.error('Patient zero trace failed:', e);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleSeedDemoData = async () => {
+    setSeedStatus('Seeding...');
+    try {
+      const res = await fetch('/api/network/seed', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${getToken()}` },
+      });
+      if (res.ok) {
+        setSeedStatus('✅ Demo data loaded! Refreshing graph...');
+        setTimeout(() => setSeedStatus(null), 4000);
+        await loadNetwork();
+      } else {
+        setSeedStatus('❌ Seed failed');
+        setTimeout(() => setSeedStatus(null), 3000);
+      }
+    } catch {
+      setSeedStatus('❌ Network error');
+      setTimeout(() => setSeedStatus(null), 3000);
     }
   };
 
@@ -196,20 +228,44 @@ export default function NetworkPage() {
             </button>
             <button
               onClick={handleTraceOrigin}
-              disabled={nodes.length === 0 || isLoading}
+              disabled={isLoading}
               className={`px-3 py-1.5 rounded text-[10px] font-bold transition-all border ${
                 patientZeroId
-                  ? 'bg-danger/20 border-danger text-danger'
+                  ? 'bg-danger/20 border-danger text-danger shadow-[0_0_8px_rgba(239,68,68,0.4)]'
                   : 'bg-bg-tertiary border-border-medium text-text-muted hover:border-danger hover:text-danger'
               } disabled:opacity-40 disabled:cursor-not-allowed`}
             >
               HIGHLIGHT_PATIENT_ZERO
             </button>
+            <button
+              onClick={handleSeedDemoData}
+              className="px-3 py-1.5 rounded text-[10px] font-bold border bg-warning/10 border-warning/40 text-warning hover:bg-warning/20 transition-all"
+            >
+              INJECT_DEMO_DATA
+            </button>
+            {seedStatus && (
+              <span className="text-[10px] font-mono text-warning self-center">{seedStatus}</span>
+            )}
             <div className="ml-auto flex items-center gap-2">
               <span className="text-[9px] text-text-muted font-mono uppercase">GDS Engine:</span>
               <Badge variant="info">ACTIVE</Badge>
             </div>
           </div>
+          {patientZeroInfo && (
+            <div className="mt-3 p-3 bg-danger/10 border border-danger/30 rounded-lg flex items-center gap-3">
+              <span className="text-xl">🚨</span>
+              <div>
+                <p className="text-xs font-bold text-danger uppercase tracking-wider">C2 Origin Identified</p>
+                <p className="text-sm text-text-primary font-mono">
+                  <span className="text-danger font-bold">{patientZeroInfo.username}</span>
+                  {patientZeroInfo.origin_time && (
+                    <span className="text-text-muted ml-2 text-xs">@ {patientZeroInfo.origin_time}</span>
+                  )}
+                </p>
+                <p className="text-[10px] text-text-secondary">Narrative origin traced via REPOSTED/SHARED temporal traversal</p>
+              </div>
+            </div>
+          )}
         </Card>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">

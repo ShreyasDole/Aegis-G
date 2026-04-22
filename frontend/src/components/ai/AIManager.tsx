@@ -57,7 +57,6 @@ export const AIManager: React.FC = () => {
 
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-      const API_URL = '';
       const res = await fetch('/api/ai/chat', {
         method: 'POST',
         headers: {
@@ -108,7 +107,7 @@ export const AIManager: React.FC = () => {
       {/* Floating Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-6 right-6 z-50 px-4 py-3 rounded bg-primary text-white shadow-lg hover:bg-blue-600 hover:shadow-glow-blue transition-all flex items-center gap-2 font-medium text-sm"
+        className="fixed bottom-6 right-8 z-50 px-4 py-2.5 rounded-xl bg-primary/90 backdrop-blur text-white shadow-lg hover:bg-blue-600 hover:shadow-glow-blue transition-all flex items-center gap-2 font-medium text-sm border border-primary/40"
         title="AI Assistant (⌘M)"
       >
         <span>AI Assistant</span>
@@ -117,7 +116,7 @@ export const AIManager: React.FC = () => {
 
       {/* Chat Panel */}
       {isOpen && (
-        <div className="fixed bottom-24 right-6 z-50 w-96 h-[600px] animate-slide-up">
+        <div className="fixed bottom-20 right-8 z-50 w-96 h-[600px] animate-slide-up">
           <Card className="h-full flex flex-col p-0 overflow-hidden shadow-modal">
             {/* Header */}
             <div className="bg-primary p-4 flex items-center justify-between border-b border-primary/20">

@@ -68,20 +68,25 @@ export default function DashboardPage() {
     fetchBlocked();
     const interval = setInterval(fetchBlocked, 30000);
 
-    const host = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
-    const ws = new WebSocket(`ws://${host}:8000/ws/blocked-content`);
-    ws.onmessage = (event) => {
-      try {
-        const msg = JSON.parse(event.data);
-        if (msg.type === 'blocked_content') setBlockedToday((p) => p + 1);
-      } catch {
-        // ignore parse errors
-      }
-    };
+    let ws: WebSocket | null = null;
+    if (typeof window !== 'undefined') {
+      const host = window.location.hostname;
+      const wsPort = process.env.NEXT_PUBLIC_WS_PORT || '8000';
+      ws = new WebSocket(`ws://${host}:${wsPort}/ws/blocked-content`);
+      ws.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          if (msg.type === 'blocked_content') setBlockedToday((p) => p + 1);
+        } catch { /* ignore */ }
+      };
+      ws.onerror = () => { /* suppress */ };
+    }
 
     return () => {
       clearInterval(interval);
-      ws.close();
+      if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+        ws.close();
+      }
     };
   }, []);
 

@@ -5,7 +5,6 @@ from app.services.graph.neo4j import neo4j_service
 router = APIRouter()
 
 def _normalize_edges(edges: list) -> list:
-    """Ensure each edge has 'relationship' for GraphResponse schema."""
     return [
         {"source": e["source"], "target": e["target"], "relationship": e.get("type") or e.get("relationship") or "RELATED"}
         for e in edges
@@ -43,9 +42,39 @@ async def get_bot_clusters():
 
 @router.get("/pagerank")
 async def get_influencers(limit: int = 20):
-    """Get top influencers using PageRank algorithm"""
     try:
         influencers = await neo4j_service.calculate_page_rank(limit=limit)
         return {"influencers": influencers}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/patient-zero/{content_hash}")
+async def trace_patient_zero(content_hash: str):
+    """
+    Temporal Patient Zero Identification.
+    Traverses SHARED/REPOSTED relationships backwards to find the C2 origin.
+    """
+    try:
+        result = await neo4j_service.find_patient_zero(content_hash)
+        if result.get("status") == "not_found":
+            raise HTTPException(status_code=404, detail="No origin found for this content hash")
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/seed")
+async def seed_demo_graph():
+    """
+    Inject astroturfing demo data into Neo4j:
+    Patient Zero (c2_master) + 5 bot agents + SHARED/REPOSTED/SIMILAR_TO edges.
+    Call this once before presenting the demo.
+    """
+    try:
+        summary = await neo4j_service.seed_demo_data()
+        return summary
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

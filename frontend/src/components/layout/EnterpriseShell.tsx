@@ -54,7 +54,6 @@ export function EnterpriseShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const checkHealth = async () => {
       try {
-        const API_URL = '';
         const res = await fetch(`/api/system/health`);
         if (res.ok) {
           const data = await res.json();
@@ -209,7 +208,8 @@ export function EnterpriseShell({ children }: { children: React.ReactNode }) {
               'radial-gradient(ellipse 120% 80% at 100% 0%, rgba(59, 130, 246, 0.06), transparent 50%)',
           }}
         />
-        <div className="relative z-0">{children}</div>
+        {/* pb-24 = clearance for fixed bottom-right AI button */}
+        <div className="relative z-0 pb-24">{children}</div>
       </div>
     </div>
   );

@@ -60,10 +60,10 @@ export default function ScansPage() {
   };
 
   return (
-    <div className="p-6 max-w-[1600px] mx-auto">
+    <div className="p-6 min-h-screen max-w-[1600px] mx-auto">
       <h1 className="text-2xl font-bold tracking-tight text-text-primary mb-6">
-          📥 Ingestion Hub / Incoming Scans
-        </h1>
+        📥 Ingestion Hub / Incoming Scans
+      </h1>
 
         <div className="grid grid-cols-12 gap-6">
           {/* Manual Entry Column */}
