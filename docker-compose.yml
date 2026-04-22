@@ -89,8 +89,8 @@ services:
       dockerfile: Dockerfile
     container_name: aegis_frontend
     environment:
-      # Server-side proxy target (Docker internal network)
-      NEXT_PUBLIC_API_URL: http://backend:8000
+      # Server-side only — NOT exposed to browser (no NEXT_PUBLIC_ prefix)
+      INTERNAL_API_URL: http://backend:8000
     ports:
       - "3000:3000"
     volumes:

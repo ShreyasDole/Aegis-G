@@ -18,9 +18,8 @@ export default function ThreatsPage() {
     const loadThreats = async () => {
       try {
         const token = localStorage.getItem('token');
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-        const response = await fetch(`${API_URL}/api/threats`, {
+        const response = await fetch('/api/threats', {
           headers: { 'Authorization': `Bearer ${token}` },
         });
 

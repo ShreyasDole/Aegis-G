@@ -29,8 +29,7 @@ export default function LoginPage() {
   }, [searchParams]);
 
   const handleMicrosoftLogin = () => {
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-    window.location.href = `${API_URL}/api/auth/outlook`;
+    window.location.href = '/api/auth/outlook';
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -38,8 +37,7 @@ export default function LoginPage() {
     e.preventDefault();
     setIsLoading(true);
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-      const loginResponse = await fetch(`${API_URL}/api/auth/login`, {
+      const loginResponse = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
@@ -51,7 +49,7 @@ export default function LoginPage() {
       }
       const data = await loginResponse.json();
       localStorage.setItem('token', data.access_token);
-      const userResponse = await fetch(`${API_URL}/api/auth/me`, {
+      const userResponse = await fetch('/api/auth/me', {
         headers: { Authorization: `Bearer ${data.access_token}` },
       });
       if (userResponse.ok) {

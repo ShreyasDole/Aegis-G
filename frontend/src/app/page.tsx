@@ -18,8 +18,7 @@ export default function Home() {
       return;
     }
 
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-    fetch(API_URL + '/')
+    fetch('/api/')
       .then(res => res.json())
       .then(data => {
         setStatus('Connected');
@@ -96,7 +95,7 @@ export default function Home() {
             Sign In to Command Center
           </Button>
         </Link>
-        <Link href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/docs`} target="_blank">
+        <Link href="/api/docs" target="_blank">
           <Button variant="secondary" className="text-base px-8 py-3">
             API Documentation
           </Button>
