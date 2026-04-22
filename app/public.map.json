@@ -6,9 +6,9 @@
   "/api/auth/register",
   "/api/auth/outlook",
   "/api/auth/outlook/callback",
+  "/api/scan/core",
   "/docs",
   "/redoc",
   "/openapi.json",
   "/favicon.ico"
 ]
-

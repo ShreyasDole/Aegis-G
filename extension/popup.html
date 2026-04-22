@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Aegis-G Cyber Scanner</title>
+    <link rel="stylesheet" href="popup.css">
+    <link href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@900,800,700,500&f[]=satoshi@900,700,500,400&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="bg-grid"></div>
+    <div class="scanline"></div>
+    
+    <div class="card-panel">
+        <div class="card-header">
+            <div class="pulse-dot"></div>
+            <h2>AEGIS-G TERMINAL</h2>
+        </div>
+        
+        <div class="textarea-wrapper">
+            <textarea id="scan-input" placeholder="Paste suspicious target payload here for Agent 1 ONNX Attribution..."></textarea>
+            
+            <div class="corner top-left"></div>
+            <div class="corner bottom-right"></div>
+        </div>
+
+        <button id="btn-scan" class="btn-execute relative group">
+            <span id="btn-text" class="btn-text">INITIALIZE ENGINE</span>
+            <div class="btn-sweep"></div>
+        </button>
+
+        <div id="results" class="hidden results-container">
+            <div class="metric-row">
+                <div class="metric">
+                    <span class="label text-neon-cyan">Origin Model</span>
+                    <span id="detected-model" class="value bad">GPT-4</span>
+                </div>
+                <div class="metric text-right">
+                    <span class="label text-neon-magenta">Threat Probability</span>
+                    <span id="confidence-score" class="value bad">98.4%</span>
+                </div>
+            </div>
+            
+            <button id="btn-dashboard" class="btn-dashboard group">
+                <span class="group-hover:-translate-x-1 transition-transform inline-block">&larr;</span> 
+                Return to Command Center
+            </button>
+        </div>
+    </div>
+    
+    <script src="popup.js"></script>
+</body>
+</html>

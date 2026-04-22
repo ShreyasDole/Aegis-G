@@ -33,6 +33,7 @@ async def core_scan(
     mode = (req.headers.get("X-Inference-Mode") or "local").lower()
     payload = {
         "content": request.content,
+        "image_base64": request.image_base64,
         "source_platform": request.source_platform or "web",
         "username": request.username or "anonymous",
     }

@@ -9,6 +9,7 @@ and provides a fast ``predict`` method that returns class probabilities.
 import os
 from pathlib import Path
 import numpy as np
+from typing import Any
 
 # Optional heavy deps – wrap in try/except
 try:
@@ -35,8 +36,8 @@ class ONNXAttributor:
     """
 
     _model_path: Path = Path(__file__).resolve().parents[2] / "models" / "deberta-attribution" / "model.onnx"
-    _session: ort.InferenceSession | None = None
-    _tokenizer: AutoTokenizer | None = None
+    _session: 'Any' = None
+    _tokenizer: 'Any' = None
 
     def __init__(self):
         if not self._model_path.is_file():

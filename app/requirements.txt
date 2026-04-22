@@ -42,3 +42,4 @@ onnxruntime>=1.18.0
 onnx>=1.16.0
 pgvector==0.2.4
 sentence-transformers==2.2.2
+shap>=0.45.0

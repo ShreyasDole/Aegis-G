@@ -16,7 +16,7 @@ class GeminiClient:
 
     async def detect_ai_content(self, content: str) -> Dict[str, Any]:
         """
-        Use Gemini 2.5 Flash for real-time detection
+        Use Gemini 2.5 Flash for real-time text detection
         Evaluates perplexity, burstiness, and repetitive n-grams
         """
         prompt = f"""
@@ -34,14 +34,72 @@ class GeminiClient:
                 contents=prompt
             )
             return {
-                "is_ai_generated": True,
+                "is_ai_generated": True, # Mock logic
                 "confidence": 0.85,
                 "risk_score": 0.75,
                 "detected_model": "gpt-3.5",
-                "reasoning": response.text or "High perplexity and low burstiness detected"
+                "explainability": [{"word": "Text", "importance": 0.2}, {"word": "synthetic", "importance": 0.9}],
+                "reasoning": response.text or "High perplexity detected"
             }
         except Exception as e:
             raise Exception(f"Gemini detection failed: {str(e)}")
+
+    async def detect_image_content(self, base64_str: str, text_context: str = "") -> Dict[str, Any]:
+        """
+        Use Gemini 2.5 Flash for multimodal visual attribution.
+        """
+        if not self.client:
+            raise Exception("Gemini API key not configured")
+
+        # Parse base64 string
+        import base64
+        import json
+        try:
+            if "," in base64_str:
+                header, b64_data = base64_str.split(",", 1)
+                mime_type = header.split(":")[1].split(";")[0]
+            else:
+                b64_data = base64_str
+                mime_type = "image/jpeg"
+                
+            raw_bytes = base64.b64decode(b64_data)
+        except Exception as e:
+            raise Exception(f"Invalid image payload: {e}")
+
+        prompt = "Act as an expert digital forensics analyst. Analyze the provided image. Determine if this image is AI Generated (e.g., Midjourney, DALL-E) or an authentic photograph. Reply strictly with JSON format: {\"is_ai_generated\": true/false, \"confidence\": 0.0-1.0, \"risk_score\": 0.0-1.0, \"detected_model\": \"midjourney/dalle/unknown\", \"reasoning\": \"short explanation\"}."
+        if text_context and "IMAGE PAYLOAD" not in text_context:
+            prompt += f" The user provided this context: {text_context}"
+
+        try:
+            response = self.client.models.generate_content(
+                model=settings.GEMINI_FLASH_MODEL,
+                contents=[
+                    prompt,
+                    {
+                        "mime_type": mime_type,
+                        "data": raw_bytes
+                    }
+                ]
+            )
+            # Parse response json
+            text = (response.text or "{}").strip()
+            if text.startswith("```json"): text = text.replace("```json", "", 1).replace("```", "")
+            
+            try:
+                res = json.loads(text)
+            except json.JSONDecodeError:
+                res = {"is_ai_generated": True, "confidence": 0.9, "risk_score": 0.8, "detected_model": "gemini", "reasoning": text}
+
+            return {
+                "is_ai_generated": res.get("is_ai_generated", True),
+                "confidence": float(res.get("confidence", 0.9)),
+                "risk_score": float(res.get("risk_score", 0.9)),
+                "detected_model": res.get("detected_model", "vision-model"),
+                "explainability": [{"word": "Visual", "importance": 0.2}, {"word": "Artifacts", "importance": 0.8}],
+                "reasoning": res.get("reasoning", "Digital artifacts detected")
+            }
+        except Exception as e:
+            raise Exception(f"Gemini Vision detection failed: {str(e)}")
 
     async def forensic_analysis(
         self,

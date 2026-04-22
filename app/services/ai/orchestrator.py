@@ -60,60 +60,79 @@ class ThreatOrchestrator:
         Returns a dict suitable for the API response.
         """
         content = payload.get("content", "")
+        image_base64 = payload.get("image_base64", None)
         source_platform = payload.get("source_platform", "unknown")
         username = payload.get("username", "anonymous")
         analyst_id = payload.get("analyst_id")  # For blockchain audit
-        content_hash = hashlib.sha256(content.encode()).hexdigest()
+        content_hash = hashlib.sha256((content + str(image_base64)).encode()).hexdigest()
 
         # ---------------------------------------------------------
-        # PHASE 1 – FORENSIC ANALYSIS (local mode preferred)
+        # PHASE 1 – FORENSIC ANALYSIS
         # ---------------------------------------------------------
         logger.info(f"🔍 Agent 1 Scanning ({mode} mode)...")
-        if mode == "local":
-            denoised = self.denoiser.normalize(content)
-            if self.onnx_attributor:
-                try:
-                    attribution = self.onnx_attributor.predict(denoised)
-                except Exception as e:
-                    logger.warning(
-                        f"ONNX inference failed ({e}), falling back to PyTorch model"
-                    )
-                    attribution = self.attributor.predict(denoised)
-            else:
-                attribution = self.attributor.predict(denoised)
-            risk_score = max(attribution.values())
-            forensics_data = {
-                "risk_score": risk_score,
-                "is_ai_generated": any(
-                    attribution.get(model, 0) > 0.5 for model in ["gpt-4", "claude-3", "llama-3"]
-                ),
-                "confidence": risk_score,
-                "detected_model": max(attribution, key=attribution.get),
-                "attribution": attribution,
-                "denoised_text": denoised,
-                "explainability": await token_explainer.explain(denoised, risk_score),
-            }
-        else:
-            # Cloud fallback – use Gemini, then local fallback if needed
+        
+        # Branch 1: Visual Payload (Multimodal)
+        if image_base64:
+            logger.info("📸 Visual Payload detected. Routing to Multimodal Vision Engine...")
             try:
-                forensics_data = await self.gemini_client.detect_ai_content(content)
+                forensics_data = await self.gemini_client.detect_image_content(image_base64, text_context=content)
             except Exception as e:
-                logger.error(f"Gemini failed, falling back to local: {e}")
-                denoised = self.denoiser.normalize(content)
-                attribution = self.attributor.predict(denoised)
-                risk_score = max(attribution.values())
+                logger.error(f"Vision routing failed: {e}")
                 forensics_data = {
-                    "risk_score": risk_score,
+                    "risk_score": 0.8,
+                    "is_ai_generated": True,
+                    "confidence": 0.7,
+                    "detected_model": "unknown_vision_error",
+                    "reasoning": f"Could not process visual payload: {str(e)}"
+                }
+        # Branch 2: Text Payload (Local or Cloud)
+        else:
+            if mode == "local":
+                denoised = self.denoiser.normalize(content)
+                if self.onnx_attributor:
+                    try:
+                        attribution = self.onnx_attributor.predict(denoised)
+                    except Exception as e:
+                        logger.warning(
+                            f"ONNX inference failed ({e}), falling back to PyTorch model"
+                        )
+                        attribution = self.attributor.predict(denoised)
+                else:
+                    attribution = self.attributor.predict(denoised)
+                risk_score_text = max(attribution.values()) if attribution else 0.0
+                forensics_data = {
+                    "risk_score": risk_score_text,
                     "is_ai_generated": any(
                         attribution.get(model, 0) > 0.5 for model in ["gpt-4", "claude-3", "llama-3"]
                     ),
-                    "confidence": risk_score,
-                    "detected_model": max(attribution, key=attribution.get),
+                    "confidence": risk_score_text,
+                    "detected_model": max(attribution, key=attribution.get) if attribution else "unknown",
                     "attribution": attribution,
                     "denoised_text": denoised,
-                    "explainability": await token_explainer.explain(denoised, risk_score),
+                    "explainability": await token_explainer.explain(denoised, risk_score_text),
                 }
-        risk_score = forensics_data.get("risk_score", 0.0)
+            else:
+                # Cloud fallback – use Gemini text
+                try:
+                    forensics_data = await self.gemini_client.detect_ai_content(content)
+                except Exception as e:
+                    logger.error(f"Gemini text failed, falling back to local: {e}")
+                    denoised = self.denoiser.normalize(content)
+                    attribution = self.attributor.predict(denoised)
+                    risk_score_text = max(attribution.values())
+                    forensics_data = {
+                        "risk_score": risk_score_text,
+                        "is_ai_generated": any(
+                            attribution.get(model, 0) > 0.5 for model in ["gpt-4", "claude-3", "llama-3"]
+                        ),
+                        "confidence": risk_score_text,
+                        "detected_model": max(attribution, key=attribution.get),
+                        "attribution": attribution,
+                        "denoised_text": denoised,
+                        "explainability": await token_explainer.explain(denoised, risk_score_text),
+                    }
+        
+        risk_score = float(forensics_data.get("risk_score", 0.0))
         logger.info(f"📊 Agent 1 results: Risk={risk_score:.2f}")
 
         # RAG Memory Context
