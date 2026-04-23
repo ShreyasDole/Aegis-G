@@ -7,8 +7,6 @@
 #   2. Which requirements file to use
 #   3. How to start the server
 
-[phases.install]
-cmds = ["pip install -r requirements.txt"]
 
 [start]
 cmd = "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
