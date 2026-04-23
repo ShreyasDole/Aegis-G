@@ -1,6 +1,7 @@
 "use client";
 import Link from 'next/link';
 import { Shield, Activity, Lock, Network } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 export default function LandingPage() {
   return (
@@ -39,24 +40,49 @@ export default function LandingPage() {
       {/* HERO SECTION */}
       <section className="relative z-10 pt-[25vh] pb-32 flex flex-col items-center justify-center text-center px-4">
         {/* Massive Radial Glow Behind Hero */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-neon-cyan/10 rounded-full blur-[120px] pointer-events-none" />
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 1.5, ease: "easeOut" }}
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-neon-cyan/10 rounded-full blur-[120px] pointer-events-none" 
+        />
 
-        <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/5 border border-white/10 rounded-full mb-8 backdrop-blur-md">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+          className="inline-flex items-center gap-2 px-3 py-1 bg-white/5 border border-white/10 rounded-full mb-8 backdrop-blur-md"
+        >
           <div className="w-2 h-2 rounded-full bg-neon-lime animate-pulse" />
           <span className="font-space text-[10px] uppercase tracking-widest text-white/80 font-bold">System Status: Orbital</span>
-        </div>
+        </motion.div>
 
-        <h1 className="font-cabinet font-black uppercase tracking-tighter text-6xl md:text-8xl lg:text-[10rem] leading-[0.85] mb-8 bg-clip-text text-transparent bg-gradient-to-r from-neon-cyan via-neon-magenta to-neon-lime">
+        <motion.h1 
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.4 }}
+          className="font-cabinet font-black uppercase tracking-tighter text-6xl md:text-8xl lg:text-[10rem] leading-[0.85] mb-8 bg-clip-text text-transparent bg-gradient-to-r from-neon-cyan via-neon-magenta to-neon-lime"
+        >
           Zero Trust<br/>Intelligence
-        </h1>
+        </motion.h1>
 
-        <p className="max-w-2xl font-space text-sm md:text-base text-white/60 leading-relaxed mb-12">
+        <motion.p 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 1, delay: 0.8 }}
+          className="max-w-2xl font-space text-sm md:text-base text-white/60 leading-relaxed mb-12"
+        >
           Deploy air-gapped forensic threat detection in milliseconds. 
           Powered by <span className="text-neon-cyan font-bold">Local-First ONNX Pipelines</span> and mathematically verifiable <span className="text-neon-magenta font-bold">SHAP Explainability</span>. 
           Welcome to the next epoch of enterprise cybersecurity.
-        </p>
+        </motion.p>
 
-        <div className="flex flex-col sm:flex-row items-center gap-6">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 1 }}
+          className="flex flex-col sm:flex-row items-center gap-6"
+        >
           <Link href="/login" className="px-8 py-4 bg-white text-black-true font-cabinet font-bold uppercase tracking-wider text-sm hover:scale-105 hover:bg-neon-cyan transition-all shadow-glow-cyan w-full sm:w-auto">
             Initialize Engine
           </Link>
@@ -66,41 +92,55 @@ export default function LandingPage() {
           <Link href="#" className="px-8 py-4 bg-transparent border border-white/20 text-white font-cabinet font-bold uppercase tracking-wider text-sm hover:border-white hover:bg-white/5 transition-all w-full sm:w-auto">
             View Protocol Specs
           </Link>
-        </div>
+        </motion.div>
       </section>
 
       {/* METRICS SECTION */}
       <section className="relative z-10 border-y border-white/5 bg-black-true/40 backdrop-blur-md py-16">
         <div className="max-w-7xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-12 md:gap-6 divide-x divide-white/5">
-          <div className="flex flex-col items-center text-center">
-            <span className="font-cabinet font-black text-4xl md:text-5xl text-white mb-2">99.9%</span>
-            <span className="font-space text-[10px] uppercase tracking-widest text-neon-cyan font-semibold">Attribution Accuracy</span>
-          </div>
-          <div className="flex flex-col items-center text-center">
-            <span className="font-cabinet font-black text-4xl md:text-5xl text-white mb-2">&lt;45ms</span>
-            <span className="font-space text-[10px] uppercase tracking-widest text-neon-magenta font-semibold">Inference Latency</span>
-          </div>
-          <div className="flex flex-col items-center text-center">
-            <span className="font-cabinet font-black text-4xl md:text-5xl text-white mb-2">10B+</span>
-            <span className="font-space text-[10px] uppercase tracking-widest text-neon-lime font-semibold">Vectors Processed</span>
-          </div>
-          <div className="flex flex-col items-center text-center">
-            <span className="font-cabinet font-black text-4xl md:text-5xl text-white mb-2">0</span>
-            <span className="font-space text-[10px] uppercase tracking-widest text-white/60 font-semibold">External API Calls</span>
-          </div>
+          {[
+            { value: "99.9%", label: "Attribution Accuracy", color: "text-neon-cyan" },
+            { value: "<45ms", label: "Inference Latency", color: "text-neon-magenta" },
+            { value: "10B+", label: "Vectors Processed", color: "text-neon-lime" },
+            { value: "0", label: "External API Calls", color: "text-white/60" }
+          ].map((metric, i) => (
+            <motion.div 
+              key={i}
+              initial={{ opacity: 0, scale: 0.8 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true, margin: "-50px" }}
+              transition={{ duration: 0.5, delay: i * 0.1 }}
+              className="flex flex-col items-center text-center"
+            >
+              <span className="font-cabinet font-black text-4xl md:text-5xl text-white mb-2">{metric.value}</span>
+              <span className={`font-space text-[10px] uppercase tracking-widest font-semibold ${metric.color}`}>{metric.label}</span>
+            </motion.div>
+          ))}
         </div>
       </section>
 
       {/* FEATURE BRICKS */}
       <section id="engines" className="relative z-10 max-w-7xl mx-auto px-6 py-32">
-        <div className="text-center mb-24">
+        <motion.div 
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="text-center mb-24"
+        >
           <h2 className="font-cabinet font-black text-4xl md:text-5xl uppercase tracking-tight mb-4">Core Architecture</h2>
           <p className="font-space text-sm text-white/60 uppercase tracking-widest max-w-xl mx-auto">Modular defense systems designed for extreme hostile environments.</p>
-        </div>
+        </motion.div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* Card 1: Cyan */}
-          <div className="group relative bg-white/[0.02] backdrop-blur-[10px] border border-white/5 rounded-3xl p-8 transition-all duration-400 ease-[cubic-bezier(0.23,1,0.32,1)] hover:-translate-y-2 hover:border-neon-cyan hover:shadow-glow-cyan flex flex-col">
+          <motion.div 
+            whileHover={{ y: -8, scale: 1.02 }}
+            initial={{ opacity: 0, y: 50 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+            className="group relative bg-white/[0.02] backdrop-blur-[10px] border border-white/5 rounded-3xl p-8 transition-colors duration-400 ease-[cubic-bezier(0.23,1,0.32,1)] hover:border-neon-cyan hover:shadow-glow-cyan flex flex-col"
+          >
             <div className="w-14 h-14 bg-white/5 border border-white/10 flex items-center justify-center rounded-xl mb-8 group-hover:bg-neon-cyan transition-colors duration-400">
               <Activity className="w-6 h-6 text-white/50 group-hover:text-black-true transition-colors" />
             </div>
@@ -113,10 +153,17 @@ export default function LandingPage() {
               <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 bg-neon-cyan rounded-full"/> SHAP Explainability Graph</li>
               <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 bg-neon-cyan rounded-full"/> Adversarial Denoising</li>
             </ul>
-          </div>
+          </motion.div>
 
           {/* Card 2: Magenta */}
-          <div className="group relative bg-white/[0.02] backdrop-blur-[10px] border border-white/5 rounded-3xl p-8 transition-all duration-400 ease-[cubic-bezier(0.23,1,0.32,1)] hover:-translate-y-2 hover:border-neon-magenta hover:shadow-glow-magenta flex flex-col">
+          <motion.div 
+            whileHover={{ y: -8, scale: 1.02 }}
+            initial={{ opacity: 0, y: 50 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="group relative bg-white/[0.02] backdrop-blur-[10px] border border-white/5 rounded-3xl p-8 transition-colors duration-400 ease-[cubic-bezier(0.23,1,0.32,1)] hover:border-neon-magenta hover:shadow-glow-magenta flex flex-col"
+          >
             <div className="w-14 h-14 bg-white/5 border border-white/10 flex items-center justify-center rounded-xl mb-8 group-hover:bg-neon-magenta transition-colors duration-400">
               <Network className="w-6 h-6 text-white/50 group-hover:text-black-true transition-colors" />
             </div>
@@ -129,10 +176,17 @@ export default function LandingPage() {
               <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 bg-neon-magenta rounded-full"/> Centrality Scoring</li>
               <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 bg-neon-magenta rounded-full"/> Attack Path Visualization</li>
             </ul>
-          </div>
+          </motion.div>
 
           {/* Card 3: Lime */}
-          <div className="group relative bg-white/[0.02] backdrop-blur-[10px] border border-white/5 rounded-3xl p-8 transition-all duration-400 ease-[cubic-bezier(0.23,1,0.32,1)] hover:-translate-y-2 hover:border-neon-lime hover:shadow-glow-lime flex flex-col">
+          <motion.div 
+            whileHover={{ y: -8, scale: 1.02 }}
+            initial={{ opacity: 0, y: 50 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="group relative bg-white/[0.02] backdrop-blur-[10px] border border-white/5 rounded-3xl p-8 transition-colors duration-400 ease-[cubic-bezier(0.23,1,0.32,1)] hover:border-neon-lime hover:shadow-glow-lime flex flex-col"
+          >
             <div className="w-14 h-14 bg-white/5 border border-white/10 flex items-center justify-center rounded-xl mb-8 group-hover:bg-neon-lime transition-colors duration-400">
               <Lock className="w-6 h-6 text-white/50 group-hover:text-black-true transition-colors" />
             </div>
@@ -145,7 +199,7 @@ export default function LandingPage() {
               <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 bg-neon-lime rounded-full"/> Decentralized Audit Trails</li>
               <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 bg-neon-lime rounded-full"/> Sub-Second Block Anchors</li>
             </ul>
-          </div>
+          </motion.div>
         </div>
       </section>
 

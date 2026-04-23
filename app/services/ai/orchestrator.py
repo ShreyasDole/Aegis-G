@@ -13,6 +13,7 @@ from app.services.ai.local_detection import local_classifier  # Agent 1 (Local)
 from app.services.gemini.client import GeminiClient           # Agent 1 (Cloud)
 from app.services.graph.neo4j import Neo4jService             # Agent 2 (Graph)
 from app.services.ai.fusion_service import AnalystAgent       # Agent 3 (Analyst)
+from app.services.ai.fusion_service import AnalystAgent       # Agent 3 (Analyst)
 from app.services.ai.policy_guardian import policy_guardian   # Agent 4 (Guardian)
 from app.core.blockchain import add_to_ledger                 # Trust Layer
 from app.services.ai.explainability import token_explainer
@@ -309,6 +310,27 @@ class ThreatOrchestrator:
             cluster_size = 1
 
         # ---------------------------------------------------------
+        # PHASE 2.5: INTELLIGENCE FUSION (Agent 3)
+        # ---------------------------------------------------------
+        logger.info("🧠 Agent 3 Synthesizing Threat Intelligence...")
+        intelligence_report = None
+        try:
+            # Only trigger LLM fusion for moderate-to-high risk to save API quota
+            if risk_score >= 0.4:
+                fusion_result = await AnalystAgent.synthesize_intelligence(
+                    content=content,
+                    forensics=forensics_data,
+                    graph=graph_metadata
+                )
+                intelligence_report = fusion_result.get("report")
+                
+                # Override simplistic reasoning with Agent 3's high-level executive summary
+                if intelligence_report:
+                    forensics_data["reasoning"] = f"[{intelligence_report.threat_type}] {intelligence_report.executive_summary}"
+        except Exception as fusion_err:
+            logger.warning(f"Agent 3 Fusion bypassed or failed: {fusion_err}")
+
+        # ---------------------------------------------------------
         # PHASE 3: POLICY GUARDRAILS (Agent 4)
         # ---------------------------------------------------------
         logger.info("🛡️ Agent 4 Checking Policies...")
@@ -436,6 +458,7 @@ class ThreatOrchestrator:
             "explainability": forensics_data.get("explainability", []),
             "denoised_text": forensics_data.get("denoised_text", ""),
             "rag_memory": forensics_data.get("rag_memory", []),
+            "intelligence_report": intelligence_report.model_dump() if intelligence_report else None,
             "forensics": forensics_data,
             "content_hash": content_hash
         }

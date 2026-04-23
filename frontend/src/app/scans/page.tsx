@@ -2,6 +2,7 @@
 /* eslint-disable @next/next/no-img-element */
 import React, { useState, useRef, useEffect } from 'react';
 import { Paperclip, Send, Bot, User, Brain, X, Image as ImageIcon } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface Message {
   id: string;
@@ -137,7 +138,14 @@ export default function ForensicChatPage() {
     const isAssistant = msg.role === 'assistant';
     
     return (
-      <div key={msg.id} className={`flex gap-4 w-full ${isAssistant ? '' : 'flex-row-reverse'} animate-slide-in`}>
+      <motion.div 
+        key={msg.id} 
+        initial={{ opacity: 0, y: 30, scale: 0.95 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        transition={{ type: "spring", stiffness: 200, damping: 20 }}
+        className={`flex gap-4 w-full ${isAssistant ? '' : 'flex-row-reverse'}`}
+      >
         {/* Avatar */}
         <div className={`w-8 h-8 rounded shrink-0 flex items-center justify-center border shadow-lg relative ${
           isAssistant ? 'bg-black-true border-neon-cyan text-neon-cyan shadow-glow-cyan' 
@@ -226,7 +234,7 @@ export default function ForensicChatPage() {
             )}
           </div>
         </div>
-      </div>
+      </motion.div>
     );
   };
 
@@ -250,41 +258,56 @@ export default function ForensicChatPage() {
 
       {/* Chat History */}
       <div className="flex-1 overflow-y-auto scrollbar-thin rounded-xl mr-2 pr-4 space-y-6 z-10 relative">
-         {messages.map(renderBubble)}
-         {isScanning && (
-           <div className="flex gap-4 w-full animate-slide-in">
-             <div className="w-8 h-8 rounded shrink-0 flex items-center justify-center border shadow-lg bg-black-true border-neon-magenta text-neon-magenta shadow-glow-magenta animate-pulse">
-                <Bot className="w-4 h-4" />
-             </div>
-             <div className="flex flex-col gap-2">
-               <div className="flex items-center gap-2 text-[10px] font-space uppercase tracking-widest text-white/40">
-                  <span>Aegis Agent</span> {/* // */} <span>Processing Neural Weights...</span>
-               </div>
-               <div className="p-4 rounded-xl border border-neon-magenta/30 bg-black-true/60 rounded-tl-none font-satoshi text-sm text-neon-magenta flex items-center gap-2 w-max shadow-glow-magenta">
-                  <div className="w-1.5 h-1.5 rounded-full bg-neon-magenta animate-bounce" style={{ animationDelay: '0ms' }} />
-                  <div className="w-1.5 h-1.5 rounded-full bg-neon-magenta animate-bounce" style={{ animationDelay: '150ms' }} />
-                  <div className="w-1.5 h-1.5 rounded-full bg-neon-magenta animate-bounce" style={{ animationDelay: '300ms' }} />
-               </div>
-             </div>
-           </div>
-         )}
+         <AnimatePresence>
+            {messages.map(renderBubble)}
+            {isScanning && (
+              <motion.div 
+                key="scanning-indicator"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                className="flex gap-4 w-full"
+              >
+                <div className="w-8 h-8 rounded shrink-0 flex items-center justify-center border shadow-lg bg-black-true border-neon-magenta text-neon-magenta shadow-glow-magenta animate-pulse">
+                   <Bot className="w-4 h-4" />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2 text-[10px] font-space uppercase tracking-widest text-white/40">
+                     <span>Aegis Agent</span> {/* // */} <span>Processing Neural Weights...</span>
+                  </div>
+                  <div className="p-4 rounded-xl border border-neon-magenta/30 bg-black-true/60 rounded-tl-none font-satoshi text-sm text-neon-magenta flex items-center gap-2 w-max shadow-glow-magenta">
+                     <div className="w-1.5 h-1.5 rounded-full bg-neon-magenta animate-bounce" style={{ animationDelay: '0ms' }} />
+                     <div className="w-1.5 h-1.5 rounded-full bg-neon-magenta animate-bounce" style={{ animationDelay: '150ms' }} />
+                     <div className="w-1.5 h-1.5 rounded-full bg-neon-magenta animate-bounce" style={{ animationDelay: '300ms' }} />
+                  </div>
+                </div>
+              </motion.div>
+            )}
+         </AnimatePresence>
          <div ref={messagesEndRef} className="pb-4" />
       </div>
 
       {/* Upload Preview Banner */}
-      {imagePreview && (
-        <div className="mx-4 mt-2 mb-2 p-2 bg-black-true/80 border border-neon-lime/40 backdrop-blur rounded flex items-center gap-4 animate-slide-in relative z-20">
-          <div className="w-12 h-12 flex items-center justify-center bg-white/5 border border-white/20 rounded font-space text-[8px] uppercase tracking-widest text-white/50">
-            {mediaType}
-          </div>
-          <div className="flex-1 font-space text-[10px] text-neon-lime font-bold uppercase tracking-widest">
-            {mediaType?.toUpperCase()} Payload Attached ({(imageFile?.size ? (imageFile.size / 1024).toFixed(1) : 0)} KB)
-          </div>
-          <button type="button" onClick={removeAttachment} className="p-1 hover:bg-white/10 rounded text-white/60 hover:text-white transition-colors">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      )}
+      <AnimatePresence>
+        {imagePreview && (
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="mx-4 mt-2 mb-2 p-2 bg-black-true/80 border border-neon-lime/40 backdrop-blur rounded flex items-center gap-4 relative z-20"
+          >
+            <div className="w-12 h-12 flex items-center justify-center bg-white/5 border border-white/20 rounded font-space text-[8px] uppercase tracking-widest text-white/50">
+              {mediaType}
+            </div>
+            <div className="flex-1 font-space text-[10px] text-neon-lime font-bold uppercase tracking-widest">
+              {mediaType?.toUpperCase()} Payload Attached ({(imageFile?.size ? (imageFile.size / 1024).toFixed(1) : 0)} KB)
+            </div>
+            <button type="button" onClick={removeAttachment} className="p-1 hover:bg-white/10 rounded text-white/60 hover:text-white transition-colors">
+              <X className="w-4 h-4" />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Input Area */}
       <div className="shrink-0 pt-4 z-10 relative">
