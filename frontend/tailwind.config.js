@@ -24,8 +24,8 @@ module.exports = {
         'border-subtle': '#2a2e38',
         'border-medium': '#3d4450',
 
-        // Landing Page Specific Palette
-        'bg-black-true': '#050505',
+        // Landing / shell near-black (use bg-black-true, text-black-true — not bg-bg-*)
+        'black-true': '#050505',
         'neon-cyan': '#00f2ff',
         'neon-magenta': '#ff00e5',
         'neon-lime': '#adff00',
