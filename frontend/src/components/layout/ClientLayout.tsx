@@ -3,6 +3,7 @@ import { usePathname } from 'next/navigation';
 import { EnterpriseShell } from '@/components/layout/EnterpriseShell';
 import { AIManager } from '@/components/ai/AIManager';
 import { AuthGuard } from '@/components/auth/AuthGuard';
+import { DevExtensionSilencer } from '@/components/dev/DevExtensionSilencer';
 
 export function ClientLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -10,18 +11,20 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
   const noShell = publicRoutes.includes(pathname) || pathname?.startsWith('/stitch-embed');
   const useShell = !noShell;
 
-  // Public routes don't need auth
-  if (!useShell) {
-    return <main className="min-h-screen">{children}</main>;
-  }
-
   return (
-    <AuthGuard>
-      <EnterpriseShell>
+    <>
+      <DevExtensionSilencer />
+      {!useShell ? (
         <main className="min-h-screen">{children}</main>
-      </EnterpriseShell>
-      <AIManager />
-    </AuthGuard>
+      ) : (
+        <AuthGuard>
+          <EnterpriseShell>
+            <main className="min-h-screen">{children}</main>
+          </EnterpriseShell>
+          <AIManager />
+        </AuthGuard>
+      )}
+    </>
   );
 }
 
