@@ -124,7 +124,7 @@ export default function NetworkPage() {
 
       {/* Graph canvas — fills remaining space */}
       <div className="flex-1 relative">
-        <NetworkGraph refreshKey={graphKey} highlightPatientZero={patientZero} dataSource="api" />
+        <NetworkGraph refreshKey={graphKey} highlightPatientZero={patientZero} showCommunities={cluster} dataSource="api" />
       </div>
     </div>
   );

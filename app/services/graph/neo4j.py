@@ -278,18 +278,28 @@ class Neo4jService:
 
     # ── Standard Network View ─────────────────────────────────────────────────
     async def get_network(self, limit: int = 100) -> Dict[str, Any]:
-        """Fetch the full threat actor graph. Falls back to rich mock if Neo4j is offline."""
-        query = "MATCH (n:User) OPTIONAL MATCH (n)-[r]->(m:User) RETURN n, r, m LIMIT $limit"
+        """Fetch the full threat actor graph. Falls back to rich mock if Neo4j is offline or empty."""
+        # Query connects Users who interact directly OR post the same content (Botnet similarity)
+        query = """
+        MATCH (n:User)
+        OPTIONAL MATCH (n)-[r:INTERACTED_WITH|SHARED]->(m:User)
+        OPTIONAL MATCH (n)-[:POSTED]->(p:Post)<-[:POSTED]-(v:User) WHERE n.id < v.id
+        RETURN n, r, m, p, v
+        LIMIT $limit
+        """
         try:
             async with self.driver.session() as session:
                 result = await session.run(query, limit=limit)
-                # BUG FIX: consume all records INSIDE the session context.
-                # Exiting 'async with' closes the network connection, making
-                # any pending cursor invalid and causing silent data loss.
                 records = await result.data()
+
+            if len(records) < 2:
+                # DB is too empty to show a meaningful graph, fall back to mock
+                return await _mock_network()
 
             nodes: Dict[str, Any] = {}
             edges: List[Dict] = []
+            
+            # Extract basic nodes and edges
             for record in records:
                 n = record['n']
                 n_id = n.get("id") if hasattr(n, 'get') and n.get("id") else (str(n.element_id) if hasattr(n, 'element_id') else str(n.id))
@@ -299,9 +309,12 @@ class Neo4jService:
                         "id": n_id,
                         "label": n_props.get("label") or n_props.get("username") or n_id,
                         "type": "User",
-                        "severity": "critical" if n_props.get("risk_score", 0) > 0.7 else "low"
+                        "severity": "critical" if n_props.get("risk_score", 0) > 0.7 else "low",
+                        "cluster": "Unclustered",
+                        "is_patient_zero": False
                     }
 
+                # Explicit User-User relationships
                 m = record['m']
                 if m:
                     m_id = m.get("id") if hasattr(m, 'get') and m.get("id") else (str(m.element_id) if hasattr(m, 'element_id') else str(m.id))
@@ -311,11 +324,50 @@ class Neo4jService:
                             "id": m_id,
                             "label": m_props.get("label") or m_props.get("username") or m_id,
                             "type": "User",
-                            "severity": "critical" if m_props.get("risk_score", 0) > 0.7 else "low"
+                            "severity": "critical" if m_props.get("risk_score", 0) > 0.7 else "low",
+                            "cluster": "Unclustered",
+                            "is_patient_zero": False
                         }
-                    r = record['r']
-                    if r:
-                        edges.append({"source": n_id, "target": m_id, "strength": 1})
+                    edges.append({"source": n_id, "target": m_id, "relationship": "RELATED"})
+                
+                # Implicit Botnet Content Sharing relationships
+                v = record['v']
+                p = record['p']
+                if v and p:
+                    v_id = v.get("id") if hasattr(v, 'get') and v.get("id") else (str(v.element_id) if hasattr(v, 'element_id') else str(v.id))
+                    if v_id not in nodes:
+                        v_props = dict(v) if hasattr(v, '__iter__') else {}
+                        nodes[v_id] = {
+                            "id": v_id,
+                            "label": v_props.get("label") or v_props.get("username") or v_id,
+                            "type": "User",
+                            "severity": "critical" if v_props.get("risk_score", 0) > 0.7 else "low",
+                            "cluster": "Unclustered",
+                            "is_patient_zero": False
+                        }
+                    edges.append({"source": n_id, "target": v_id, "relationship": "SHARED_CONTENT"})
+                    
+            # Annotate with Louvain Clusters
+            try:
+                clusters = await self.detect_clusters()
+                for c in clusters:
+                    cluster_id = c.get("cluster_id")
+                    for un_id in c.get("nodes", []):
+                        if un_id in nodes:
+                            nodes[un_id]["cluster"] = cluster_id
+            except Exception as e:
+                logger.warning(f"Louvain cluster annotation failed: {e}")
+
+            # Annotate Patient Zero
+            try:
+                # Find patient zero for each unique post hash
+                unique_hashes = set(record['p'].get('content_hash') for record in records if record['p'])
+                for p_hash in unique_hashes:
+                    pz = await self.find_patient_zero(p_hash)
+                    if pz.get("status") == "found" and pz.get("user_id") in nodes:
+                        nodes[pz["user_id"]]["is_patient_zero"] = True
+            except Exception as e:
+                logger.warning(f"Patient zero annotation failed: {e}")
 
             return {"nodes": list(nodes.values()), "edges": edges}
         except Exception as e:
@@ -488,24 +540,40 @@ def _is_local_docker() -> bool:
 
 
 async def _mock_network() -> Dict[str, Any]:
-    """Rich mock graph returned when Neo4j is offline."""
+    """Rich mock graph returned when Neo4j is offline or graph is too small."""
     mock_nodes = [
-        {"id": "APT_29_Origin", "label": "APT_29_Origin (Source)", "type": "Actor", "properties": {"severity": "critical"}},
-        {"id": "Amplifier_A", "label": "Command Node A", "type": "Bot", "properties": {"severity": "high"}},
-        {"id": "Amplifier_B", "label": "Command Node B", "type": "Bot", "properties": {"severity": "high"}},
+        # Patient Zero / Source (Cluster 0)
+        {"id": "APT_29_Origin", "label": "APT_29_Origin (Source)", "type": "Actor", "cluster": "C_0", "is_patient_zero": True, "properties": {"severity": "critical"}},
+        
+        # Amplifiers (Cluster 1 and 2)
+        {"id": "Amplifier_A", "label": "Command Node A", "type": "Bot", "cluster": "C_1", "is_patient_zero": False, "properties": {"severity": "high"}},
+        {"id": "Amplifier_B", "label": "Command Node B", "type": "Bot", "cluster": "C_2", "is_patient_zero": False, "properties": {"severity": "high"}},
+        {"id": "Amplifier_C", "label": "Secondary Node C", "type": "Bot", "cluster": "C_1", "is_patient_zero": False, "properties": {"severity": "medium"}},
     ]
     mock_edges = [
-        {"source": "APT_29_Origin", "target": "Amplifier_A", "relationship": "COMMAND", "properties": {"strength": 1}},
-        {"source": "APT_29_Origin", "target": "Amplifier_B", "relationship": "COMMAND", "properties": {"strength": 1}},
+        {"source": "APT_29_Origin", "target": "Amplifier_A", "relationship": "COMMAND"},
+        {"source": "APT_29_Origin", "target": "Amplifier_B", "relationship": "COMMAND"},
+        {"source": "Amplifier_A", "target": "Amplifier_C", "relationship": "SHARED"},
     ]
+    
+    # Cluster 1 (Blue)
     for i in range(1, 15):
         nid = f"worker_a_{i}"
-        mock_nodes.append({"id": nid, "label": f"Zombie_{i}", "type": "Bot", "properties": {"severity": "medium"}})
-        mock_edges.append({"source": "Amplifier_A", "target": nid, "relationship": "INFECTED", "properties": {"strength": 0.5}})
-    for i in range(15, 25):
+        mock_nodes.append({"id": nid, "label": f"Zombie A_{i}", "type": "Bot", "cluster": "C_1", "is_patient_zero": False, "properties": {"severity": "medium"}})
+        mock_edges.append({"source": "Amplifier_A", "target": nid, "relationship": "INFECTED"})
+        if i > 5:
+            # Cross-links
+            mock_edges.append({"source": nid, "target": f"worker_a_{i-1}", "relationship": "FORWARDED"})
+
+    # Cluster 2 (Orange)
+    for i in range(15, 30):
         nid = f"worker_b_{i}"
-        mock_nodes.append({"id": nid, "label": f"Zombie_{i}", "type": "Bot", "properties": {"severity": "medium"}})
-        mock_edges.append({"source": "Amplifier_B", "target": nid, "relationship": "INFECTED", "properties": {"strength": 0.5}})
+        mock_nodes.append({"id": nid, "label": f"Zombie B_{i}", "type": "Bot", "cluster": "C_2", "is_patient_zero": False, "properties": {"severity": "low"}})
+        mock_edges.append({"source": "Amplifier_B", "target": nid, "relationship": "INFECTED"})
+
+    # Inter-cluster edge
+    mock_edges.append({"source": "Amplifier_C", "target": "worker_b_20", "relationship": "SHARED"})
+
     return {"nodes": mock_nodes, "edges": mock_edges}
 
 
