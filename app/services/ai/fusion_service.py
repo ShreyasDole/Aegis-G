@@ -48,6 +48,8 @@ class AnalystAgent:
             config_kwargs = dict(
                 system_instruction=system_instructions,
                 response_mime_type="application/json",
+                response_schema=IntelligenceReport,
+                temperature=0.4
             )
             response = client.models.generate_content(
                 model=settings.GEMINI_FLASH_MODEL,

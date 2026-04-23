@@ -78,8 +78,8 @@ export function EnterpriseShell({ children }: { children: React.ReactNode }) {
         <div className="flex items-center justify-between px-6 py-4 bg-black-true/60 backdrop-blur-md border border-white/10 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.8)]">
           {/* Logo */}
           <Link href="/dashboard" className="flex items-center gap-3 hover:scale-105 transition-transform group">
-            <div className="w-8 h-8 rounded bg-white flex items-center justify-center group-hover:bg-neon-cyan transition-colors">
-              <Shield className="w-5 h-5 text-black-true" />
+            <div className="w-8 h-8 rounded bg-white flex items-center justify-center group-hover:bg-neon-cyan transition-colors overflow-hidden">
+              <img src="/logo.png" alt="Aegis Logo" className="w-full h-full object-contain" />
             </div>
             <span className="font-cabinet font-bold uppercase tracking-tight text-lg text-white">Aegis-G</span>
           </Link>
@@ -89,6 +89,7 @@ export function EnterpriseShell({ children }: { children: React.ReactNode }) {
             {[
               { href: '/dashboard', label: 'Home' },
               { href: '/scans', label: 'Scans' },
+              { href: '/redteam', label: 'Simulator' },
               { href: '/threats', label: 'Threats' },
               { href: '/network', label: 'Graph' },
               { href: '/policy', label: 'Policy' },

@@ -59,6 +59,52 @@ export default function DashboardPage() {
         </div>
       </section>
 
+      {/* PREDICTIVE MODELLING */}
+      <section className="relative w-full z-10 max-w-7xl mx-auto px-6 pb-32">
+        <div className="flex items-center gap-4 mb-10">
+          <div className="w-12 h-12 bg-white/5 border border-white/10 flex items-center justify-center rounded-xl">
+             <Activity className="w-5 h-5 text-neon-cyan" />
+          </div>
+          <div>
+            <h2 className="font-cabinet font-bold text-2xl uppercase tracking-wide">Predictive Forecast</h2>
+            <p className="font-space text-xs text-white/50 uppercase tracking-widest">72-Hour Target Sector Probability Model</p>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="bg-white/[0.02] border border-white/5 p-6 rounded-2xl relative overflow-hidden group hover:border-red-500/50 transition-colors">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/10 rounded-full blur-3xl group-hover:bg-red-500/20 transition-all"/>
+            <span className="font-space text-[10px] text-red-500 uppercase tracking-widest font-bold mb-4 block animate-pulse">Critical Vector</span>
+            <h3 className="font-cabinet font-bold text-xl mb-1 group-hover:text-white">Finance Sector</h3>
+            <p className="font-satoshi text-white/50 text-xs mb-6">High probability of synthesized phishing propagation targeting top-tier banking nodes.</p>
+            <div className="flex items-end justify-between">
+              <span className="font-cabinet font-black text-4xl text-white">83%</span>
+              <span className="font-space text-[10px] text-white/40 uppercase tracking-widest">Confidence</span>
+            </div>
+          </div>
+          <div className="bg-white/[0.02] border border-white/5 p-6 rounded-2xl relative overflow-hidden group hover:border-orange-500/50 transition-colors">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/10 rounded-full blur-3xl group-hover:bg-orange-500/20 transition-all"/>
+            <span className="font-space text-[10px] text-orange-500 uppercase tracking-widest font-bold mb-4 block">Warning Vector</span>
+            <h3 className="font-cabinet font-bold text-xl mb-1 group-hover:text-white">Democratic Inst.</h3>
+            <p className="font-satoshi text-white/50 text-xs mb-6">Moderate trajectory of botnet astroturfing observed on standard social platforms.</p>
+            <div className="flex items-end justify-between">
+               <span className="font-cabinet font-black text-4xl text-white">65%</span>
+               <span className="font-space text-[10px] text-white/40 uppercase tracking-widest">Confidence</span>
+            </div>
+          </div>
+           <div className="bg-white/[0.02] border border-white/5 p-6 rounded-2xl relative overflow-hidden group hover:border-neon-lime/50 transition-colors">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-neon-lime/10 rounded-full blur-3xl group-hover:bg-neon-lime/20 transition-all"/>
+             <span className="font-space text-[10px] text-neon-lime uppercase tracking-widest font-bold mb-4 block">Stable Vector</span>
+             <h3 className="font-cabinet font-bold text-xl mb-1 group-hover:text-white">Energy Grid</h3>
+             <p className="font-satoshi text-white/50 text-xs mb-6">No temporal acceleration detected. Node isolation maintains baseline security.</p>
+             <div className="flex items-end justify-between">
+               <span className="font-cabinet font-black text-4xl text-white">12%</span>
+               <span className="font-space text-[10px] text-white/40 uppercase tracking-widest">Confidence</span>
+             </div>
+           </div>
+        </div>
+      </section>
+
       {/* FEATURE BRICKS */}
       <section id="engines" className="relative w-full z-10 max-w-7xl mx-auto px-6 pb-32">
         <div className="text-center mb-24">

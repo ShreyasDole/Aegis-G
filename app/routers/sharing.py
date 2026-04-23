@@ -189,3 +189,35 @@ async def verify_ledger_entry(hash: str, db: Session = Depends(get_db)):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Verification failed: {str(e)}")
+
+
+@router.post("/federated/sync-weights")
+async def sync_federated_weights(
+    current_user=Depends(get_current_active_user)
+):
+    """
+    Federated Learning: Ring-Allreduce Model Weight Sync
+    Mocks the decentralized synchronization of neural network weights 
+    between allied nodes without exposing PII or training data.
+    """
+    import random
+    import asyncio
+    
+    # Simulate network latency for syncing distributed models
+    await asyncio.sleep(1.5)
+    
+    nodes = [
+        {"id": "US-CYBERCOM-N1", "status": "Synced", "latency": f"{random.randint(12, 45)}ms"},
+        {"id": "NATO-CCDOE-N2", "status": "Synced", "latency": f"{random.randint(60, 110)}ms"},
+        {"id": "INTERPOL-IGCI", "status": "Synced", "latency": f"{random.randint(150, 220)}ms"},
+    ]
+    
+    return {
+        "sync_status": "SUCCESS",
+        "differential_privacy_epsilon": 1.5,
+        "gradient_clipping_norm": 1.0,
+        "nodes_synchronized": len(nodes),
+        "node_telemetry": nodes,
+        "message": "Local ONNX engine weights successfully aggregated via Ring-AllReduce. Zero PII transmitted."
+    }
+

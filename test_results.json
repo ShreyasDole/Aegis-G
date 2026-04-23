@@ -1,0 +1,42 @@
+[
+  {
+    "name": "Short Human Chat",
+    "ai_prob": 0.135,
+    "human_prob": 0.864,
+    "expected_ai": false,
+    "actual_ai": false,
+    "passed": true
+  },
+  {
+    "name": "Human Rant (Contains misleading keywords)",
+    "ai_prob": 0.783,
+    "human_prob": 0.216,
+    "expected_ai": false,
+    "actual_ai": true,
+    "passed": false
+  },
+  {
+    "name": "AI Essay Prompt (Simulated)",
+    "ai_prob": 1.0,
+    "human_prob": 0.001,
+    "expected_ai": true,
+    "actual_ai": true,
+    "passed": true
+  },
+  {
+    "name": "Standard GPT Response",
+    "ai_prob": 1.0,
+    "human_prob": 0.001,
+    "expected_ai": true,
+    "actual_ai": true,
+    "passed": true
+  },
+  {
+    "name": "Long Human Text",
+    "ai_prob": 0.505,
+    "human_prob": 0.496,
+    "expected_ai": false,
+    "actual_ai": true,
+    "passed": false
+  }
+]

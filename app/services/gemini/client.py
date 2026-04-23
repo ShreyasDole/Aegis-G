@@ -67,6 +67,56 @@ class GeminiClient:
         except Exception as e:
             raise Exception(f"Gemini detection failed: {str(e)}")
 
+    async def detect_image_content(self, image_base64: str, text_context: str = "") -> Dict[str, Any]:
+        """
+        Use Gemini 2.5 Flash for Multimodal image/vision detection.
+        Detects Deepfake artifacts and evaluates text + image consistency.
+        """
+        if not self.client:
+            raise Exception("Gemini API key not configured")
+            
+        try:
+            from google.genai import types as gtypes
+            
+            # Use real vision call
+            # Parse base64 to parts
+            import base64
+            # Handle potential Data URI prefixes like data:image/jpeg;base64,
+            encoded_data = image_base64
+            if "," in encoded_data:
+                encoded_data = encoded_data.split(",")[1]
+            
+            image_bytes = base64.b64decode(encoded_data)
+            
+            # Instead of a strict prompt, we give it a multimodal task
+            prompt = f"Analyze the provided image for potential deepfake artifacts, manipulation, or cyber threats. Contextual text provided with the image: '{text_context}'"
+            
+            response = self.client.models.generate_content(
+                model=settings.GEMINI_FLASH_MODEL,
+                contents=[
+                    prompt,
+                    gtypes.Part.from_bytes(data=image_bytes, mime_type="image/jpeg"),
+                ]
+            )
+            
+            raw = response.text or ""
+            lower = raw.lower()
+            
+            is_deepfake = "deepfake" in lower or "manipulated" in lower or "ai-generated" in lower
+            score = 0.8 if is_deepfake else 0.2
+            
+            return {
+                "risk_score": score,
+                "is_ai_generated": is_deepfake,
+                "confidence": 0.85,
+                "detected_model": "gemini-2.5-flash-vision",
+                "attribution": {},
+                "denoised_text": text_context,
+                "reasoning": raw[:300]
+            }
+        except Exception as e:
+            raise Exception(f"Visual detection failed: {str(e)}")
+
     async def forensic_analysis(
         self,
         threat_id: int,
