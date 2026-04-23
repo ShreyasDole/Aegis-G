@@ -46,7 +46,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
     # CORS — lock this down in production
-    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:3001"]
+    CORS_ORIGINS: List[str] = ["https://frontend-weld-eta-83.vercel.app", "https://frontend-rknfa5hlt-shreyasdole1105-4614s-projects.vercel.app", "http://localhost:3000"]
 
     # Outlook / Microsoft OAuth (login)
     OUTLOOK_CLIENT_ID: Optional[str] = None
