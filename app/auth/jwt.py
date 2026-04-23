@@ -8,6 +8,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError, jwt
 from pydantic import BaseModel
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.config import settings
@@ -119,15 +120,21 @@ async def get_current_user(
         HTTPException: If user not found or token invalid
     """
     token_data = verify_token(credentials.credentials)
-    
-    user = db.query(User).filter(User.id == token_data.user_id).first()
-    
+
+    try:
+        user = db.query(User).filter(User.id == token_data.user_id).first()
+    except SQLAlchemyError:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database unavailable — cannot load user session",
+        ) from None
+
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found"
+            detail="User not found",
         )
-    
+
     return user
 
 

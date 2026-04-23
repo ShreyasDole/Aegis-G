@@ -3,14 +3,27 @@ Policy Guardian Service - Agent 4
 Automated Mitigation: Translates human intent into executable DSL rules
 Uses google-genai with structured output
 """
-import os
+import asyncio
 import json
-from typing import Dict, Any, List
+import logging
+import os
+from typing import Any, Dict, List
+
 from google import genai
 from google.genai import types
+
 from app.config import settings
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or settings.GEMINI_API_KEY
+logger = logging.getLogger(__name__)
+
+_GEMINI_RAW = (os.getenv("GEMINI_API_KEY") or getattr(settings, "GEMINI_API_KEY", "") or "").strip()
+_PLACEHOLDER_KEYS = frozenset({"", "test-key", "changeme", "your-api-key-here", "placeholder"})
+
+
+def _gemini_configured() -> bool:
+    return bool(_GEMINI_RAW and _GEMINI_RAW.lower() not in {k.lower() for k in _PLACEHOLDER_KEYS})
+
+GEMINI_API_KEY = _GEMINI_RAW if _gemini_configured() else ""
 client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
 
 
@@ -40,8 +53,8 @@ class PolicyGuardian:
         cond = " AND ".join(parts)
         dsl = f"IF {cond} THEN BLOCK_AND_LOG"
         explanation = (
-            "Offline mode: no GEMINI_API_KEY. Built a heuristic IF/THEN from keywords in your intent. "
-            "Add Gemini for refined rules and edge-case analysis."
+            "Offline mode: no usable GEMINI_API_KEY (unset, test-key, placeholder). Heuristic IF/THEN from keywords. "
+            "Set a real key in env for Gemini-refined rules and edge-case analysis."
         )
         if len(dsl) < 10:
             dsl = f"{dsl}\n# aegis"
@@ -102,63 +115,71 @@ class PolicyGuardian:
         
         if not client:
             return PolicyGuardian._fallback_from_intent(human_intent)
-        
+
         user_prompt = f"""
         Translate this human strategic intent into a Shield Rule:
-        
+
         INTENT: "{human_intent}"
-        
+
         Use your internal 'Thinking' process to:
         1. Analyze the intent for edge cases
         2. Refine the rule to minimize false positives
         3. Consider interactions with existing policies
         4. Generate executable DSL code
-        
+
         Return structured JSON matching the output schema.
         """
-        
+
         try:
-            config_kwargs = dict(
-                system_instruction=system_instructions,
-                response_mime_type="application/json",
+            return await asyncio.wait_for(
+                asyncio.to_thread(PolicyGuardian._sync_gemini_translate, user_prompt, system_instructions),
+                timeout=45.0,
             )
-            # Note: Gemini 2.5 Flash doesn't support ThinkingConfig, using standard generation
-            response = client.models.generate_content(
-                model=settings.GEMINI_FLASH_MODEL,
-                contents=user_prompt,
-                config=types.GenerateContentConfig(**config_kwargs)
-            )
-            
-            # Extract thinking process for audit (if model supports it)
-            ai_reasoning = ""
-            if response.candidates:
-                for part in getattr(response.candidates[0].content, "parts", []):
-                    if getattr(part, "thought", None):
-                        ai_reasoning += getattr(part, "text", "") or str(getattr(part, "thought", ""))
-            
-            # Parse JSON response
-            result_text = response.text
-            if "```json" in result_text:
-                result_text = result_text.split("```json")[1].split("```")[0].strip()
-            elif "```" in result_text:
-                result_text = result_text.split("```")[1].split("```")[0].strip()
-            
-            result = json.loads(result_text)
-            
-            # Add AI reasoning to result
-            result["ai_reasoning"] = ai_reasoning
-            
-            return result
-            
+        except asyncio.TimeoutError:
+            logger.warning("Policy Guardian Gemini call timed out")
+            out = PolicyGuardian._fallback_from_intent(human_intent)
+            out["explanation"] = (out.get("explanation") or "") + " (Gemini call exceeded 45s — showing heuristic rule.)"
+            return out
         except Exception as e:
+            logger.warning("Policy Guardian Gemini failed: %s", e)
             return {
                 "rule_name": "rule_error",
                 "dsl_logic": f"# Translation error: {str(e)}",
                 "safety_score": 0.0,
                 "edge_cases": [],
                 "explanation": f"Failed to translate policy: {str(e)}",
-                "ai_reasoning": ""
+                "ai_reasoning": "",
             }
+
+    @staticmethod
+    def _sync_gemini_translate(user_prompt: str, system_instructions: str) -> Dict[str, Any]:
+        """Blocking Gemini call — run via asyncio.to_thread."""
+        assert client is not None
+        config_kwargs = dict(
+            system_instruction=system_instructions,
+            response_mime_type="application/json",
+        )
+        response = client.models.generate_content(
+            model=settings.GEMINI_FLASH_MODEL,
+            contents=user_prompt,
+            config=types.GenerateContentConfig(**config_kwargs),
+        )
+
+        ai_reasoning = ""
+        if response.candidates:
+            for part in getattr(response.candidates[0].content, "parts", []):
+                if getattr(part, "thought", None):
+                    ai_reasoning += getattr(part, "text", "") or str(getattr(part, "thought", ""))
+
+        result_text = response.text
+        if "```json" in result_text:
+            result_text = result_text.split("```json")[1].split("```")[0].strip()
+        elif "```" in result_text:
+            result_text = result_text.split("```")[1].split("```")[0].strip()
+
+        result = json.loads(result_text)
+        result["ai_reasoning"] = ai_reasoning
+        return result
     
     @staticmethod
     def execute_dsl_rule(dsl_logic: str, post_data: Dict[str, Any]) -> Dict[str, Any]:

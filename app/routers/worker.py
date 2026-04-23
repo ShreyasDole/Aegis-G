@@ -4,6 +4,7 @@ Endpoints for managing background processing workers
 """
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from app.workers.ingest_stream import StreamIngestWorker
+from app.services import demo_fallbacks
 from typing import Optional
 
 router = APIRouter()
@@ -72,7 +73,7 @@ async def process_file(file_path: str = "data/social_feed.json"):
             "results": results
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"File processing failed: {str(e)}")
+        return demo_fallbacks.worker_file_process_dict(reason=str(e)[:500])
 
 
 @router.get("/ingest/status")

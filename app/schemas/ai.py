@@ -94,6 +94,8 @@ class InsightResponse(BaseModel):
     created_at: datetime
     viewed: bool = False
     dismissed: bool = False
+    demo_mode: Optional[bool] = False
+    fallback_reason: Optional[str] = None
 
 
 # ============================================
@@ -117,6 +119,8 @@ class ChatResponse(BaseModel):
     conversation_id: str
     tool_calls: Optional[List[Dict[str, Any]]] = None
     suggestions: Optional[List[str]] = None  # Quick action buttons
+    demo_mode: Optional[bool] = False
+    fallback_reason: Optional[str] = None
 
 
 class ToolCall(BaseModel):

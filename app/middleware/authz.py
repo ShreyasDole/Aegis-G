@@ -36,7 +36,13 @@ class AuthorizationMiddleware(BaseHTTPMiddleware):
         auth_header = request.headers.get("Authorization")
         
         if auth_header and auth_header.startswith("Bearer "):
-            token = auth_header.split(" ")[1]
+            parts = auth_header.split(" ", 1)
+            token = parts[1].strip() if len(parts) > 1 else ""
+            if not token:
+                return JSONResponse(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    content={"detail": "Invalid authentication token"},
+                )
             try:
                 token_data = verify_token(token)
                 user = {
@@ -45,7 +51,12 @@ class AuthorizationMiddleware(BaseHTTPMiddleware):
                     "role": token_data.role
                 }
             except (JWTError, HTTPException):
-                # Invalid token - return 401 response
+                return JSONResponse(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    content={"detail": "Invalid authentication token"}
+                )
+            except Exception as e:
+                logger.warning("JWT verify unexpected error: %s", e)
                 return JSONResponse(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     content={"detail": "Invalid authentication token"}
@@ -60,9 +71,12 @@ class AuthorizationMiddleware(BaseHTTPMiddleware):
                 f"Authorization denied: {method} {path} - User: {user.get('email') if user else 'anonymous'} - Role: {user.get('role') if user else 'none'}"
             )
             # Return error response instead of raising
+            detail = e.detail
+            if not isinstance(detail, (str, int, float, bool, type(None))):
+                detail = str(detail)
             return JSONResponse(
                 status_code=e.status_code,
-                content={"detail": e.detail}
+                content={"detail": detail}
             )
         
         # Continue to endpoint

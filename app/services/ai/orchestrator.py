@@ -9,10 +9,8 @@ from typing import Dict, Any
 from sqlalchemy.orm import Session
 
 # --- REAL SERVICES IMPORT ---
-from app.services.ai.local_detection import local_classifier  # Agent 1 (Local)
 from app.services.gemini.client import GeminiClient           # Agent 1 (Cloud)
 from app.services.graph.neo4j import Neo4jService             # Agent 2 (Graph)
-from app.services.ai.fusion_service import AnalystAgent       # Agent 3 (Analyst)
 from app.services.ai.fusion_service import AnalystAgent       # Agent 3 (Analyst)
 from app.services.ai.policy_guardian import policy_guardian   # Agent 4 (Guardian)
 from app.core.blockchain import add_to_ledger                 # Trust Layer
@@ -53,7 +51,9 @@ class ThreatOrchestrator:
         # --- NEW CONVERSATIONAL LAYER ---
         lower_content = content.lower().strip()
         is_explicit_scan = any(kw in lower_content for kw in ["analyze", "scan", "detect", "check", "evaluate", "forensic", "is this ai"])
-        
+        if payload.get("force_forensic"):
+            is_explicit_scan = True
+
         # If no image is provided, and the user hasn't explicitly asked to scan, act as a conversational bot
         if not image_base64 and not is_explicit_scan:
             reply = "I am the Aegis Agent! Please ask me to 'analyze', 'scan', or 'detect' something to trigger the forensic pipeline."
@@ -75,6 +75,7 @@ class ThreatOrchestrator:
                 "is_conversational": True,
                 "recommendation": reply,
                 "content_hash": content_hash,
+                "threat_id": None,
                 "risk_score": 0.0,
                 "is_ai_generated": False,
                 "confidence": 1.0,
@@ -443,13 +444,16 @@ class ThreatOrchestrator:
                     content=f"BLOCKED | Policy: {matched_policy.name} | Score: {risk_score} | Source: {username}",
                     db=db,
                 )
-                logger.info(f"Blockchain block minted for blocked content: {ledger_hash[:16]}...")
+                if ledger_hash:
+                    logger.info(f"Blockchain block minted for blocked content: {ledger_hash[:16]}...")
             except Exception as e:
                 logger.error(f"Blockchain logging failed for blocked content: {e}")
 
             return {
                 "status": "BLOCKED",
+                "threat_id": threat_db_id if threat_db_id else None,
                 "risk_score": risk_score,
+                "policy_name": matched_policy.name,
                 "action": guardrail_result,
                 "forensics": forensics_data,
                 "graph_context": graph_metadata,
@@ -470,12 +474,14 @@ class ThreatOrchestrator:
                     content=f"Threat Detected: {risk_score} | Source: {username}",
                     db=db,
                 )
-                logger.info(f"Blockchain hash: {ledger_hash[:16]}...")
+                if ledger_hash:
+                    logger.info(f"Blockchain hash: {ledger_hash[:16]}...")
             except Exception as e:
                 logger.error(f"Blockchain logging failed: {e}")
 
         return {
             "status": "PROCESSED",
+            "threat_id": threat_db_id if threat_db_id else None,
             "risk_score": risk_score,
             "is_ai_generated": forensics_data.get("is_ai_generated", False),
             "confidence": forensics_data.get("confidence", 0.0),
@@ -488,9 +494,13 @@ class ThreatOrchestrator:
             "explainability": forensics_data.get("explainability", []),
             "denoised_text": forensics_data.get("denoised_text", ""),
             "rag_memory": forensics_data.get("rag_memory", []),
-            "intelligence_report": intelligence_report.model_dump() if intelligence_report else None,
+            "intelligence_report": (
+                intelligence_report.model_dump()
+                if intelligence_report is not None and hasattr(intelligence_report, "model_dump")
+                else (intelligence_report if isinstance(intelligence_report, dict) else None)
+            ),
             "forensics": forensics_data,
-            "content_hash": content_hash
+            "content_hash": content_hash,
         }
 
 

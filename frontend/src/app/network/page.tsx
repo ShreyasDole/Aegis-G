@@ -42,6 +42,7 @@ export default function NetworkPage() {
     username: string;
     origin_time: string;
   } | null>(null);
+  const [isDemoMode, setIsDemoMode] = useState(false);
 
   const loadNetwork = useCallback(async () => {
     setIsLoading(true);
@@ -49,6 +50,7 @@ export default function NetworkPage() {
     setPatientZeroId(null);
     try {
       const data = await apiFetch('/api/network/');
+      setIsDemoMode(Boolean((data as { stats?: { demo_mode?: boolean } }).stats?.demo_mode));
       const rawEdges = (data.edges || []) as GraphEdge[];
       setNodes(data.nodes || []);
       setEdges(
@@ -60,6 +62,7 @@ export default function NetworkPage() {
       );
     } catch (e) {
       console.error('Network fetch failed:', e);
+      setIsDemoMode(false);
     } finally {
       setIsLoading(false);
     }
@@ -132,9 +135,14 @@ export default function NetworkPage() {
         method: 'POST',
         headers: { Authorization: `Bearer ${getToken()}` },
       });
+      const body = await res.json().catch(() => ({}));
       if (res.ok) {
-        setSeedStatus('Demo loaded — refreshing');
-        setTimeout(() => setSeedStatus(null), 4000);
+        if (body.seeded === false) {
+          setSeedStatus('Neo4j unreachable — offline demo graph still active');
+        } else {
+          setSeedStatus('Demo loaded into graph DB — refreshing');
+        }
+        setTimeout(() => setSeedStatus(null), 5000);
         await loadNetwork();
       } else {
         setSeedStatus('Seed failed');
@@ -256,6 +264,12 @@ export default function NetworkPage() {
             REPOSTED / SHARED / INTERACTED_WITH). Patient-zero mode re-types the origin; community mode collapses
             members into purple super-nodes (Louvain modularity on User+Post projection when GDS is available).
           </p>
+          {isDemoMode && (
+            <p className="mt-3 text-xs font-mono text-amber-400/95 border border-amber-500/30 rounded-md px-3 py-2 bg-amber-500/5 max-w-3xl">
+              OFFLINE_DEMO_GRAPH — Neo4j empty or unreachable. Same C2 + bot narrative as INJECT_DEMO_DATA; start API +
+              Neo4j and POST seed to persist into the database.
+            </p>
+          )}
         </motion.div>
 
         <Card className="mb-6">

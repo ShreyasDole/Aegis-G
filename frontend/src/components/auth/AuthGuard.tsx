@@ -6,6 +6,13 @@ const USER_KEY = 'user';
 
 const TOKEN_CACHE_MS = 5 * 60 * 1000; // 5 minutes
 const TOKEN_VALIDATED_KEY = 'token_validated_at';
+const AUTH_FETCH_MS = 15_000;
+
+function fetchWithTimeout(input: RequestInfo | URL, init: RequestInit = {}, timeoutMs = AUTH_FETCH_MS) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), timeoutMs);
+  return fetch(input, { ...init, signal: ctrl.signal }).finally(() => clearTimeout(t));
+}
 
 async function ensureValidToken(): Promise<void> {
   const now = Date.now();
@@ -19,27 +26,39 @@ async function ensureValidToken(): Promise<void> {
 
   if (existing) {
     try {
-      const r = await fetch('/api/auth/me', { headers: { Authorization: `Bearer ${existing}` } });
+      const r = await fetchWithTimeout('/api/auth/me', {
+        headers: { Authorization: `Bearer ${existing}` },
+      });
       if (r.ok) {
         sessionStorage.setItem(TOKEN_VALIDATED_KEY, String(now));
         return;
       }
-    } catch {/* fall through */}
+      if (r.status === 401 || r.status === 403) {
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem(USER_KEY);
+        sessionStorage.removeItem(TOKEN_VALIDATED_KEY);
+      }
+    } catch {
+      /* fall through */
+    }
   }
 
-  // Get fresh token
-  const r = await fetch('/api/auth/login', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: 'admin@aegis.com', password: 'AdminPassword123!' }),
-  });
-  if (r.ok) {
-    const d = await r.json();
-    if (d?.access_token) {
-      localStorage.setItem(TOKEN_KEY, d.access_token);
-      localStorage.setItem(USER_KEY, JSON.stringify({ email: 'admin@aegis.com', role: 'admin' }));
-      sessionStorage.setItem(TOKEN_VALIDATED_KEY, String(now));
+  try {
+    const r = await fetchWithTimeout('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'admin@aegis.com', password: 'AdminPassword123!' }),
+    });
+    if (r.ok) {
+      const d = await r.json().catch(() => ({}));
+      if (d?.access_token) {
+        localStorage.setItem(TOKEN_KEY, d.access_token);
+        localStorage.setItem(USER_KEY, JSON.stringify({ email: 'admin@aegis.com', role: 'admin' }));
+        sessionStorage.setItem(TOKEN_VALIDATED_KEY, String(now));
+      }
     }
+  } catch {
+    /* offline / API down */
   }
 }
 
@@ -57,9 +76,11 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
       return;
     }
     if (!initPromise) {
-      initPromise = ensureValidToken().finally(() => { initPromise = null; });
+      initPromise = ensureValidToken().finally(() => {
+        initPromise = null;
+      });
     }
-    initPromise.finally(() => setReady(true));
+    void initPromise.catch(() => {}).finally(() => setReady(true));
   }, []);
 
   if (!ready) {

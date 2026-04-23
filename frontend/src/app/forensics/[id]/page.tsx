@@ -109,7 +109,8 @@ export default function ForensicsDetailPage() {
     try {
       const res = await fetch(`/api/forensics/${id}`, {
         method: 'POST',
-        headers: { ...authHdr() },
+        headers: { 'Content-Type': 'application/json', ...authHdr() },
+        body: JSON.stringify({}),
       });
       if (res.ok) {
         const data = await res.json();

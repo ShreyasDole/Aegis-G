@@ -2,10 +2,13 @@
 Authentication Router
 Login, Register, Outlook OAuth, and Token Management endpoints
 """
+import logging
 from datetime import timedelta
+
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, ConfigDict, EmailStr
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.auth import (
@@ -27,6 +30,7 @@ from app.models.user import User
 from app.seed import DEFAULT_USERS
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 # Demo users that can be auto-created on first login if DB is empty (e.g. seed didn't run)
 DEMO_EMAILS = {u["email"] for u in DEFAULT_USERS}
@@ -71,28 +75,36 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
     - **password**: Strong password
     - **full_name**: Optional display name
     """
-    # Check if user already exists
-    existing_user = db.query(User).filter(User.email == user_data.email).first()
-    if existing_user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered"
+    try:
+        existing_user = db.query(User).filter(User.email == user_data.email).first()
+        if existing_user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email already registered"
+            )
+
+        new_user = User(
+            email=user_data.email,
+            hashed_password=get_password_hash(user_data.password),
+            full_name=user_data.full_name,
+            role="analyst",  # Default role
+            is_active=True,
         )
-    
-    # Create new user
-    new_user = User(
-        email=user_data.email,
-        hashed_password=get_password_hash(user_data.password),
-        full_name=user_data.full_name,
-        role="analyst",  # Default role
-        is_active=True
-    )
-    
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-    
-    return new_user
+
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+    except HTTPException:
+        raise
+    except SQLAlchemyError as e:
+        db.rollback()
+        logger.warning("register DB error: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database unavailable. Check DATABASE_URL in .env matches a running database.",
+        ) from e
+
+    return UserResponse.model_validate(new_user)
 
 
 @router.post("/login", response_model=Token)
@@ -106,7 +118,14 @@ async def login(credentials: UserLogin, db: Session = Depends(get_db)):
     Returns JWT access token valid for configured duration.
     Demo users (test@aegis.com, admin@aegis.com) are created on first login if missing.
     """
-    user = db.query(User).filter(User.email == credentials.email).first()
+    try:
+        user = db.query(User).filter(User.email == credentials.email).first()
+    except SQLAlchemyError as e:
+        logger.warning("login DB error: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database unavailable. Check DATABASE_URL in .env matches a running database.",
+        ) from e
 
     # If user not found, allow demo users to be created on first login (so login works without seed)
     if not user and credentials.email in DEMO_EMAILS:
@@ -124,12 +143,12 @@ async def login(credentials: UserLogin, db: Session = Depends(get_db)):
                 db.add(user)
                 db.commit()
                 db.refresh(user)
-            except Exception:
+            except SQLAlchemyError:
                 db.rollback()
                 raise HTTPException(
                     status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                     detail="Database not ready. Run migrations and try again.",
-                )
+                ) from None
 
     if not user or not (user.hashed_password and verify_password(credentials.password, user.hashed_password)):
         raise HTTPException(
@@ -166,10 +185,10 @@ async def login(credentials: UserLogin, db: Session = Depends(get_db)):
 async def get_current_user_info(current_user: User = Depends(get_current_active_user)):
     """
     Get current authenticated user's information
-    
+
     Requires valid JWT token in Authorization header
     """
-    return current_user
+    return UserResponse.model_validate(current_user)
 
 
 @router.post("/refresh", response_model=Token)

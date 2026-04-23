@@ -48,7 +48,13 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     LOG_LEVEL: str = "INFO"
     ENABLE_METRICS: bool = False
-    
+
+    # MCP (optional — mcp_client uses getattr too; fields here for .env discovery)
+    MCP_GOOGLE_PROJECT_ID: Optional[str] = None
+    MCP_SERVER_URL: Optional[str] = None
+    MCP_SERVER_URLS: Optional[str] = None
+    DEVELOPER_KNOWLEDGE_API_KEY: Optional[str] = None
+
     model_config = SettingsConfigDict(
         env_file=".env",
         case_sensitive=True,

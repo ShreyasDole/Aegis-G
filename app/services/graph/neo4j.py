@@ -71,17 +71,20 @@ class Neo4jService:
         LIMIT 1
         RETURN candidate.id AS user_id, candidate.label AS username, p.timestamp AS timestamp
         """
-        async with self.driver.session() as session:
-            result = await session.run(query, content_hash=content_hash)
-            record = await result.single()
-            if record:
-                return {
-                    "status": "found",
-                    "username": record.get("username") or record.get("user_id"),
-                    "user_id": record.get("user_id"),
-                    "origin_time": str(record.get("timestamp", ""))
-                }
-            return {"status": "not_found"}
+        try:
+            async with self.driver.session() as session:
+                result = await session.run(query, content_hash=content_hash)
+                record = await result.single()
+                if record:
+                    return {
+                        "status": "found",
+                        "username": record.get("username") or record.get("user_id"),
+                        "user_id": record.get("user_id"),
+                        "origin_time": str(record.get("timestamp", ""))
+                    }
+        except Exception as e:
+            logger.warning(f"find_patient_zero neo4j error: {e}")
+        return {"status": "not_found"}
 
     # --- YASH TASK 2: Campaign Lineage (The Tree View) ---
     async def get_campaign_lineage(self, root_user_id: str) -> Dict[str, Any]:
@@ -94,39 +97,43 @@ class Neo4jService:
         MATCH path = (root:User {id: $root_id})-[:INTERACTED_WITH|SHARED|REPOSTED*1..3]->(target:User)
         RETURN path LIMIT 50
         """
-        async with self.driver.session() as session:
-            result = await session.run(query, root_id=root_user_id)
-            nodes = {}
-            edges = []
-            
-            async for record in result:
-                path = record["path"]
-                for node in path.nodes:
-                    props = dict(node)
-                    node_id = props.get("id") or (str(node.element_id) if hasattr(node, 'element_id') else str(node.id))
-                    if node_id not in nodes:
-                        risk = float(props.get("risk_score") or 0)
-                        nodes[node_id] = {
-                            "id": node_id,
-                            "label": props.get("label") or node_id,
-                            "type": "User",
-                            "severity": "critical" if risk > 0.8 else ("medium" if risk > 0.5 else "low"),
-                            "platform": props.get("platform"),
-                            "caption": props.get("caption"),
-                            "risk_score": risk,
-                        }
-                for rel in path.relationships:
-                    start_node = rel.start_node
-                    end_node = rel.end_node
-                    start_id = start_node.get("id") if hasattr(start_node, 'get') and start_node.get("id") else (str(start_node.element_id) if hasattr(start_node, 'element_id') else str(start_node.id))
-                    end_id = end_node.get("id") if hasattr(end_node, 'get') and end_node.get("id") else (str(end_node.element_id) if hasattr(end_node, 'element_id') else str(end_node.id))
-                    edges.append({
-                        "source": start_id,
-                        "target": end_id,
-                        "type": rel.type if hasattr(rel, 'type') else "RELATED"
-                    })
-            
-            return {"nodes": list(nodes.values()), "edges": edges}
+        try:
+            async with self.driver.session() as session:
+                result = await session.run(query, root_id=root_user_id)
+                nodes = {}
+                edges = []
+
+                async for record in result:
+                    path = record["path"]
+                    for node in path.nodes:
+                        props = dict(node)
+                        node_id = props.get("id") or (str(node.element_id) if hasattr(node, 'element_id') else str(node.id))
+                        if node_id not in nodes:
+                            risk = float(props.get("risk_score") or 0)
+                            nodes[node_id] = {
+                                "id": node_id,
+                                "label": props.get("label") or node_id,
+                                "type": "User",
+                                "severity": "critical" if risk > 0.8 else ("medium" if risk > 0.5 else "low"),
+                                "platform": props.get("platform"),
+                                "caption": props.get("caption"),
+                                "risk_score": risk,
+                            }
+                    for rel in path.relationships:
+                        start_node = rel.start_node
+                        end_node = rel.end_node
+                        start_id = start_node.get("id") if hasattr(start_node, 'get') and start_node.get("id") else (str(start_node.element_id) if hasattr(start_node, 'element_id') else str(start_node.id))
+                        end_id = end_node.get("id") if hasattr(end_node, 'get') and end_node.get("id") else (str(end_node.element_id) if hasattr(end_node, 'element_id') else str(end_node.id))
+                        edges.append({
+                            "source": start_id,
+                            "target": end_id,
+                            "type": rel.type if hasattr(rel, 'type') else "RELATED"
+                        })
+
+                return {"nodes": list(nodes.values()), "edges": edges}
+        except Exception as e:
+            logger.warning(f"get_campaign_lineage failed: {e}")
+            return {"nodes": [], "edges": []}
 
     # --- YASH TASK 3: Clustering (Narrative Detection) with Neo4j GDS Louvain ---
     async def detect_clusters(self) -> List[Dict]:
@@ -226,70 +233,72 @@ class Neo4jService:
         ORDER BY overlap DESC LIMIT 20
         """
         clusters = []
-        async with self.driver.session() as session:
-            # Run C2-chain detection first
-            c2_result = await session.run(c2_query)
-            async for record in c2_result:
-                bots = record["bots"] or []
-                bot_risks = [float(b.get("risk") or 0) for b in bots]
-                members = [{"id": record["c2_id"], "label": record.get("c2_label") or record["c2_id"]}]
-                for b in bots:
-                    members.append({"id": b["id"], "label": b.get("label") or b["id"]})
-                all_risks = [float(record.get("c2_risk") or 0)] + bot_risks
-                avg_risk = sum(all_risks) / len(all_risks) if all_risks else 0.0
-                clusters.append({
-                    "cluster_id": f"C2_{record['c2_id']}",
-                    "nodes": [m["id"] for m in members],
-                    "members": members,
-                    "size": len(members),
-                    "avg_risk": round(avg_risk, 3),
-                    "type": "Botnet_Cluster",
-                    "method": "C2_Chain_Traversal",
-                })
-
-            if not clusters:
-                # Fallback B: content-hash overlap
-                overlap_result = await session.run(overlap_query)
-                seen_pairs: set = set()
-                groups: dict = {}
-                async for record in overlap_result:
-                    id_a, id_b = record["id_a"], record["id_b"]
-                    la = record.get("label_a") or id_a
-                    lb = record.get("label_b") or id_b
-                    key = tuple(sorted([id_a, id_b]))
-                    if key in seen_pairs:
-                        continue
-                    seen_pairs.add(key)
-                    matched = None
-                    for cid, group in groups.items():
-                        if id_a in group["ids"] or id_b in group["ids"]:
-                            matched = cid
-                            break
-                    if matched:
-                        groups[matched]["ids"].update([id_a, id_b])
-                        groups[matched]["labels"][id_a] = la
-                        groups[matched]["labels"][id_b] = lb
-                        groups[matched]["risks"].extend([record["risk_a"] or 0, record["risk_b"] or 0])
-                    else:
-                        cid = f"HASH_cluster_{len(groups)}"
-                        groups[cid] = {
-                            "ids": {id_a, id_b},
-                            "labels": {id_a: la, id_b: lb},
-                            "risks": [record["risk_a"] or 0, record["risk_b"] or 0],
-                        }
-                for cid, g in groups.items():
-                    ids_list = list(g["ids"])
-                    members = [{"id": i, "label": g["labels"].get(i, i)} for i in ids_list]
-                    avg_risk = sum(g["risks"]) / len(g["risks"]) if g["risks"] else 0
+        try:
+            async with self.driver.session() as session:
+                c2_result = await session.run(c2_query)
+                async for record in c2_result:
+                    bots = record["bots"] or []
+                    bot_risks = [float(b.get("risk") or 0) for b in bots]
+                    members = [{"id": record["c2_id"], "label": record.get("c2_label") or record["c2_id"]}]
+                    for b in bots:
+                        members.append({"id": b["id"], "label": b.get("label") or b["id"]})
+                    all_risks = [float(record.get("c2_risk") or 0)] + bot_risks
+                    avg_risk = sum(all_risks) / len(all_risks) if all_risks else 0.0
                     clusters.append({
-                        "cluster_id": cid,
-                        "nodes": ids_list,
+                        "cluster_id": f"C2_{record['c2_id']}",
+                        "nodes": [m["id"] for m in members],
                         "members": members,
-                        "size": len(ids_list),
+                        "size": len(members),
                         "avg_risk": round(avg_risk, 3),
                         "type": "Botnet_Cluster",
-                        "method": "Content_Hash_Overlap",
+                        "method": "C2_Chain_Traversal",
                     })
+
+                if not clusters:
+                    overlap_result = await session.run(overlap_query)
+                    seen_pairs: set = set()
+                    groups: dict = {}
+                    async for record in overlap_result:
+                        id_a, id_b = record["id_a"], record["id_b"]
+                        la = record.get("label_a") or id_a
+                        lb = record.get("label_b") or id_b
+                        key = tuple(sorted([id_a, id_b]))
+                        if key in seen_pairs:
+                            continue
+                        seen_pairs.add(key)
+                        matched = None
+                        for cid, group in groups.items():
+                            if id_a in group["ids"] or id_b in group["ids"]:
+                                matched = cid
+                                break
+                        if matched:
+                            groups[matched]["ids"].update([id_a, id_b])
+                            groups[matched]["labels"][id_a] = la
+                            groups[matched]["labels"][id_b] = lb
+                            groups[matched]["risks"].extend([record["risk_a"] or 0, record["risk_b"] or 0])
+                        else:
+                            cid = f"HASH_cluster_{len(groups)}"
+                            groups[cid] = {
+                                "ids": {id_a, id_b},
+                                "labels": {id_a: la, id_b: lb},
+                                "risks": [record["risk_a"] or 0, record["risk_b"] or 0],
+                            }
+                    for cid, g in groups.items():
+                        ids_list = list(g["ids"])
+                        members = [{"id": i, "label": g["labels"].get(i, i)} for i in ids_list]
+                        avg_risk = sum(g["risks"]) / len(g["risks"]) if g["risks"] else 0
+                        clusters.append({
+                            "cluster_id": cid,
+                            "nodes": ids_list,
+                            "members": members,
+                            "size": len(ids_list),
+                            "avg_risk": round(avg_risk, 3),
+                            "type": "Botnet_Cluster",
+                            "method": "Content_Hash_Overlap",
+                        })
+        except Exception as e:
+            logger.warning(f"detect_clusters fallback session failed: {e}")
+            return []
         return clusters
     
     async def calculate_page_rank(self, limit: int = 20) -> List[Dict]:
@@ -322,7 +331,6 @@ class Neo4jService:
                 return influencers
         except Exception as e:
             logger.warning(f"GDS PageRank not available: {e}")
-            # Fallback: Simple degree-based ranking
             fallback_query = """
             MATCH (u:User)-[r]->()
             WITH u, count(r) as degree
@@ -330,17 +338,21 @@ class Neo4jService:
             LIMIT $limit
             RETURN u.id as user_id, u.label as username, degree as influence_score
             """
-            async with self.driver.session() as session:
-                result = await session.run(fallback_query, limit=limit)
-                influencers = []
-                async for record in result:
-                    influencers.append({
-                        "user_id": record["user_id"],
-                        "username": record["username"],
-                        "influence_score": float(record["influence_score"]),
-                        "rank": len(influencers) + 1
-                    })
-                return influencers
+            try:
+                async with self.driver.session() as session:
+                    result = await session.run(fallback_query, limit=limit)
+                    influencers = []
+                    async for record in result:
+                        influencers.append({
+                            "user_id": record["user_id"],
+                            "username": record["username"],
+                            "influence_score": float(record["influence_score"]),
+                            "rank": len(influencers) + 1
+                        })
+                    return influencers
+            except Exception as e2:
+                logger.warning(f"PageRank degree fallback failed: {e2}")
+                return []
 
     # Standard Network View — includes User-to-User edges (SHARED/REPOSTED/INTERACTED)
     async def get_network(self, limit: int = 100) -> Dict[str, Any]:

@@ -12,8 +12,10 @@ export const PolicyAuthor = () => {
 
   const handleTranslate = async () => {
     if (!intent.trim()) return;
-    
+
     setIsTranslating(true);
+    const controller = new AbortController();
+    const kill = setTimeout(() => controller.abort(), 50_000);
     try {
       const token = localStorage.getItem('token');
       const response = await fetch('/api/ai/policy-translate', {
@@ -23,6 +25,7 @@ export const PolicyAuthor = () => {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({ intent }),
+        signal: controller.signal,
       });
 
       if (response.ok) {
@@ -40,10 +43,16 @@ export const PolicyAuthor = () => {
         }
         setDslPreview(`# Error (${response.status}): ${msg}`);
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Translation error:', error);
-      setDslPreview("# Error: API call failed");
+      const name = error instanceof Error ? error.name : '';
+      if (name === 'AbortError') {
+        setDslPreview('# Error: request timed out (50s). Backend hung or unreachable — check API is on :8000.');
+      } else {
+        setDslPreview('# Error: API call failed');
+      }
     } finally {
+      clearTimeout(kill);
       setIsTranslating(false);
     }
   };

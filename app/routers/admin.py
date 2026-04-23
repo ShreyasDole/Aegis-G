@@ -3,7 +3,10 @@ Admin Router
 Admin-only endpoints for user management, system config, and audit logs
 """
 from fastapi import APIRouter, Depends, HTTPException, status, Response
+from fastapi.encoders import jsonable_encoder
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
 from pydantic import BaseModel, ConfigDict
 from typing import List, Optional
 from datetime import datetime
@@ -13,6 +16,7 @@ from app.models.database import get_db
 from app.models.user import User
 from app.services.audit import audit
 from app.authz import authz
+from app.services import demo_fallbacks
 
 router = APIRouter()
 
@@ -59,16 +63,26 @@ async def list_users(
     List all users with optional filters
     Admin only
     """
-    query = db.query(User)
-    
-    if status:
-        query = query.filter(User.status == status)
-    
-    if role:
-        query = query.filter(User.role == role)
-    
-    users = query.all()
-    return users
+    try:
+        query = db.query(User)
+
+        if status:
+            query = query.filter(User.status == status)
+
+        if role:
+            query = query.filter(User.role == role)
+
+        users = query.all()
+        return users
+    except SQLAlchemyError as e:
+        payload = [
+            UserResponse.model_validate(u)
+            for u in demo_fallbacks.admin_demo_users(reason=str(e)[:400])
+        ]
+        return JSONResponse(
+            content=jsonable_encoder(payload),
+            headers={"X-Aegis-Fallback": "1"},
+        )
 
 
 @router.get("/users/pending", response_model=List[UserResponse])
@@ -80,8 +94,11 @@ async def list_pending_users(
     Get all pending user registrations
     Admin only
     """
-    pending_users = db.query(User).filter(User.status == "pending").all()
-    return pending_users
+    try:
+        pending_users = db.query(User).filter(User.status == "pending").all()
+        return pending_users
+    except SQLAlchemyError:
+        return []
 
 
 @router.post("/users/{user_id}/approve")

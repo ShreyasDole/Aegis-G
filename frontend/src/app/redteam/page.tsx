@@ -26,7 +26,8 @@ export default function RedTeamPage() {
         const data = await res.json();
         setResults(data);
       } else {
-        alert("Simulation failed.");
+        const t = await res.text().catch(() => '');
+        alert(`Simulation failed (${res.status}). ${t.slice(0, 400)}`);
       }
     } catch (err) {
       console.error(err);
@@ -108,7 +109,7 @@ export default function RedTeamPage() {
 
           {results && (
             <div className="w-full space-y-6">
-              <div className="grid grid-cols-3 gap-4 border-b border-white/10 pb-6">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 border-b border-white/10 pb-6">
                 <div>
                   <span className="font-space text-[10px] text-white/40 uppercase tracking-widest font-bold block mb-1">Total Attacks</span>
                   <span className="font-cabinet font-black text-3xl text-white">{results.total_attacks}</span>
@@ -120,6 +121,10 @@ export default function RedTeamPage() {
                 <div>
                   <span className="font-space text-[10px] text-red-500 uppercase tracking-widest font-bold block mb-1">Bypassed (Fail)</span>
                   <span className="font-cabinet font-black text-3xl text-red-500">{results.bypassed}</span>
+                </div>
+                <div>
+                  <span className="font-space text-[10px] text-amber-500 uppercase tracking-widest font-bold block mb-1">Errors</span>
+                  <span className="font-cabinet font-black text-3xl text-amber-500">{results.errors ?? 0}</span>
                 </div>
               </div>
 
@@ -142,15 +147,17 @@ export default function RedTeamPage() {
                     <div className="flex items-center gap-3">
                        {log.status === 'BLOCKED' ? (
                           <ShieldAlert className="w-4 h-4 text-neon-lime" />
+                       ) : log.status === 'ERROR' ? (
+                          <ShieldAlert className="w-4 h-4 text-amber-500" />
                        ) : (
                           <Cpu className="w-4 h-4 text-red-500" />
                        )}
                        <div>
                          <p className="font-space text-[10px] text-white tracking-wider">{log.payload_snippet}</p>
-                         <p className="font-space text-[9px] text-white/40 uppercase tracking-widest">Score: {log.ai_score_estimated} | By: {log.detected_by}</p>
+                         <p className="font-space text-[9px] text-white/40 uppercase tracking-widest">Score: {log.risk_score ?? log.ai_score_estimated ?? '—'} | By: {log.detected_by ?? '—'}{log.error ? ` | ${log.error}` : ''}</p>
                        </div>
                     </div>
-                    <span className={`font-space text-[10px] font-bold tracking-widest uppercase ${log.status === 'BLOCKED' ? 'text-neon-lime' : 'text-red-500'}`}>
+                    <span className={`font-space text-[10px] font-bold tracking-widest uppercase ${log.status === 'BLOCKED' ? 'text-neon-lime' : log.status === 'ERROR' ? 'text-amber-500' : 'text-red-500'}`}>
                       {log.status}
                     </span>
                   </div>
