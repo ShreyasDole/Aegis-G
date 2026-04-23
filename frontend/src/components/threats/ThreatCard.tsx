@@ -105,7 +105,7 @@ export const ThreatCard: React.FC<ThreatCardProps> = ({
       {/* Actions */}
       <div className="flex gap-2 pt-3 border-t border-border-subtle">
         <Button
-          variant="ai"
+          variant="primary"
           className="text-xs py-1.5 px-3 flex-1"
           onClick={() => onAnalyze?.(id, content ?? description)}
         >
