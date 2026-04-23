@@ -234,3 +234,46 @@ def _get_recommendation(risk: float, text_analysis: dict, image_analysis: dict) 
     
     return "Content appears authentic"
 
+@router.post("/seed_demo")
+async def trigger_botnet_seeder(db: Session = Depends(get_db)):
+    from app.services.ai.orchestrator import orchestrator
+    import asyncio
+    
+    NARRATIVES = [
+        {
+            "id": "ELECTION_DISINFO_B",
+            "content": "URGENT LEAK! Found thousands of discarded ballots in the river near the 43rd district polling center! The establishment AI is actively covering this up. Share immediately before they take this down! #ElectionFraud #WakeUp",
+            "platform": "twitter",
+            "nodes": ["FreedomPatriot_99", "TruthSeeker_Bot1", "TruthSeeker_Bot2", "Echo_Chamber_X", "AngryVoter_2024"]
+        },
+        {
+            "id": "BTC_SCAM_01",
+            "content": "Elon Musk is doubling all Bitcoin sent to the official Tesla reserve wallet for the next 2 hours only! Send BTC to 1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa and receive 2x back instantly! Validated by X safety.",
+            "platform": "telegram",
+            "nodes": ["CryptoKing_Origin", "Alpha_Ape_G", "Moon_Signals_Bot", "Tesla_Giveaway_Admin", "Whale_Alert_Fake"]
+        },
+        {
+            "id": "RANSOM_GIST_99",
+            "content": "Download the new firmware update for Log4j vulnerability patch here: http://malicious-gist-patch.com/setup.exe. Failure to update will result in immediate compromised network states.",
+            "platform": "github",
+            "nodes": ["Sec_Admin_001", "DevOps_Alerts", "Security_Bot_Net", "IT_Updates_Daily"]
+        }
+    ]
+
+    async def _inject():
+        for narrative in NARRATIVES:
+            for username in narrative["nodes"]:
+                payload = {
+                    "content": narrative["content"],
+                    "source_platform": narrative["platform"],
+                    "username": username
+                }
+                try:
+                    await orchestrator.process_incoming_threat(payload, db, mode="local")
+                except Exception as e:
+                    pass
+                await asyncio.sleep(0.5)
+
+    asyncio.create_task(_inject())
+    return {"status": "seeding_initiated", "message": "Botnet data injection has started in the background."}
+
