@@ -102,15 +102,16 @@ class ForensicInvestigator:
         
         logger.info(f"✅ Agent 1 complete: AI={is_ai}, Risk={risk_score:.2f}")
         
+        # Native Python floats only — np.float64 breaks FastAPI/Starlette JSON encoding (500).
         return {
-            "is_ai": is_ai,
-            "risk_score": round(risk_score, 3),
-            "perplexity": round(perplexity, 2),
-            "burstiness": round(burstiness, 2),
-            "artifacts": artifacts,
+            "is_ai": bool(is_ai),
+            "risk_score": float(round(float(risk_score), 3)),
+            "perplexity": float(round(float(perplexity), 2)),
+            "burstiness": float(round(float(burstiness), 2)),
+            "artifacts": list(artifacts),
             "details": details,
-            "adversarial_detected": adversarial_analysis["adversarial_detected"],
-            "adversarial_patterns": adversarial_analysis["patterns"]
+            "adversarial_detected": bool(adversarial_analysis["adversarial_detected"]),
+            "adversarial_patterns": list(adversarial_analysis["patterns"]),
         }
     
     def _extract_sentences(self, text: str) -> list:
@@ -136,9 +137,7 @@ class ForensicInvestigator:
             return 0.0
         
         # Calculate standard deviation as burstiness metric
-        burstiness = float(np.std(sentence_lengths))
-        
-        return burstiness
+        return float(np.std(sentence_lengths))
     
     def _estimate_perplexity(self, text: str, sentences: list) -> float:
         """
@@ -189,7 +188,7 @@ class ForensicInvestigator:
         if start_diversity < 0.5:  # More than 50% repeated sentence starts
             perplexity_estimate *= 0.7
         
-        return perplexity_estimate
+        return float(perplexity_estimate)
     
     def _detect_adversarial_patterns(self, text: str) -> Dict[str, Any]:
         """

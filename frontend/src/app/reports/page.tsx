@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { FileText, Shield, AlertTriangle, Link2 } from 'lucide-react';
@@ -43,6 +42,8 @@ export default function ReportsPage() {
   const [threatCount, setThreatCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [integrity, setIntegrity] = useState<{ is_valid?: boolean; status?: string } | null>(null);
+  const [genBusy, setGenBusy] = useState(false);
+  const [genNote, setGenNote] = useState<string | null>(null);
 
   const load = async () => {
     const token = localStorage.getItem('token');
@@ -86,6 +87,33 @@ export default function ReportsPage() {
     load();
   }, []);
 
+  const persistInsights = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setGenNote('Login required');
+      return;
+    }
+    setGenBusy(true);
+    setGenNote(null);
+    try {
+      const res = await fetch('/api/ai/insights/generate', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setGenNote(typeof data.message === 'string' ? data.message : 'Generated');
+        await load();
+      } else {
+        setGenNote(typeof data.detail === 'string' ? data.detail : `HTTP ${res.status}`);
+      }
+    } catch {
+      setGenNote('Request failed');
+    } finally {
+      setGenBusy(false);
+    }
+  };
+
   return (
     <div className="h-full w-full flex flex-col p-6 space-y-6 overflow-y-auto">
       <header className="flex flex-wrap items-start justify-between gap-4 mb-6">
@@ -97,10 +125,21 @@ export default function ReportsPage() {
             COMMAND_CENTER // Real-time insights, ledger integrity, and aggregated threats
           </p>
         </div>
-        <Button variant="primary" onClick={load} disabled={loading} className="font-space tracking-widest text-[10px] uppercase border-neon-cyan/30 hover:border-neon-cyan/80">
-          Sync Intelligence
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="primary" onClick={load} disabled={loading} className="font-space tracking-widest text-[10px] uppercase border-neon-cyan/30 hover:border-neon-cyan/80">
+            Sync Intelligence
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={persistInsights}
+            disabled={genBusy}
+            className="font-space tracking-widest text-[10px] uppercase"
+          >
+            {genBusy ? 'Generating…' : 'Persist LLM insights'}
+          </Button>
+        </div>
       </header>
+      {genNote && <p className="text-xs text-text-muted font-mono -mt-2 mb-2">{genNote}</p>}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
         <div className="bg-black/40 border border-neon-magenta/30 hover:border-neon-magenta shadow-[0_0_10px_rgba(255,0,255,0.1)] rounded p-6 relative overflow-hidden transition-all duration-300">
@@ -150,7 +189,7 @@ export default function ReportsPage() {
           ) : (
             <ul className="space-y-3 overflow-y-auto custom-scrollbar pr-2 flex-1">
               {insights.map((i) => (
-                <li key={i.id} className="p-4 rounded bg-black/40 border border-white/5 hover:border-white/20 transition-colors group">
+                <li key={`${i.id}-${i.title?.slice(0, 8)}`} className="p-4 rounded bg-black/40 border border-white/5 hover:border-white/20 transition-colors group">
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <span className="text-xs font-space font-bold uppercase text-text-primary group-hover:text-neon-cyan transition-colors">{i.title}</span>
                     <Badge variant={insightBadgeVariant(String(i.severity))} className="text-[9px] font-space px-2">

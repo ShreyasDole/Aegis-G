@@ -5,7 +5,6 @@ import { usePathname, useRouter } from 'next/navigation';
 import React, { useEffect, useState, useRef } from 'react';
 import {
   Shield,
-  Activity,
   LogOut,
   Sparkles,
   Cpu,
@@ -34,8 +33,7 @@ export function EnterpriseShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const checkHealth = async () => {
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-        const res = await fetch(`${API_URL}/api/system/health`);
+        const res = await fetch('/api/system/health');
         if (res.ok) {
           const data = await res.json();
           setHealth({ database: !!data.database, ai_engine: !!data.ai_engine });
@@ -67,12 +65,6 @@ export function EnterpriseShell({ children }: { children: React.ReactNode }) {
     window.dispatchEvent(new CustomEvent('openAIAssistant'));
   };
 
-  const navLinks = [
-    { href: '/dashboard', label: 'Dashboard' },
-    { href: '/forensics', label: 'Forensic Lab' },
-    { href: '/network', label: 'Graph Intel' },
-  ];
-
   return (
     <div className="flex flex-col min-h-screen bg-black-true font-satoshi selection:bg-neon-magenta/30 selection:text-white">
       {/* Background & Effects */}
@@ -86,8 +78,8 @@ export function EnterpriseShell({ children }: { children: React.ReactNode }) {
         <div className="flex items-center justify-between px-6 py-4 bg-black-true/60 backdrop-blur-md border border-white/10 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.8)]">
           {/* Logo */}
           <Link href="/dashboard" className="flex items-center gap-3 hover:scale-105 transition-transform group">
-            <div className="w-8 h-8 rounded bg-white flex items-center justify-center group-hover:bg-neon-cyan transition-colors">
-              <Shield className="w-5 h-5 text-black-true" />
+            <div className="w-8 h-8 rounded bg-white flex items-center justify-center group-hover:bg-neon-cyan transition-colors overflow-hidden">
+              <img src="/logo.png" alt="Aegis Logo" className="w-full h-full object-contain" />
             </div>
             <span className="font-cabinet font-bold uppercase tracking-tight text-lg text-white">Aegis-G</span>
           </Link>
@@ -97,6 +89,7 @@ export function EnterpriseShell({ children }: { children: React.ReactNode }) {
             {[
               { href: '/dashboard', label: 'Home' },
               { href: '/scans', label: 'Scans' },
+              { href: '/redteam', label: 'Simulator' },
               { href: '/threats', label: 'Threats' },
               { href: '/network', label: 'Graph' },
               { href: '/policy', label: 'Policy' },

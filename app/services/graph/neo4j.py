@@ -71,17 +71,20 @@ class Neo4jService:
         LIMIT 1
         RETURN candidate.id AS user_id, candidate.label AS username, p.timestamp AS timestamp
         """
-        async with self.driver.session() as session:
-            result = await session.run(query, content_hash=content_hash)
-            record = await result.single()
-            if record:
-                return {
-                    "status": "found",
-                    "username": record.get("username") or record.get("user_id"),
-                    "user_id": record.get("user_id"),
-                    "origin_time": str(record.get("timestamp", ""))
-                }
-            return {"status": "not_found"}
+        try:
+            async with self.driver.session() as session:
+                result = await session.run(query, content_hash=content_hash)
+                record = await result.single()
+                if record:
+                    return {
+                        "status": "found",
+                        "username": record.get("username") or record.get("user_id"),
+                        "user_id": record.get("user_id"),
+                        "origin_time": str(record.get("timestamp", ""))
+                    }
+        except Exception as e:
+            logger.warning(f"find_patient_zero neo4j error: {e}")
+        return {"status": "not_found"}
 
     # --- YASH TASK 2: Campaign Lineage (The Tree View) ---
     async def get_campaign_lineage(self, root_user_id: str) -> Dict[str, Any]:
@@ -94,36 +97,43 @@ class Neo4jService:
         MATCH path = (root:User {id: $root_id})-[:INTERACTED_WITH|SHARED|REPOSTED*1..3]->(target:User)
         RETURN path LIMIT 50
         """
-        async with self.driver.session() as session:
-            result = await session.run(query, root_id=root_user_id)
-            nodes = {}
-            edges = []
-            
-            async for record in result:
-                path = record["path"]
-                for node in path.nodes:
-                    props = dict(node)
-                    node_id = props.get("id") or (str(node.element_id) if hasattr(node, 'element_id') else str(node.id))
-                    if node_id not in nodes:
-                        risk = props.get("risk_score") or 0
-                        nodes[node_id] = {
-                            "id": node_id,
-                            "label": props.get("label") or node_id,
-                            "type": "User",
-                            "severity": "critical" if risk > 0.8 else ("medium" if risk > 0.5 else "low"),
-                        }
-                for rel in path.relationships:
-                    start_node = rel.start_node
-                    end_node = rel.end_node
-                    start_id = start_node.get("id") if hasattr(start_node, 'get') and start_node.get("id") else (str(start_node.element_id) if hasattr(start_node, 'element_id') else str(start_node.id))
-                    end_id = end_node.get("id") if hasattr(end_node, 'get') and end_node.get("id") else (str(end_node.element_id) if hasattr(end_node, 'element_id') else str(end_node.id))
-                    edges.append({
-                        "source": start_id,
-                        "target": end_id,
-                        "type": rel.type if hasattr(rel, 'type') else "RELATED"
-                    })
-            
-            return {"nodes": list(nodes.values()), "edges": edges}
+        try:
+            async with self.driver.session() as session:
+                result = await session.run(query, root_id=root_user_id)
+                nodes = {}
+                edges = []
+
+                async for record in result:
+                    path = record["path"]
+                    for node in path.nodes:
+                        props = dict(node)
+                        node_id = props.get("id") or (str(node.element_id) if hasattr(node, 'element_id') else str(node.id))
+                        if node_id not in nodes:
+                            risk = float(props.get("risk_score") or 0)
+                            nodes[node_id] = {
+                                "id": node_id,
+                                "label": props.get("label") or node_id,
+                                "type": "User",
+                                "severity": "critical" if risk > 0.8 else ("medium" if risk > 0.5 else "low"),
+                                "platform": props.get("platform"),
+                                "caption": props.get("caption"),
+                                "risk_score": risk,
+                            }
+                    for rel in path.relationships:
+                        start_node = rel.start_node
+                        end_node = rel.end_node
+                        start_id = start_node.get("id") if hasattr(start_node, 'get') and start_node.get("id") else (str(start_node.element_id) if hasattr(start_node, 'element_id') else str(start_node.id))
+                        end_id = end_node.get("id") if hasattr(end_node, 'get') and end_node.get("id") else (str(end_node.element_id) if hasattr(end_node, 'element_id') else str(end_node.id))
+                        edges.append({
+                            "source": start_id,
+                            "target": end_id,
+                            "type": rel.type if hasattr(rel, 'type') else "RELATED"
+                        })
+
+                return {"nodes": list(nodes.values()), "edges": edges}
+        except Exception as e:
+            logger.warning(f"get_campaign_lineage failed: {e}")
+            return {"nodes": [], "edges": []}
 
     # --- YASH TASK 3: Clustering (Narrative Detection) with Neo4j GDS Louvain ---
     async def detect_clusters(self) -> List[Dict]:
@@ -178,9 +188,14 @@ class Neo4jService:
                 for comm_id, members in communities.items():
                     if len(members) >= 2:
                         avg_risk = sum(m.get("risk") or 0 for m in members) / len(members)
+                        member_objs = [
+                            {"id": m["user_id"], "label": m.get("username") or m["user_id"]}
+                            for m in members
+                        ]
                         clusters.append({
                             "cluster_id": f"LOUVAIN_{comm_id}",
-                            "nodes": [m["username"] for m in members],
+                            "nodes": [m["user_id"] for m in members],
+                            "members": member_objs,
                             "size": len(members),
                             "avg_risk": round(avg_risk, 3),
                             "type": "Botnet_Cluster",
@@ -203,8 +218,7 @@ class Neo4jService:
         WHERE size(bots) >= 2
         RETURN commander.id AS c2_id, commander.label AS c2_label,
                commander.risk_score AS c2_risk,
-               [b IN bots | b.label] AS bot_labels,
-               [b IN bots | coalesce(b.risk_score, 0)] AS bot_risks
+               [b IN bots | {id: b.id, label: coalesce(b.label, b.id), risk: coalesce(b.risk_score, 0)}] AS bots
         LIMIT 10
         """
         # ── Fallback B: same content_hash posted by multiple users ────────────
@@ -213,64 +227,78 @@ class Neo4jService:
         WHERE u1.id < u2.id
         WITH u1, u2, count(p) AS overlap
         WHERE overlap >= 1
-        RETURN u1.label AS actor_a, u2.label AS actor_b,
+        RETURN u1.id AS id_a, u2.id AS id_b,
+               u1.label AS label_a, u2.label AS label_b,
                u1.risk_score AS risk_a, u2.risk_score AS risk_b, overlap
         ORDER BY overlap DESC LIMIT 20
         """
         clusters = []
-        async with self.driver.session() as session:
-            # Run C2-chain detection first
-            c2_result = await session.run(c2_query)
-            async for record in c2_result:
-                bot_labels = record["bot_labels"] or []
-                bot_risks = record["bot_risks"] or []
-                avg_risk = (sum(bot_risks) + (record["c2_risk"] or 0)) / (len(bot_risks) + 1) if bot_risks else (record["c2_risk"] or 0)
-                clusters.append({
-                    "cluster_id": f"C2_{record['c2_label']}",
-                    "nodes": [record["c2_label"]] + bot_labels,
-                    "size": len(bot_labels) + 1,
-                    "avg_risk": round(avg_risk, 3),
-                    "type": "Botnet_Cluster",
-                    "method": "C2_Chain_Traversal",
-                })
-
-            if not clusters:
-                # Fallback B: content-hash overlap
-                overlap_result = await session.run(overlap_query)
-                seen_pairs: set = set()
-                groups: dict = {}
-                async for record in overlap_result:
-                    a, b = record["actor_a"], record["actor_b"]
-                    key = tuple(sorted([a, b]))
-                    if key in seen_pairs:
-                        continue
-                    seen_pairs.add(key)
-                    # Group actors sharing content together
-                    matched = None
-                    for cid, group in groups.items():
-                        if a in group["nodes"] or b in group["nodes"]:
-                            matched = cid
-                            break
-                    if matched:
-                        groups[matched]["nodes"].update([a, b])
-                        groups[matched]["risks"].extend([record["risk_a"] or 0, record["risk_b"] or 0])
-                    else:
-                        cid = f"HASH_cluster_{len(groups)}"
-                        groups[cid] = {
-                            "nodes": {a, b},
-                            "risks": [record["risk_a"] or 0, record["risk_b"] or 0],
-                        }
-                for cid, g in groups.items():
-                    nodes_list = list(g["nodes"])
-                    avg_risk = sum(g["risks"]) / len(g["risks"]) if g["risks"] else 0
+        try:
+            async with self.driver.session() as session:
+                c2_result = await session.run(c2_query)
+                async for record in c2_result:
+                    bots = record["bots"] or []
+                    bot_risks = [float(b.get("risk") or 0) for b in bots]
+                    members = [{"id": record["c2_id"], "label": record.get("c2_label") or record["c2_id"]}]
+                    for b in bots:
+                        members.append({"id": b["id"], "label": b.get("label") or b["id"]})
+                    all_risks = [float(record.get("c2_risk") or 0)] + bot_risks
+                    avg_risk = sum(all_risks) / len(all_risks) if all_risks else 0.0
                     clusters.append({
-                        "cluster_id": cid,
-                        "nodes": nodes_list,
-                        "size": len(nodes_list),
+                        "cluster_id": f"C2_{record['c2_id']}",
+                        "nodes": [m["id"] for m in members],
+                        "members": members,
+                        "size": len(members),
                         "avg_risk": round(avg_risk, 3),
                         "type": "Botnet_Cluster",
-                        "method": "Content_Hash_Overlap",
+                        "method": "C2_Chain_Traversal",
                     })
+
+                if not clusters:
+                    overlap_result = await session.run(overlap_query)
+                    seen_pairs: set = set()
+                    groups: dict = {}
+                    async for record in overlap_result:
+                        id_a, id_b = record["id_a"], record["id_b"]
+                        la = record.get("label_a") or id_a
+                        lb = record.get("label_b") or id_b
+                        key = tuple(sorted([id_a, id_b]))
+                        if key in seen_pairs:
+                            continue
+                        seen_pairs.add(key)
+                        matched = None
+                        for cid, group in groups.items():
+                            if id_a in group["ids"] or id_b in group["ids"]:
+                                matched = cid
+                                break
+                        if matched:
+                            groups[matched]["ids"].update([id_a, id_b])
+                            groups[matched]["labels"][id_a] = la
+                            groups[matched]["labels"][id_b] = lb
+                            groups[matched]["risks"].extend([record["risk_a"] or 0, record["risk_b"] or 0])
+                        else:
+                            cid = f"HASH_cluster_{len(groups)}"
+                            groups[cid] = {
+                                "ids": {id_a, id_b},
+                                "labels": {id_a: la, id_b: lb},
+                                "risks": [record["risk_a"] or 0, record["risk_b"] or 0],
+                            }
+                    for cid, g in groups.items():
+                        ids_list = list(g["ids"])
+                        members = [{"id": i, "label": g["labels"].get(i, i)} for i in ids_list]
+                        avg_risk = sum(g["risks"]) / len(g["risks"]) if g["risks"] else 0
+                        clusters.append({
+                            "cluster_id": cid,
+                            "nodes": ids_list,
+                            "members": members,
+                            "size": len(ids_list),
+                            "avg_risk": round(avg_risk, 3),
+                            "type": "Botnet_Cluster",
+                            "method": "Content_Hash_Overlap",
+                        })
+        except Exception as e:
+            logger.warning(f"detect_clusters fallback session failed: {e}")
+            return []
         return clusters
     
     async def calculate_page_rank(self, limit: int = 20) -> List[Dict]:
@@ -303,7 +331,6 @@ class Neo4jService:
                 return influencers
         except Exception as e:
             logger.warning(f"GDS PageRank not available: {e}")
-            # Fallback: Simple degree-based ranking
             fallback_query = """
             MATCH (u:User)-[r]->()
             WITH u, count(r) as degree
@@ -311,17 +338,21 @@ class Neo4jService:
             LIMIT $limit
             RETURN u.id as user_id, u.label as username, degree as influence_score
             """
-            async with self.driver.session() as session:
-                result = await session.run(fallback_query, limit=limit)
-                influencers = []
-                async for record in result:
-                    influencers.append({
-                        "user_id": record["user_id"],
-                        "username": record["username"],
-                        "influence_score": float(record["influence_score"]),
-                        "rank": len(influencers) + 1
-                    })
-                return influencers
+            try:
+                async with self.driver.session() as session:
+                    result = await session.run(fallback_query, limit=limit)
+                    influencers = []
+                    async for record in result:
+                        influencers.append({
+                            "user_id": record["user_id"],
+                            "username": record["username"],
+                            "influence_score": float(record["influence_score"]),
+                            "rank": len(influencers) + 1
+                        })
+                    return influencers
+            except Exception as e2:
+                logger.warning(f"PageRank degree fallback failed: {e2}")
+                return []
 
     # Standard Network View — includes User-to-User edges (SHARED/REPOSTED/INTERACTED)
     async def get_network(self, limit: int = 100) -> Dict[str, Any]:
@@ -340,28 +371,35 @@ class Neo4jService:
                     n_props = dict(n)
                     n_id = n_props.get("id") or (str(n.element_id) if hasattr(n, 'element_id') else str(n.id))
                     if n_id not in nodes:
-                        risk = n_props.get("risk_score") or 0
+                        risk = float(n_props.get("risk_score") or 0)
                         nodes[n_id] = {
                             "id": n_id,
                             "label": n_props.get("label") or n_props.get("username") or n_id,
                             "type": "User",
                             "severity": "critical" if risk > 0.8 else ("medium" if risk > 0.5 else "low"),
+                            "platform": n_props.get("platform"),
+                            "caption": n_props.get("caption"),
+                            "risk_score": risk,
                         }
                     m = record['m']
                     if m:
                         m_props = dict(m)
                         m_id = m_props.get("id") or (str(m.element_id) if hasattr(m, 'element_id') else str(m.id))
                         if m_id not in nodes:
-                            risk = m_props.get("risk_score") or 0
+                            risk = float(m_props.get("risk_score") or 0)
                             nodes[m_id] = {
                                 "id": m_id,
                                 "label": m_props.get("label") or m_props.get("username") or m_id,
                                 "type": "User",
                                 "severity": "critical" if risk > 0.8 else ("medium" if risk > 0.5 else "low"),
+                                "platform": m_props.get("platform"),
+                                "caption": m_props.get("caption"),
+                                "risk_score": risk,
                             }
                         r = record['r']
                         if r:
-                            edges.append({"source": n_id, "target": m_id, "strength": 1})
+                            rel_type = getattr(r, "type", None) or "RELATED"
+                            edges.append({"source": n_id, "target": m_id, "type": rel_type, "strength": 1})
                 return {"nodes": list(nodes.values()), "edges": edges}
         except Exception as e:
             logger.error(f"get_network failed: {e}")
@@ -415,13 +453,42 @@ class Neo4jService:
         H2 = "demo_astroturf_election_2024_h2"
 
         seed_cypher = f"""
-        // === USERS ===
-        MERGE (c2:User {{id: 'c2_master', label: 'c2_master', platform: 'telegram', risk_score: 0.97}})
-        MERGE (b1:User {{id: 'bot_agent_01', label: 'bot_agent_01', platform: 'twitter', risk_score: 0.91}})
-        MERGE (b2:User {{id: 'bot_agent_02', label: 'bot_agent_02', platform: 'twitter', risk_score: 0.88}})
-        MERGE (b3:User {{id: 'bot_agent_03', label: 'bot_agent_03', platform: 'facebook', risk_score: 0.85}})
-        MERGE (b4:User {{id: 'bot_agent_04', label: 'bot_agent_04', platform: 'facebook', risk_score: 0.82}})
-        MERGE (b5:User {{id: 'bot_agent_05', label: 'bot_agent_05', platform: 'reddit', risk_score: 0.79}})
+        // === USERS (synthetic scenario: EU-policy + election CIB, structurally like real OSINT cases) ===
+        MERGE (c2:User {{id: 'c2_master'}})
+        SET c2.label = 'Primary operator · Telegram C2',
+            c2.platform = 'telegram',
+            c2.risk_score = 0.97,
+            c2.caption = 'Originates coordinated URLs; zero incoming REPOSTED from cohort (patient-zero signature).'
+
+        MERGE (b1:User {{id: 'bot_agent_01'}})
+        SET b1.label = 'Amplifier @EUWatch_fake · X',
+            b1.platform = 'twitter',
+            b1.risk_score = 0.91,
+            b1.caption = 'Reposts within 5m of C2; identical URL slugs to cluster peers.'
+
+        MERGE (b2:User {{id: 'bot_agent_02'}})
+        SET b2.label = 'Amplifier @PolicyAlertEU · X',
+            b2.platform = 'twitter',
+            b2.risk_score = 0.88,
+            b2.caption = 'Cross-posts to FB groups; stylometry overlap with b1 (ONNX attribution).'
+
+        MERGE (b3:User {{id: 'bot_agent_03'}})
+        SET b3.label = 'Group admin · FB “EU Transparency”',
+            b3.platform = 'facebook',
+            b3.risk_score = 0.85,
+            b3.caption = 'Seeds narrative into 40+ groups; high betweenness in graph projection.'
+
+        MERGE (b4:User {{id: 'bot_agent_04'}})
+        SET b4.label = 'Page operator · FB',
+            b4.platform = 'facebook',
+            b4.risk_score = 0.82,
+            b4.caption = 'Paid reach spike correlated with GRU-style posting hours (UTC).'
+
+        MERGE (b5:User {{id: 'bot_agent_05'}})
+        SET b5.label = 'Sockpuppet · Reddit r/europolitics',
+            b5.platform = 'reddit',
+            b5.risk_score = 0.79,
+            b5.caption = 'Karma farm then pivot to election-interference talking points; SIMILAR_TO same hashes.'
 
         // === SHARED POSTS (same hash = coordinated inauthentic behavior) ===
         MERGE (p1:Post {{content_hash: '{H1}'}})

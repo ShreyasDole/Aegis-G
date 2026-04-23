@@ -2,6 +2,7 @@
   "/",
   "/health",
   "/api/system/health",
+  "/api/system/health/",
   "/api/auth/login",
   "/api/auth/register",
   "/api/auth/outlook",

@@ -1,6 +1,8 @@
 "use client";
+/* eslint-disable @next/next/no-img-element */
 import React, { useState, useRef, useEffect } from 'react';
 import { Paperclip, Send, Bot, User, Brain, X, Image as ImageIcon } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface Message {
   id: string;
@@ -16,7 +18,7 @@ export default function ForensicChatPage() {
     {
       id: '1',
       role: 'assistant',
-      content: 'Aegis-G Multimodal AntiGravity Engine Online. Provide textual telemetry or graphical payloads for forensic analysis.',
+      content: 'Aegis-G Multimodal Engine Online. Provide textual telemetry or graphical payloads for forensic analysis.',
       timestamp: new Date().toLocaleTimeString(),
     }
   ]);
@@ -24,6 +26,7 @@ export default function ForensicChatPage() {
   const [isScanning, setIsScanning] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [mediaType, setMediaType] = useState<'image' | 'video' | 'audio' | null>(null);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -39,10 +42,12 @@ export default function ForensicChatPage() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (!file.type.startsWith('image/')) {
-        alert("Only image uploads are supported for vision scans at this time.");
+      const type = file.type.split('/')[0];
+      if (!['image', 'video', 'audio'].includes(type)) {
+        alert("Unsupported file type. Only image, video, or audio uploads are supported.");
         return;
       }
+      setMediaType(type as any);
       setImageFile(file);
       const reader = new FileReader();
       reader.onload = (ev) => {
@@ -55,6 +60,7 @@ export default function ForensicChatPage() {
   const removeAttachment = () => {
     setImageFile(null);
     setImagePreview(null);
+    setMediaType(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -64,11 +70,12 @@ export default function ForensicChatPage() {
 
     const currentText = inputVal;
     const currentBase64 = imagePreview;
+    const currentMediaType = mediaType;
 
     const newMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
-      content: currentText || 'Attached Forensic Payload',
+      content: currentText || `Attached ${currentMediaType?.toUpperCase() || 'PAYLOAD'}`,
       imageObj: currentBase64,
       timestamp: new Date().toLocaleTimeString()
     };
@@ -79,18 +86,19 @@ export default function ForensicChatPage() {
     setIsScanning(true);
 
     try {
-      const mode = typeof window !== 'undefined' ? (localStorage.getItem('inference-mode') || 'local') : 'local';
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const mode = typeof window !== 'undefined' ? (localStorage.getItem('inference-mode') || 'cloud') : 'cloud';
       const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
       // Prepare payload - if image exists, send it inside a multimodal capable endpoint structure
       const payload = {
-        content: currentText || '[IMAGE PAYLOAD]',
-        image_base64: currentBase64 || null,
+        content: currentText || `[${currentMediaType?.toUpperCase() || 'IMAGE'} PAYLOAD]`,
+        image_base64: currentMediaType === 'image' ? currentBase64 : null,
+        media_base64: currentMediaType !== 'image' ? currentBase64 : null,
+        media_type: currentMediaType,
         source_platform: "chat-ui"
       };
 
-      const response = await fetch(`${API_URL}/api/scan/core`, {
+      const response = await fetch('/api/scan/core', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -107,8 +115,8 @@ export default function ForensicChatPage() {
       setMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: result.recommendation || 'Analysis complete.',
-        scanResult: result,
+        content: result.reasoning || result.recommendation || 'Analysis complete.',
+        scanResult: result.is_conversational ? undefined : result,
         timestamp: new Date().toLocaleTimeString()
       }]);
 
@@ -129,7 +137,14 @@ export default function ForensicChatPage() {
     const isAssistant = msg.role === 'assistant';
     
     return (
-      <div key={msg.id} className={`flex gap-4 w-full ${isAssistant ? '' : 'flex-row-reverse'} animate-slide-in`}>
+      <motion.div 
+        key={msg.id} 
+        initial={{ opacity: 0, y: 30, scale: 0.95 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        transition={{ type: "spring", stiffness: 200, damping: 20 }}
+        className={`flex gap-4 w-full ${isAssistant ? '' : 'flex-row-reverse'}`}
+      >
         {/* Avatar */}
         <div className={`w-8 h-8 rounded shrink-0 flex items-center justify-center border shadow-lg relative ${
           isAssistant ? 'bg-black-true border-neon-cyan text-neon-cyan shadow-glow-cyan' 
@@ -141,7 +156,7 @@ export default function ForensicChatPage() {
         {/* Content Box */}
         <div className={`flex flex-col gap-2 max-w-[85%] ${isAssistant ? 'items-start' : 'items-end'}`}>
           <div className="flex items-center gap-2 text-[10px] font-space uppercase tracking-widest text-white/40">
-            <span>{isAssistant ? 'Antigravity Agent' : 'Analyst'}</span>
+            <span>{isAssistant ? 'Aegis Agent' : 'Analyst'}</span>
             {/* // */}
             <span>{msg.timestamp}</span>
           </div>
@@ -154,9 +169,15 @@ export default function ForensicChatPage() {
             {/* User Image Attachment rendering */}
             {msg.imageObj && (
               <div className="mb-3 rounded border border-white/10 overflow-hidden relative group">
-                <img src={msg.imageObj} alt="payload" className="w-full max-w-sm object-cover" />
+                {msg.imageObj.startsWith('data:video') ? (
+                  <video src={msg.imageObj} controls className="w-full max-w-sm object-cover" />
+                ) : msg.imageObj.startsWith('data:audio') ? (
+                  <audio src={msg.imageObj} controls className="w-full max-w-sm" />
+                ) : (
+                  <img src={msg.imageObj} alt="payload" className="w-full max-w-sm object-cover" />
+                )}
                 <div className="absolute top-2 left-2 px-2 py-0.5 bg-black-true/60 backdrop-blur border border-white/10 rounded flex items-center gap-1.5 text-[9px] font-space font-bold uppercase tracking-widest text-white/70">
-                  <ImageIcon className="w-2.5 h-2.5" /> Image Object
+                  <ImageIcon className="w-2.5 h-2.5" /> Media Object
                 </div>
               </div>
             )}
@@ -212,7 +233,7 @@ export default function ForensicChatPage() {
             )}
           </div>
         </div>
-      </div>
+      </motion.div>
     );
   };
 
@@ -236,39 +257,56 @@ export default function ForensicChatPage() {
 
       {/* Chat History */}
       <div className="flex-1 overflow-y-auto scrollbar-thin rounded-xl mr-2 pr-4 space-y-6 z-10 relative">
-         {messages.map(renderBubble)}
-         {isScanning && (
-           <div className="flex gap-4 w-full animate-slide-in">
-             <div className="w-8 h-8 rounded shrink-0 flex items-center justify-center border shadow-lg bg-black-true border-neon-magenta text-neon-magenta shadow-glow-magenta animate-pulse">
-                <Bot className="w-4 h-4" />
-             </div>
-             <div className="flex flex-col gap-2">
-               <div className="flex items-center gap-2 text-[10px] font-space uppercase tracking-widest text-white/40">
-                  <span>Antigravity Agent</span> {/* // */} <span>Processing Neural Weights...</span>
-               </div>
-               <div className="p-4 rounded-xl border border-neon-magenta/30 bg-black-true/60 rounded-tl-none font-satoshi text-sm text-neon-magenta flex items-center gap-2 w-max shadow-glow-magenta">
-                  <div className="w-1.5 h-1.5 rounded-full bg-neon-magenta animate-bounce" style={{ animationDelay: '0ms' }} />
-                  <div className="w-1.5 h-1.5 rounded-full bg-neon-magenta animate-bounce" style={{ animationDelay: '150ms' }} />
-                  <div className="w-1.5 h-1.5 rounded-full bg-neon-magenta animate-bounce" style={{ animationDelay: '300ms' }} />
-               </div>
-             </div>
-           </div>
-         )}
+         <AnimatePresence>
+            {messages.map(renderBubble)}
+            {isScanning && (
+              <motion.div 
+                key="scanning-indicator"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                className="flex gap-4 w-full"
+              >
+                <div className="w-8 h-8 rounded shrink-0 flex items-center justify-center border shadow-lg bg-black-true border-neon-magenta text-neon-magenta shadow-glow-magenta animate-pulse">
+                   <Bot className="w-4 h-4" />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2 text-[10px] font-space uppercase tracking-widest text-white/40">
+                     <span>Aegis Agent</span> {/* // */} <span>Processing Neural Weights...</span>
+                  </div>
+                  <div className="p-4 rounded-xl border border-neon-magenta/30 bg-black-true/60 rounded-tl-none font-satoshi text-sm text-neon-magenta flex items-center gap-2 w-max shadow-glow-magenta">
+                     <div className="w-1.5 h-1.5 rounded-full bg-neon-magenta animate-bounce" style={{ animationDelay: '0ms' }} />
+                     <div className="w-1.5 h-1.5 rounded-full bg-neon-magenta animate-bounce" style={{ animationDelay: '150ms' }} />
+                     <div className="w-1.5 h-1.5 rounded-full bg-neon-magenta animate-bounce" style={{ animationDelay: '300ms' }} />
+                  </div>
+                </div>
+              </motion.div>
+            )}
+         </AnimatePresence>
          <div ref={messagesEndRef} className="pb-4" />
       </div>
 
       {/* Upload Preview Banner */}
-      {imagePreview && (
-        <div className="mx-4 mt-2 mb-2 p-2 bg-black-true/80 border border-neon-lime/40 backdrop-blur rounded flex items-center gap-4 animate-slide-in relative z-20">
-          <img src={imagePreview} className="w-12 h-12 object-cover rounded border border-white/20" alt="upload-preview" />
-          <div className="flex-1 font-space text-[10px] text-neon-lime font-bold uppercase tracking-widest">
-            Visual Payload Attached ({(imageFile?.size ? (imageFile.size / 1024).toFixed(1) : 0)} KB)
-          </div>
-          <button type="button" onClick={removeAttachment} className="p-1 hover:bg-white/10 rounded text-white/60 hover:text-white transition-colors">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      )}
+      <AnimatePresence>
+        {imagePreview && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="mx-4 mt-2 mb-2 p-2 bg-black-true/80 border border-neon-lime/40 backdrop-blur rounded flex items-center gap-4 relative z-20"
+          >
+            <div className="w-12 h-12 flex items-center justify-center bg-white/5 border border-white/20 rounded font-space text-[8px] uppercase tracking-widest text-white/50">
+              {mediaType}
+            </div>
+            <div className="flex-1 font-space text-[10px] text-neon-lime font-bold uppercase tracking-widest">
+              {mediaType?.toUpperCase()} Payload Attached ({(imageFile?.size ? (imageFile.size / 1024).toFixed(1) : 0)} KB)
+            </div>
+            <button type="button" onClick={removeAttachment} className="p-1 hover:bg-white/10 rounded text-white/60 hover:text-white transition-colors">
+              <X className="w-4 h-4" />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Input Area */}
       <div className="shrink-0 pt-4 z-10 relative">
@@ -278,7 +316,7 @@ export default function ForensicChatPage() {
             type="file" 
             ref={fileInputRef} 
             onChange={handleFileChange} 
-            accept="image/*" 
+            accept="image/*,video/*,audio/*" 
             className="hidden" 
           />
 
@@ -286,7 +324,7 @@ export default function ForensicChatPage() {
             type="button"
             onClick={() => fileInputRef.current?.click()}
             className="w-14 h-14 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 flex items-center justify-center shrink-0 transition-colors text-white/60 hover:text-white group"
-            title="Attach Screen Capture / Image Payload"
+            title="Attach Screen Capture / Media Payload"
           >
             <Paperclip className="w-5 h-5 group-hover:rotate-12 transition-transform" />
           </button>
@@ -295,7 +333,7 @@ export default function ForensicChatPage() {
              type="text"
              value={inputVal}
              onChange={e => setInputVal(e.target.value)}
-             placeholder="Query Antigravity Engine or Paste Raw Extracted Metadata..."
+             placeholder="Query Aegis Engine or Paste Raw Extracted Metadata..."
              className="flex-1 bg-white/5 border border-white/10 rounded-xl px-5 text-sm font-space text-white placeholder:text-white/30 focus:outline-none focus:border-neon-cyan focus:shadow-glow-cyan transition-all"
           />
 

@@ -38,7 +38,7 @@ export default function SharingPage() {
           </p>
         </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="bg-bg-primary/60 border border-white/5 shadow-[0_0_15px_rgba(0,183,255,0.05)] rounded-lg p-6">
               <h2 className="text-sm font-space font-bold uppercase tracking-widest text-[#00ff9d] mb-4">Export STIX 2.1 Bundle</h2>
               <p className="text-text-secondary text-xs font-mono mb-6 leading-relaxed">
@@ -47,6 +47,23 @@ export default function SharingPage() {
               <Link href="/threats">
                 <Button variant="primary" className="font-space tracking-widest text-[10px] uppercase border-[#00ff9d]/30 hover:border-[#00ff9d] text-[#00ff9d]">Open Analysis Matrix</Button>
               </Link>
+            </div>
+
+            <div className="bg-bg-primary/60 border border-white/5 shadow-[0_0_15px_rgba(0,183,255,0.05)] rounded-lg p-6 flex flex-col">
+              <h2 className="text-sm font-space font-bold uppercase tracking-widest text-neon-magenta mb-4">Federated Model Sync</h2>
+              <p className="text-text-secondary text-xs font-mono mb-6 flex-1">
+                Initiate a Ring-AllReduce parameter synchronization with allied security nodes. PII/Logs are strictly isolated. Data is not shared, only gradient updates.
+              </p>
+              <Button 
+                variant="primary" 
+                onClick={async () => {
+                   const res = await fetch('/api/sharing/federated/sync-weights', { method: 'POST', headers: token ? { Authorization: `Bearer ${token}` } : {} });
+                   if (res.ok) alert("Synchronized with NATO and US-CYBERCOM via Differential Privacy.");
+                }} 
+                className="font-space tracking-widest text-[10px] uppercase border-neon-magenta/30 hover:border-neon-magenta/80 text-neon-magenta"
+              >
+                Sync Local Weights
+              </Button>
             </div>
 
             <div className="bg-bg-primary/60 border border-white/5 shadow-[0_0_15px_rgba(0,183,255,0.05)] rounded-lg p-6">
@@ -67,8 +84,8 @@ export default function SharingPage() {
                 <div className={`p-4 rounded-lg font-space uppercase tracking-widest text-xs border ${ledgerResult.verified ? 'bg-success/5 border-success/30 text-success shadow-[0_0_10px_rgba(0,255,100,0.1)]' : 'bg-red-500/10 border-red-500/50 text-red-500 shadow-[0_0_10px_rgba(255,0,0,0.2)]'}`}>
                   {ledgerResult.verified ? (
                     <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-success animate-pulse"></span>
-                      Verified Secure {ledgerResult.timestamp ? `// ${ledgerResult.timestamp}` : ''}
+                       <span className="w-2 h-2 rounded-full bg-success animate-pulse"></span>
+                       Verified Secure {ledgerResult.timestamp ? `// ${ledgerResult.timestamp}` : ''}
                     </div>
                   ) : (
                     <div className="flex items-center gap-2">

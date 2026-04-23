@@ -12,6 +12,9 @@ class GraphNode(BaseModel):
     label: str
     type: str  # User, Post, Narrative, IP_Address, PATIENT_ZERO, COMMUNITY
     severity: Optional[str] = None   # critical | medium | low
+    platform: Optional[str] = None
+    caption: Optional[str] = None  # one-line intel / role for UI
+    risk_score: Optional[float] = None
     properties: Optional[dict] = None
 
 

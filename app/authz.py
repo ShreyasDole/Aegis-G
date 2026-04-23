@@ -7,6 +7,9 @@ from typing import Dict, List, Optional, Any
 from pathlib import Path
 from fastapi import HTTPException, status
 
+# Maps live next to this file — never depend on process cwd (uvicorn from app/ breaks "app/*.json").
+_PKG_DIR = Path(__file__).resolve().parent
+
 
 class AuthorizationEngine:
     """
@@ -14,9 +17,13 @@ class AuthorizationEngine:
     against JSON-defined rules.
     """
     
-    def __init__(self, authz_map_path: str = "app/authz.map.json", public_map_path: str = "app/public.map.json"):
-        self.authz_map_path = Path(authz_map_path)
-        self.public_map_path = Path(public_map_path)
+    def __init__(
+        self,
+        authz_map_path: Optional[Path] = None,
+        public_map_path: Optional[Path] = None,
+    ):
+        self.authz_map_path = authz_map_path or (_PKG_DIR / "authz.map.json")
+        self.public_map_path = public_map_path or (_PKG_DIR / "public.map.json")
         self.authz_rules: Dict[str, Any] = {}
         self.public_endpoints: List[str] = []
         self.load_rules()
@@ -54,6 +61,16 @@ class AuthorizationEngine:
                 "PUT": ["admin", "analyst"],
                 "DELETE": ["admin"]
             },
+            "/api/threats/*": {
+                "GET": ["admin", "analyst", "viewer"],
+                "POST": ["admin", "analyst"],
+                "PUT": ["admin", "analyst"],
+                "DELETE": ["admin"]
+            },
+            "/api/forensics/*": {
+                "GET": ["admin", "analyst", "viewer"],
+                "POST": ["admin", "analyst"]
+            },
             "/api/reports": {
                 "GET": ["admin", "analyst", "viewer"],
                 "POST": ["admin", "analyst"],
@@ -90,11 +107,16 @@ class AuthorizationEngine:
             "/",
             "/health",
             "/api/system/health",
+            "/api/system/health/",
             "/api/auth/login",
             "/api/auth/register",
+            "/api/auth/outlook",
+            "/api/auth/outlook/callback",
+            "/api/scan/core",
             "/docs",
             "/redoc",
-            "/openapi.json"
+            "/openapi.json",
+            "/favicon.ico",
         ]
         
         with open(self.public_map_path, 'w') as f:
@@ -104,17 +126,17 @@ class AuthorizationEngine:
     
     def is_public_endpoint(self, path: str) -> bool:
         """Check if endpoint is public (no auth required)"""
-        # Exact match
-        if path in self.public_endpoints:
+        norm = path.rstrip("/") or "/"
+        if path in self.public_endpoints or norm in self.public_endpoints:
             return True
-        
+
         # Wildcard match
         for public_path in self.public_endpoints:
             if public_path.endswith("*"):
                 prefix = public_path.rstrip("*")
-                if path.startswith(prefix):
+                if path.startswith(prefix) or norm.startswith(prefix.rstrip("/")):
                     return True
-        
+
         return False
     
     def check_permission(
