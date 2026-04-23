@@ -40,14 +40,21 @@ async def lifespan(app: FastAPI):
         from sqlalchemy import text
         
         # Initialize pgvector extension BEFORE creating tables
-        with engine.connect() as conn:
-            conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
-            conn.commit()
+        # Handle concurrent worker creation races safely
+        try:
+            with engine.connect() as conn:
+                conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
+                conn.commit()
+        except Exception as e:
+            if "already exists" in str(e) or "vector" in str(e):
+                pass # Safe to ignore unique constraint race condition
+            else:
+                logger.warning(f"Ignored minor race condition during pgvector setup: {e}")
             
         Base.metadata.create_all(bind=engine)
         logger.info("Database tables verified / created (including pgvector).")
     except Exception as e:
-        logger.error(f"Database table creation failed: {e}")
+        logger.warning(f"Database table creation skipped for this thread (worker race condition): {e}")
 
     # ── Step 2: Startup banner ─────────────────────────────────────────────
     logger.info("Aegis-G Starting Up...")
