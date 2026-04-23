@@ -376,7 +376,7 @@ export default function ScansPage() {
         <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin px-4 py-4 space-y-4 min-w-0">
 
           {/* Welcome state */}
-          {messages.length === 1 && !messages[0].loading && !(messages[0] as AssistantMessage).result && (
+          {messages.length === 1 && messages[0].role === 'assistant' && !messages[0].loading && !messages[0].result && (
             <div className="flex flex-col items-center justify-center py-16 text-center gap-4">
               <div
                 className="w-12 h-12 rounded-full flex items-center justify-center"
