@@ -2,11 +2,13 @@
 Aegis-G: Cognitive Shield Command Center
 FastAPI Application Entry Point
 """
+import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from app.config import settings
 from fastapi.staticfiles import StaticFiles
-from app.routers import system, auth, admin, ai, analyst, websocket, graph, threats, sharing, detection
+from app.routers import system, auth, admin, ai, analyst, websocket, graph, threats, sharing, detection, forensics
 from app.middleware import AuthorizationMiddleware
 from app.middleware.audit import AuditMiddleware
 import logging
@@ -77,19 +79,41 @@ app = FastAPI(
     redirect_slashes=False,
 )
 
-# CORS Configuration
+# CORS — explicit origins (credentials=True → no wildcard)
+_base_cors = [
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "http://localhost:3002",
+    "http://localhost:8000",
+    "http://localhost:5173",
+    "http://localhost:4173",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:3001",
+    "http://127.0.0.1:3002",
+    "http://127.0.0.1:8000",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:4173",
+]
+_extra = [o.strip() for o in os.getenv("CORS_EXTRA_ORIGINS", "").split(",") if o.strip()]
+_allow_origins = list(dict.fromkeys(_base_cors + list(settings.CORS_ORIGINS) + _extra))
+
+# Dev: any port on localhost / 127.0.0.1 (Next.js may pick 3003+, Docker maps random host ports)
+_cors_regex = None
+if settings.ENVIRONMENT == "development" and os.getenv("CORS_LOCALHOST_REGEX", "1").strip().lower() in (
+    "1",
+    "true",
+    "yes",
+):
+    _cors_regex = r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$"
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://localhost:3001",
-        "http://localhost:8000",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:8000",
-    ],
+    allow_origins=_allow_origins,
+    allow_origin_regex=_cors_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # Add Authorization Middleware (checks permissions)
@@ -112,6 +136,7 @@ app.include_router(ai.router, prefix="/api/ai", tags=["AI"])
 app.include_router(analyst.router, prefix="/api/analyst", tags=["Intelligence Analyst"])
 app.include_router(graph.router, prefix="/api/network", tags=["Graph"])
 app.include_router(threats.router, prefix="/api/threats", tags=["Threats"])
+app.include_router(forensics.router, prefix="/api/forensics", tags=["Forensics"])
 app.include_router(sharing.router, prefix="/api/sharing", tags=["Intelligence Sharing"])
 app.include_router(detection.router, prefix="/api/scan", tags=["Detection"])
 app.include_router(websocket.router, tags=["WebSocket"])

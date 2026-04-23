@@ -34,15 +34,27 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 480
     
-    # CORS
-    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:3001"]
+    # CORS (merged in main.py with localhost list + CORS_EXTRA_ORIGINS env)
+    CORS_ORIGINS: List[str] = [
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "http://localhost:3002",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:3001",
+    ]
     
     # Application
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
     DEBUG: bool = False
     LOG_LEVEL: str = "INFO"
     ENABLE_METRICS: bool = False
-    
+
+    # MCP (optional — mcp_client uses getattr too; fields here for .env discovery)
+    MCP_GOOGLE_PROJECT_ID: Optional[str] = None
+    MCP_SERVER_URL: Optional[str] = None
+    MCP_SERVER_URLS: Optional[str] = None
+    DEVELOPER_KNOWLEDGE_API_KEY: Optional[str] = None
+
     model_config = SettingsConfigDict(
         env_file=".env",
         case_sensitive=True,

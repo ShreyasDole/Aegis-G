@@ -86,8 +86,7 @@ export default function ForensicChatPage() {
     setIsScanning(true);
 
     try {
-      const mode = typeof window !== 'undefined' ? (localStorage.getItem('inference-mode') || 'local') : 'local';
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const mode = typeof window !== 'undefined' ? (localStorage.getItem('inference-mode') || 'cloud') : 'cloud';
       const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
       // Prepare payload - if image exists, send it inside a multimodal capable endpoint structure
@@ -99,7 +98,7 @@ export default function ForensicChatPage() {
         source_platform: "chat-ui"
       };
 
-      const response = await fetch(`${API_URL}/api/scan/core`, {
+      const response = await fetch('/api/scan/core', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -290,7 +289,7 @@ export default function ForensicChatPage() {
       {/* Upload Preview Banner */}
       <AnimatePresence>
         {imagePreview && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}

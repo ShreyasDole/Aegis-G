@@ -5,13 +5,11 @@ Central database setup for SQLAlchemy
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy.pool import StaticPool
-import os
 
-# Get database URL from environment
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql://aegis:aegis_password@localhost:5432/aegis"
-)
+from app.config import settings
+
+# Must match app.config.Settings (.env is loaded there). os.getenv alone skips .env-only values → wrong default (postgres).
+DATABASE_URL = settings.DATABASE_URL
 
 # ── Engine configuration ────────────────────────────────────────────────────
 # SQLite requires check_same_thread=False and StaticPool to work correctly

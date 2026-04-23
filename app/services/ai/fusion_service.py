@@ -6,7 +6,7 @@ Uses google-genai with structured output
 import os
 from google import genai
 from google.genai import types
-from app.schemas.intelligence import IntelligenceReport
+from app.schemas.intelligence import IntelligenceReport, EvidenceArtifact, ActionStep
 from app.config import settings
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or settings.GEMINI_API_KEY
@@ -42,8 +42,22 @@ class AnalystAgent:
         """
 
         if not client:
-            raise ValueError("GEMINI_API_KEY environment variable is not set")
-        
+            # Do not raise: orchestrator calls fusion on moderate risk; missing key must not 500 the scan API.
+            stub = IntelligenceReport(
+                threat_title="Fusion unavailable (no Gemini API key)",
+                executive_summary="Configure GEMINI_API_KEY for live Agent 3 synthesis.",
+                threat_type="Human Error",
+                risk_level="Low",
+                confidence=0.0,
+                evidence=[
+                    EvidenceArtifact(source="Agent 3", finding="Gemini client not configured", weight=0.0)
+                ],
+                recommendations=[
+                    ActionStep(action="Set GEMINI_API_KEY and retry fusion", priority="Routine")
+                ],
+            )
+            return {"report": stub, "ai_reasoning_log": ""}
+
         try:
             config_kwargs = dict(
                 system_instruction=system_instructions,

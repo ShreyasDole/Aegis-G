@@ -42,8 +42,24 @@ export const ThreatCard: React.FC<ThreatCardProps> = ({
   const config = severityConfig[severity];
   const riskPercentage = (riskScore / 10) * 100;
 
+  const goForensics = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    router.push(`/forensics/${id}`);
+  };
+
   return (
-    <div className="bg-white/5 backdrop-blur-md border border-white/10 p-6 rounded-xl relative overflow-hidden group hover:bg-white/10 transition-all duration-300">
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => router.push(`/forensics/${id}`)}
+      onKeyDown={e => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          router.push(`/forensics/${id}`);
+        }
+      }}
+      className="bg-white/5 backdrop-blur-md border border-white/10 p-6 rounded-xl relative overflow-hidden group hover:bg-white/10 transition-all duration-300 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-neon-cyan/60"
+    >
       {/* Underlying glow on hover */}
       <div className={`absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity bg-gradient-to-r ${
         severity === 'critical' ? 'from-neon-magenta to-transparent' :
@@ -59,13 +75,34 @@ export const ThreatCard: React.FC<ThreatCardProps> = ({
           {config.label}
         </div>
         <div className="flex gap-2">
-          <button className="text-[9px] font-space font-bold uppercase tracking-widest px-2 py-1 border border-white/10 hover:border-white/30 text-white/60 hover:text-white rounded transition-colors" onClick={() => router.push(`/forensics/${id}`)}>
+          <button
+            type="button"
+            className="text-[9px] font-space font-bold uppercase tracking-widest px-2 py-1 border border-white/10 hover:border-white/30 text-white/60 hover:text-white rounded transition-colors"
+            onClick={e => {
+              e.stopPropagation();
+              goForensics();
+            }}
+          >
             View Details
           </button>
-          <button className="text-[9px] font-space font-bold uppercase tracking-widest px-2 py-1 border border-white/10 hover:border-white/30 text-white/60 hover:text-white rounded transition-colors" onClick={() => onExportSTIX?.(id)}>
+          <button
+            type="button"
+            className="text-[9px] font-space font-bold uppercase tracking-widest px-2 py-1 border border-white/10 hover:border-white/30 text-white/60 hover:text-white rounded transition-colors"
+            onClick={e => {
+              e.stopPropagation();
+              onExportSTIX?.(id);
+            }}
+          >
             Export STIX
           </button>
-          <button className="text-[9px] font-space font-bold uppercase tracking-widest px-2 py-1 border border-white/10 hover:border-neon-magenta hover:text-neon-magenta text-white/60 rounded transition-colors" onClick={() => onDismiss?.(id)}>
+          <button
+            type="button"
+            className="text-[9px] font-space font-bold uppercase tracking-widest px-2 py-1 border border-white/10 hover:border-neon-magenta hover:text-neon-magenta text-white/60 rounded transition-colors"
+            onClick={e => {
+              e.stopPropagation();
+              onDismiss?.(id);
+            }}
+          >
             Dismiss
           </button>
         </div>
@@ -112,15 +149,33 @@ export const ThreatCard: React.FC<ThreatCardProps> = ({
       {/* Actions */}
       <div className="flex gap-2 pt-4 border-t border-white/10 relative z-10 w-full font-space">
         <button
+          type="button"
           className="text-[10px] font-bold uppercase tracking-widest py-2 px-3 flex-1 bg-neon-cyan/10 hover:bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/30 rounded transition-colors"
-          onClick={() => onAnalyze?.(id, content ?? description)}
+          onClick={e => {
+            e.stopPropagation();
+            onAnalyze?.(id, content ?? description);
+          }}
         >
           AI Analysis
         </button>
-        <button className="text-[10px] font-bold uppercase tracking-widest py-2 px-3 bg-white/5 hover:bg-white/10 text-white/80 border border-white/10 hover:border-white/20 rounded transition-colors" onClick={() => router.push('/network')}>
+        <button
+          type="button"
+          className="text-[10px] font-bold uppercase tracking-widest py-2 px-3 bg-white/5 hover:bg-white/10 text-white/80 border border-white/10 hover:border-white/20 rounded transition-colors"
+          onClick={e => {
+            e.stopPropagation();
+            router.push('/network');
+          }}
+        >
           Graph View
         </button>
-        <button className="text-[10px] font-bold uppercase tracking-widest py-2 px-3 bg-white/5 hover:bg-white/10 text-white/80 border border-white/10 hover:border-white/20 rounded transition-colors" onClick={() => router.push(`/forensics/${id}`)}>
+        <button
+          type="button"
+          className="text-[10px] font-bold uppercase tracking-widest py-2 px-3 bg-white/5 hover:bg-white/10 text-white/80 border border-white/10 hover:border-white/20 rounded transition-colors"
+          onClick={e => {
+            e.stopPropagation();
+            goForensics();
+          }}
+        >
           Forensics
         </button>
       </div>

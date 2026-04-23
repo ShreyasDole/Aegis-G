@@ -81,11 +81,18 @@ class GeminiClient:
             # Use real vision call
             # Parse base64 to parts
             import base64
-            # Handle potential Data URI prefixes like data:image/jpeg;base64,
+            # Handle potential Data URI prefixes like data:image/png;base64,
             encoded_data = image_base64
-            if "," in encoded_data:
+            mime_type = "image/jpeg"
+            if encoded_data.startswith("data:") and ";base64," in encoded_data:
+                head, _, b64 = encoded_data.partition(";base64,")
+                mime_part = head[5:].strip() if head.startswith("data:") else ""
+                if mime_part.startswith("image/"):
+                    mime_type = mime_part.split(";")[0] or mime_type
+                encoded_data = b64
+            elif "," in encoded_data:
                 encoded_data = encoded_data.split(",")[1]
-            
+
             image_bytes = base64.b64decode(encoded_data)
             
             # Instead of a strict prompt, we give it a multimodal task
@@ -95,7 +102,7 @@ class GeminiClient:
                 model=settings.GEMINI_FLASH_MODEL,
                 contents=[
                     prompt,
-                    gtypes.Part.from_bytes(data=image_bytes, mime_type="image/jpeg"),
+                    gtypes.Part.from_bytes(data=image_bytes, mime_type=mime_type),
                 ]
             )
             

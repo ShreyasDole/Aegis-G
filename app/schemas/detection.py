@@ -34,10 +34,17 @@ class ScanResponse(BaseModel):
     explainability: Optional[list] = None
     rag_memory: Optional[list] = None
     is_conversational: Optional[bool] = False
+    demo_mode: Optional[bool] = False
+    fallback_reason: Optional[str] = None
 
 
 class BatchScanRequest(BaseModel):
     """Batch scanning request"""
     items: list[ScanRequest]
     priority: Optional[str] = "normal"  # low, normal, high, critical
+
+
+class RedTeamSimulateRequest(BaseModel):
+    """Red-team simulator: how many payloads to run through the real orchestrator."""
+    count: int = Field(10, ge=1, le=100, description="Number of adversarial payloads (1–100)")
 

@@ -21,12 +21,14 @@ interface PolicyListProps {
   onEdit?: (_policy: Policy) => void;
   onDelete?: (_policyId: number) => void;
   onToggleActive?: (_policyId: number, _isActive: boolean) => void;
+  refreshNonce?: number;
 }
 
 export const PolicyList: React.FC<PolicyListProps> = ({
   onEdit,
   onDelete,
-  onToggleActive
+  onToggleActive,
+  refreshNonce = 0,
 }) => {
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -35,7 +37,7 @@ export const PolicyList: React.FC<PolicyListProps> = ({
   useEffect(() => {
     fetchPolicies();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filter]);
+  }, [filter, refreshNonce]);
 
   const fetchPolicies = async () => {
     try {
@@ -70,7 +72,7 @@ export const PolicyList: React.FC<PolicyListProps> = ({
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token || ''}`
         },
-        body: JSON.stringify(!policy.is_active)
+        body: JSON.stringify({ is_active: !policy.is_active }),
       });
 
       if (response.ok) {

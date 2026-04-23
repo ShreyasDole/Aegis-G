@@ -31,19 +31,22 @@ def _get_mcp_server_configs() -> List[Tuple[str, Dict[str, str]]]:
     """
     configs: List[Tuple[str, Dict[str, str]]] = []
     headers: Dict[str, str] = {"Content-Type": "application/json"}
-    if settings.MCP_GOOGLE_PROJECT_ID:
-        headers["X-goog-user-project"] = settings.MCP_GOOGLE_PROJECT_ID
+    proj = getattr(settings, "MCP_GOOGLE_PROJECT_ID", None) or ""
+    if str(proj).strip():
+        headers["X-goog-user-project"] = str(proj).strip()
 
     # Single URL
-    if settings.MCP_SERVER_URL:
-        url = settings.MCP_SERVER_URL.rstrip("/")
+    single = getattr(settings, "MCP_SERVER_URL", None) or ""
+    if str(single).strip():
+        url = str(single).strip().rstrip("/")
         if not url.startswith("http"):
             url = f"https://{url}"
         configs.append((url, dict(headers)))
 
     # Multiple URLs (comma-separated)
-    if settings.MCP_SERVER_URLS:
-        for part in settings.MCP_SERVER_URLS.split(","):
+    multi = getattr(settings, "MCP_SERVER_URLS", None) or ""
+    if str(multi).strip():
+        for part in str(multi).split(","):
             url = part.strip().rstrip("/")
             if not url:
                 continue
@@ -52,9 +55,10 @@ def _get_mcp_server_configs() -> List[Tuple[str, Dict[str, str]]]:
             configs.append((url, dict(headers)))
 
     # Developer Knowledge MCP (search_documents, get_document, batch_get_documents)
-    if settings.DEVELOPER_KNOWLEDGE_API_KEY:
+    dk_key = getattr(settings, "DEVELOPER_KNOWLEDGE_API_KEY", None) or ""
+    if str(dk_key).strip():
         dk_headers = dict(headers)
-        dk_headers["X-Goog-Api-Key"] = settings.DEVELOPER_KNOWLEDGE_API_KEY
+        dk_headers["X-Goog-Api-Key"] = str(dk_key).strip()
         if (DEVELOPER_KNOWLEDGE_MCP_URL, dk_headers) not in [(u, h) for u, h in configs]:
             configs.append((DEVELOPER_KNOWLEDGE_MCP_URL, dk_headers))
 
