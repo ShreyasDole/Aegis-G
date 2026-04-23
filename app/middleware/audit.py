@@ -26,7 +26,13 @@ class AuditMiddleware(BaseHTTPMiddleware):
         # Read and store request body (for logging)
         if request.method in ["POST", "PUT", "PATCH"]:
             body = await request.body()
-            request.state.body = body.decode("utf-8") if body else None
+            if request.headers.get("content-type", "").startswith("multipart/form-data"):
+                request.state.body = "<multipart/form-data body omitted>"
+            else:
+                try:
+                    request.state.body = body.decode("utf-8") if body else None
+                except UnicodeDecodeError:
+                    request.state.body = "<binary body omitted>"
             
             # Re-create request with body (FastAPI consumes it)
             async def receive():

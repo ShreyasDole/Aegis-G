@@ -127,6 +127,7 @@ async def scan_with_image(
     image: Optional[UploadFile] = File(None),
     source_platform: Optional[str] = Form("web"),
     username: Optional[str] = Form("anonymous"),
+    db: Session = Depends(get_db),
 ):
     """
     Scan content with optional image attachment.
@@ -136,8 +137,6 @@ async def scan_with_image(
     - image: image file (optional)
     - source_platform: platform identifier
     - username: user identifier
-    
-    Note: DB not required for basic scanning
     """
     result = {
         "text_analysis": None,
@@ -158,7 +157,7 @@ async def scan_with_image(
                 "is_chat": True
             }
         else:
-            # Full NLP analysis - use None for db to make it optional
+            # Full NLP analysis - pass db to record scan in analytics dashboard
             mode = (request.headers.get("X-Inference-Mode") or "local").lower()
             payload = {
                 "content": content,
@@ -166,8 +165,8 @@ async def scan_with_image(
                 "username": username,
             }
             try:
-                # Pass None for db - orchestrator should handle gracefully
-                text_result = await orchestrator.process_incoming_threat(payload, None, mode=mode)
+                # Pass real DB session so it saves to PGVector
+                text_result = await orchestrator.process_incoming_threat(payload, db, mode=mode)
                 result["text_analysis"] = {
                     "risk_score": text_result.get("risk_score", 0.0),
                     "is_ai_generated": text_result.get("is_ai_generated", False),
