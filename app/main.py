@@ -2,9 +2,11 @@
 Aegis-G: Cognitive Shield Command Center
 FastAPI Application Entry Point
 """
+import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from app.config import settings
 from fastapi.staticfiles import StaticFiles
 from app.routers import system, auth, admin, ai, analyst, websocket, graph, threats, sharing, detection
 from app.middleware import AuthorizationMiddleware
@@ -77,19 +79,25 @@ app = FastAPI(
     redirect_slashes=False,
 )
 
-# CORS Configuration
+# CORS — explicit origins (credentials=True → no wildcard)
+_base_cors = [
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "http://localhost:8000",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:3001",
+    "http://127.0.0.1:8000",
+]
+_extra = [o.strip() for o in os.getenv("CORS_EXTRA_ORIGINS", "").split(",") if o.strip()]
+_allow_origins = list(dict.fromkeys(_base_cors + list(settings.CORS_ORIGINS) + _extra))
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://localhost:3001",
-        "http://localhost:8000",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:8000",
-    ],
+    allow_origins=_allow_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # Add Authorization Middleware (checks permissions)
