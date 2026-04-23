@@ -6,7 +6,7 @@ import { Button } from '../ui/Button';
 export const PolicyAuthor = () => {
   const [intent, setIntent] = useState("");
   const [dslPreview, setDslPreview] = useState<string>("# Waiting for intent translation...");
-  const [isArming, setIsArming] = useState(false);
+  const [arming, setArming] = useState(false);
   const [isTranslating, setIsTranslating] = useState(false);
   const [translationResult, setTranslationResult] = useState<any>(null);
 
@@ -20,17 +20,25 @@ export const PolicyAuthor = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token || ''}`
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify(intent)
+        body: JSON.stringify({ intent }),
       });
 
       if (response.ok) {
         const result = await response.json();
         setTranslationResult(result);
-        setDslPreview(result.dsl_logic || "# Translation error");
+        setDslPreview(result.dsl_logic || '# No DSL in response');
       } else {
-        setDslPreview("# Error: Failed to translate intent");
+        let msg = 'Failed to translate intent';
+        try {
+          const err = await response.json();
+          if (typeof err.detail === 'string') msg = err.detail;
+          else if (Array.isArray(err.detail)) msg = err.detail.map((x: { msg?: string }) => x.msg).join('; ');
+        } catch {
+          msg = response.statusText || `HTTP ${response.status}`;
+        }
+        setDslPreview(`# Error (${response.status}): ${msg}`);
       }
     } catch (error) {
       console.error('Translation error:', error);
@@ -41,11 +49,43 @@ export const PolicyAuthor = () => {
   };
 
   const handleArmPolicy = async () => {
-    if (!translationResult) return;
-    
-    setIsArming(!isArming);
-    // TODO: Call API to activate/deactivate policy
-    console.log(isArming ? "Disarming policy" : "Arming policy", translationResult);
+    if (!translationResult?.dsl_logic) return;
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setDslPreview(c => `${c}\n# Login required to arm policy`);
+      return;
+    }
+    setArming(true);
+    try {
+      const name = (translationResult.rule_name || 'guardian_rule').slice(0, 200);
+      const dsl = String(translationResult.dsl_logic).trim();
+      const body = {
+        name: name.length >= 3 ? name : `rule_${Date.now()}`,
+        description: translationResult.explanation || 'Policy Guardian generated rule',
+        policy_type: 'logical',
+        content: dsl.length >= 10 ? dsl : `${dsl}\n# padding`,
+        category: 'guardian',
+        priority: 7,
+      };
+      const res = await fetch('/api/ai/policies', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(body),
+      });
+      if (res.ok) {
+        setDslPreview(`${dsl}\n\n# Policy saved and active — see Policy Management tab`);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        const d = err.detail;
+        setDslPreview(
+          `${dsl}\n\n# Arm failed (${res.status}): ${typeof d === 'string' ? d : JSON.stringify(d)}`
+        );
+      }
+    } catch {
+      setDslPreview(c => `${c}\n# Arm request failed`);
+    } finally {
+      setArming(false);
+    }
   };
 
   return (
@@ -81,7 +121,12 @@ export const PolicyAuthor = () => {
         </div>
         {translationResult && (
           <div className="mt-3 text-xs text-text-secondary">
-            <div>Safety Score: {(translationResult.safety_score * 100).toFixed(1)}%</div>
+            <div>
+              Safety score:{' '}
+              {typeof translationResult.safety_score === 'number'
+                ? `${(translationResult.safety_score * 100).toFixed(1)}%`
+                : '—'}
+            </div>
             {translationResult.edge_cases && translationResult.edge_cases.length > 0 && (
               <div className="mt-1">
                 Edge Cases: {translationResult.edge_cases.length}
@@ -90,13 +135,13 @@ export const PolicyAuthor = () => {
           </div>
         )}
         <div className="flex gap-2 mt-4">
-           <Button 
-             variant={isArming ? "danger" : "secondary"} 
+           <Button
+             variant="secondary"
              className="flex-1"
              onClick={handleArmPolicy}
-             disabled={!translationResult}
+             disabled={!translationResult || arming}
            >
-             {isArming ? "DISARM GRID" : "ARM THE POLICY"}
+             {arming ? 'Saving…' : 'Save & activate policy'}
            </Button>
            <Button 
              variant="secondary" 

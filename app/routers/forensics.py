@@ -98,13 +98,48 @@ async def analyze_forensics(
 
 
 @router.get("/{threat_id}/summary")
-async def get_forensic_summary(threat_id: int):
-    """Get summary of forensic analysis"""
-    # In production, fetch from database
+async def get_forensic_summary(threat_id: int, db: Session = Depends(get_db)):
+    """
+    On-load explanation: stylometry (why Agent 1 score) + pipeline metadata from DB.
+    Does not call Gemini (use POST /{id} for full cloud analysis).
+    """
+    threat = db.query(Threat).filter(Threat.id == threat_id).first()
+    if not threat:
+        raise HTTPException(status_code=404, detail="Threat not found")
+    styl = forensic_investigator.analyze(threat.content or "")
+    signals = []
+    if styl.get("burstiness") is not None:
+        signals.append(
+            f"Burstiness {styl['burstiness']}: sentence-length variance; "
+            "very uniform sentences often read as synthetic."
+        )
+    if styl.get("perplexity") is not None:
+        signals.append(
+            f"Perplexity proxy {styl['perplexity']}: vocabulary / pattern diversity; "
+            "low scores correlate with templated or model-like text in this heuristic."
+        )
+    if styl.get("adversarial_detected"):
+        signals.append(
+            "Adversarial/obfuscation patterns flagged — raises risk independent of generative model."
+        )
+    if styl.get("artifacts"):
+        signals.append(f"Artifacts: {', '.join(styl['artifacts'][:8])}")
     return {
         "threat_id": threat_id,
-        "summary": "Forensic analysis summary will be generated here",
-        "status": "pending"
+        "summary": styl.get("details") or "Stylometry complete.",
+        "status": "ready",
+        "stored_risk_score": threat.risk_score,
+        "detected_by": threat.detected_by or "pipeline",
+        "stylometry": {
+            "is_ai": styl.get("is_ai"),
+            "risk_score": styl.get("risk_score"),
+            "burstiness": styl.get("burstiness"),
+            "perplexity": styl.get("perplexity"),
+            "artifacts": styl.get("artifacts") or [],
+            "adversarial_detected": styl.get("adversarial_detected"),
+            "adversarial_patterns": styl.get("adversarial_patterns") or [],
+        },
+        "why_signals": signals,
     }
 
 

@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/Button';
 import { PolicyAuthor } from '@/components/policy/PolicyAuthor';
+import { PolicyCriteriaBuilder } from '@/components/policy/PolicyCriteriaBuilder';
 import { PolicyList } from '@/components/policy/PolicyList';
 import { PolicyEditor } from '@/components/policy/PolicyEditor';
 
@@ -20,8 +21,9 @@ export default function PolicyPage() {
 
   const [showEditor, setShowEditor] = useState(false);
   const [editingPolicy, setEditingPolicy] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<'author' | 'manage'>('author');
+  const [activeTab, setActiveTab] = useState<'author' | 'builder' | 'manage'>('author');
   const [activePolicies, setActivePolicies] = useState<any[]>([]);
+  const [listRefresh, setListRefresh] = useState(0);
 
   useEffect(() => {
     fetchBlockedContent();
@@ -64,12 +66,16 @@ export default function PolicyPage() {
     }
   };
 
-  // WebSocket connection for real-time updates
+  // WebSocket — backend uvicorn (same host, port from env). Set NEXT_PUBLIC_WS_URL for full override.
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const host = window.location.hostname;
+    const explicit = process.env.NEXT_PUBLIC_WS_URL;
     const wsPort = process.env.NEXT_PUBLIC_WS_PORT || '8000';
-    const ws = new WebSocket(`ws://${host}:${wsPort}/ws/blocked-content`);
+    const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const url =
+      explicit ||
+      `${proto}//${window.location.hostname}:${wsPort}/ws/blocked-content`;
+    const ws = new WebSocket(url);
 
     ws.onmessage = (event) => {
       try {
@@ -114,8 +120,9 @@ export default function PolicyPage() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-2 mb-6 border-b border-border-subtle">
+        <div className="flex gap-2 mb-6 border-b border-border-subtle flex-wrap">
           <button
+            type="button"
             onClick={() => setActiveTab('author')}
             className={`px-4 py-2 text-sm font-semibold uppercase tracking-wider border-b-2 transition-colors ${
               activeTab === 'author'
@@ -123,9 +130,21 @@ export default function PolicyPage() {
                 : 'border-transparent text-text-secondary hover:text-text-primary'
             }`}
           >
-            Policy Author
+            NL author
           </button>
           <button
+            type="button"
+            onClick={() => setActiveTab('builder')}
+            className={`px-4 py-2 text-sm font-semibold uppercase tracking-wider border-b-2 transition-colors ${
+              activeTab === 'builder'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-text-secondary hover:text-text-primary'
+            }`}
+          >
+            Criteria builder
+          </button>
+          <button
+            type="button"
             onClick={() => setActiveTab('manage')}
             className={`px-4 py-2 text-sm font-semibold uppercase tracking-wider border-b-2 transition-colors ${
               activeTab === 'manage'
@@ -133,7 +152,7 @@ export default function PolicyPage() {
                 : 'border-transparent text-text-secondary hover:text-text-primary'
             }`}
           >
-            Policy Management
+            Management
           </button>
         </div>
 
@@ -141,6 +160,17 @@ export default function PolicyPage() {
         {activeTab === 'author' && (
           <div className="mb-8">
             <PolicyAuthor />
+          </div>
+        )}
+
+        {activeTab === 'builder' && (
+          <div className="mb-8">
+            <PolicyCriteriaBuilder
+              onPolicyCreated={() => {
+                setListRefresh(n => n + 1);
+                fetchActivePolicies();
+              }}
+            />
           </div>
         )}
 
@@ -156,19 +186,22 @@ export default function PolicyPage() {
                     const url = policy.id
                       ? `/api/ai/policies/${policy.id}`
                       : '/api/ai/policies';
-                    
+                    const { id: _id, ...payload } = policy;
+
                     const response = await fetch(url, {
                       method: policy.id ? 'PUT' : 'POST',
                       headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${token || ''}`
                       },
-                      body: JSON.stringify(policy)
+                      body: JSON.stringify(payload)
                     });
 
                     if (response.ok) {
                       setShowEditor(false);
                       setEditingPolicy(null);
+                      setListRefresh(n => n + 1);
+                      fetchActivePolicies();
                     }
                   } catch (error) {
                     console.error('Error saving policy:', error);
@@ -198,12 +231,15 @@ export default function PolicyPage() {
                     setEditingPolicy(policy);
                     setShowEditor(true);
                   }}
-                  onDelete={(id) => {
-                    console.log('Policy deleted:', id);
+                  onDelete={() => {
+                    setListRefresh(n => n + 1);
+                    fetchActivePolicies();
                   }}
-                  onToggleActive={(id, isActive) => {
-                    console.log('Policy toggled:', id, isActive);
+                  onToggleActive={() => {
+                    setListRefresh(n => n + 1);
+                    fetchActivePolicies();
                   }}
+                  refreshNonce={listRefresh}
                 />
               </>
             )}

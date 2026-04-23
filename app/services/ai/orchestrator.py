@@ -110,6 +110,34 @@ class ThreatOrchestrator:
         risk_score = float(forensics_data.get("risk_score", 0.0))
         logger.info(f"📊 Agent 1 results: Risk={risk_score:.2f}")
 
+        # Persist / resolve SQL threat early so Trust Layer ledger rows carry real threat PKs
+        threat_db_id = 0
+        if db:
+            try:
+                from app.models.threat import Threat
+
+                existing = db.query(Threat).filter(Threat.content_hash == content_hash).first()
+                if existing:
+                    threat_db_id = int(existing.id)
+                    existing.risk_score = risk_score
+                    existing.source_platform = source_platform
+                    db.commit()
+                else:
+                    tr = Threat(
+                        content_hash=content_hash,
+                        content=content[:65535] if content else "",
+                        risk_score=risk_score,
+                        source_platform=source_platform,
+                        detected_by=str(forensics_data.get("detected_model", mode)),
+                    )
+                    db.add(tr)
+                    db.commit()
+                    db.refresh(tr)
+                    threat_db_id = int(tr.id)
+            except Exception as e:
+                logger.warning(f"SQL threat row (pre-ledger): {e}")
+                threat_db_id = 0
+
         # RAG Memory Context
         logger.info("🧠 Agent 1b Contextualizing with RAG Memory...")
         try:
@@ -174,7 +202,7 @@ class ThreatOrchestrator:
 
         policy_context = {
             "content": content,
-            "ai_score": round(risk_score * 100, 2),  # normalize to 0-100 to match DSL syntax (e.g. ai_score > 85)
+            "ai_score": float(risk_score),
             "graph_cluster_size": 5 if patient_zero_data.get("status") == "found" else 1,
         }
 
@@ -243,9 +271,10 @@ class ThreatOrchestrator:
             # Also mint a blockchain block for blocked content
             try:
                 ledger_hash = await add_to_ledger(
-                    report_id=0,
+                    report_id=threat_db_id or 0,
                     recipient_agency="Policy-Enforcement",
-                    content=f"BLOCKED | Policy: {matched_policy.name} | Score: {risk_score} | Source: {username}"
+                    content=f"BLOCKED | Policy: {matched_policy.name} | Score: {risk_score} | Source: {username}",
+                    db=db,
                 )
                 logger.info(f"Blockchain block minted for blocked content: {ledger_hash[:16]}...")
             except Exception as e:
@@ -269,9 +298,10 @@ class ThreatOrchestrator:
             logger.info("🔗 High Risk Detected - Mining Block...")
             try:
                 ledger_hash = await add_to_ledger(
-                    report_id=0,  # In prod, this comes from DB ID
+                    report_id=threat_db_id or 0,
                     recipient_agency="Internal-Audit",
-                    content=f"Threat Detected: {risk_score} | Source: {username}"
+                    content=f"Threat Detected: {risk_score} | Source: {username}",
+                    db=db,
                 )
                 logger.info(f"Blockchain hash: {ledger_hash[:16]}...")
             except Exception as e:

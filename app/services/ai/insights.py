@@ -6,8 +6,9 @@ Uses google-genai SDK (latest)
 import os
 import json
 from typing import List, Dict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
+from sqlalchemy import func, or_
 from google import genai
 from app.config import settings
 
@@ -47,13 +48,15 @@ class InsightService:
         Generate insights based on system data
         """
         if not client:
-            return InsightService._get_demo_insights()
+            return InsightService.operational_summaries(db)
 
         try:
             from app.models.threat import Threat
 
             threat_count = db.query(Threat).count()
-            high_risk_count = db.query(Threat).filter(Threat.risk_score >= 7.0).count()
+            high_risk_count = db.query(Threat).filter(
+                or_(Threat.risk_score >= 0.65, Threat.risk_score >= 6.5)
+            ).count()
 
             recent_threats = db.query(Threat)\
                 .filter(Threat.timestamp >= datetime.utcnow() - timedelta(days=7))\
@@ -85,65 +88,108 @@ class InsightService:
 
         except Exception as e:
             print(f"Insight generation error: {e}")
-            return InsightService._get_demo_insights()
+            return InsightService.operational_summaries(db)
 
     @staticmethod
-    def _get_demo_insights() -> List[Dict]:
-        """Demo insights when API is unavailable"""
-        return [
+    def operational_summaries(db: Session) -> List[Dict]:
+        """Deterministic insights from live DB tables (no LLM)."""
+        from app.models.threat import Threat
+        from app.models.ai import AIPolicy, BlockedContent
+
+        out: List[Dict] = []
+        total = int(db.query(func.count(Threat.id)).scalar() or 0)
+        high = int(
+            db.query(func.count(Threat.id))
+            .filter(or_(Threat.risk_score >= 0.65, Threat.risk_score >= 6.5))
+            .scalar()
+            or 0
+        )
+        avg_r = db.query(func.avg(Threat.risk_score)).scalar()
+        avg_risk = float(avg_r) if avg_r is not None else 0.0
+
+        top_plat = (
+            db.query(Threat.source_platform, func.count(Threat.id).label("c"))
+            .group_by(Threat.source_platform)
+            .order_by(func.count(Threat.id).desc())
+            .limit(4)
+            .all()
+        )
+        plat_txt = ", ".join(f"{p or 'unknown'} ({c})" for p, c in top_plat) if top_plat else "n/a"
+
+        active_policies = int(
+            db.query(func.count(AIPolicy.id)).filter(AIPolicy.is_active.is_(True)).scalar() or 0
+        )
+        blocked_24h = int(
+            db.query(func.count(BlockedContent.id))
+            .filter(BlockedContent.blocked_at >= datetime.now(timezone.utc) - timedelta(hours=24))
+            .scalar()
+            or 0
+        )
+
+        if total > 0:
+            sev = "critical" if high > total * 0.3 else "warning" if high > 0 else "recommendation"
+            out.append(
+                {
+                    "title": f"Threat inventory: {total} records",
+                    "description": f"High-risk count (model score ≥0.65 or legacy ≥6.5): {high}. Mean risk score: {avg_risk:.3f}. Top platforms: {plat_txt}.",
+                    "severity": sev,
+                    "category": "threat_detection",
+                    "suggested_actions": [
+                        "Review /forensics for top IDs",
+                        "Tune policies on /policy criteria builder",
+                        "Run graph community view for coordination",
+                    ],
+                    "impact_estimate": "Drives detection backlog and analyst queue depth",
+                    "confidence_score": 0.99,
+                    "data_source": "sql.threats_aggregate",
+                }
+            )
+        else:
+            out.append(
+                {
+                    "title": "No threats ingested yet",
+                    "description": "Pipeline has no rows in `threats`. Run /scans or detection ingest to populate intelligence.",
+                    "severity": "recommendation",
+                    "category": "optimization",
+                    "suggested_actions": [
+                        "POST /api/scan/core with sample content",
+                        "Verify workers and Neo4j connectivity",
+                    ],
+                    "impact_estimate": "Reports and graph stay cold until ingest",
+                    "confidence_score": 1.0,
+                    "data_source": "sql.threats_empty",
+                }
+            )
+
+        out.append(
             {
-                "title": "Unusual Login Pattern Detected",
-                "description": "There has been a 45% increase in failed login attempts from Eastern European IP addresses over the past 48 hours. This pattern suggests a coordinated brute-force attack.",
-                "severity": "critical",
-                "category": "threat_detection",
-                "suggested_actions": [
-                    "Enable rate limiting on authentication endpoints",
-                    "Implement CAPTCHA for repeated failures",
-                    "Consider temporary IP blocking for suspicious sources"
-                ],
-                "impact_estimate": "Potential account compromise within 72 hours if unaddressed",
-                "confidence_score": 0.89
-            },
-            {
-                "title": "Outdated Security Policies",
-                "description": "15 security policies haven't been reviewed in over 6 months. Industry standards recommend quarterly reviews.",
-                "severity": "warning",
+                "title": f"Active policies: {active_policies}",
+                "description": "Guardrails currently armed in ai_policies. Inactive policies do not participate in ingest-time DSL evaluation.",
+                "severity": "warning" if active_policies == 0 else "recommendation",
                 "category": "compliance",
                 "suggested_actions": [
-                    "Schedule policy review meetings",
-                    "Update policies to match current threat landscape",
-                    "Document review process and outcomes"
+                    "Author rules under Policy → Visual builder",
+                    "Arm policies after validation in Management tab",
                 ],
-                "impact_estimate": "Compliance audit findings, potential regulatory penalties",
-                "confidence_score": 0.95
-            },
+                "impact_estimate": "Zero active policies → enforcement relies on defaults only",
+                "confidence_score": 0.95,
+                "data_source": "sql.ai_policies",
+            }
+        )
+
+        out.append(
             {
-                "title": "Graph Query Performance Optimization",
-                "description": "Neo4j graph queries for threat correlation are taking >2s on average. Database optimization could improve response time by 60%.",
+                "title": f"Blocks (24h): {blocked_24h}",
+                "description": "Rows in blocked_content ledger for policy enforcement in the last 24 hours.",
                 "severity": "recommendation",
                 "category": "performance",
-                "suggested_actions": [
-                    "Add indexes on frequently queried node properties",
-                    "Implement query result caching",
-                    "Consider database query restructuring"
-                ],
-                "impact_estimate": "Faster threat analysis, improved user experience",
-                "confidence_score": 0.82
-            },
-            {
-                "title": "High-Value Target Identification",
-                "description": "ML analysis identified 12 network nodes that are both highly connected and frequently involved in flagged activities. These may be key threat actors.",
-                "severity": "warning",
-                "category": "threat_detection",
-                "suggested_actions": [
-                    "Prioritize investigation of identified nodes",
-                    "Increase monitoring on related connections",
-                    "Cross-reference with known threat intelligence"
-                ],
-                "impact_estimate": "Early identification of major threat campaigns",
-                "confidence_score": 0.76
+                "suggested_actions": ["Review Live Block Log on Policy page", "Correlate with policy priority"],
+                "impact_estimate": "Spike may indicate aggressive rules or coordinated campaign",
+                "confidence_score": 0.9,
+                "data_source": "sql.blocked_content",
             }
-        ]
+        )
+        return out[:8]
 
     @staticmethod
     def analyze_trend(data_points: List[float]) -> Dict:

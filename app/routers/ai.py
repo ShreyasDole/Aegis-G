@@ -5,7 +5,7 @@ Endpoints for AI Policies, Insights, and Chat
 from fastapi import APIRouter, Depends, HTTPException, status, Body
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 
 from app.auth import get_current_active_user, require_role
@@ -15,6 +15,7 @@ from app.models.ai import AIPolicy, AIInsight, BlockedContent
 from app.schemas.ai import (
     PolicyCreate, PolicyResponse, PolicyTranslation, PolicyGuardianTranslation,
     InsightResponse,
+    InsightSeverity,
     ChatRequest, ChatResponse,
     BlockedContentResponse, BlockedContentStats
 )
@@ -253,13 +254,37 @@ async def get_insights(
     query = query.filter(~AIInsight.dismissed)
     
     insights = query.order_by(AIInsight.created_at.desc()).limit(50).all()
-    
-    # Convert suggested_actions from JSON string to list
+
+    rows: List[InsightResponse] = []
     for insight in insights:
         if isinstance(insight.suggested_actions, str):
-            insight.suggested_actions = json.loads(insight.suggested_actions)
-    
-    return insights
+            try:
+                insight.suggested_actions = json.loads(insight.suggested_actions)
+            except (json.JSONDecodeError, TypeError):
+                insight.suggested_actions = []
+        rows.append(InsightResponse.model_validate(insight, from_attributes=True))
+
+    if not rows:
+        now = datetime.now(timezone.utc)
+        for idx, r in enumerate(insight_service.operational_summaries(db)):
+            rows.append(
+                InsightResponse(
+                    id=-(idx + 1),
+                    title=r["title"],
+                    description=r["description"],
+                    severity=InsightSeverity(r["severity"]),
+                    category=r["category"],
+                    suggested_actions=r["suggested_actions"],
+                    impact_estimate=r.get("impact_estimate"),
+                    data_source=r.get("data_source", "operational_engine"),
+                    confidence_score=float(r["confidence_score"]),
+                    created_at=now,
+                    viewed=False,
+                    dismissed=False,
+                )
+            )
+
+    return rows
 
 
 @router.post("/insights/generate")

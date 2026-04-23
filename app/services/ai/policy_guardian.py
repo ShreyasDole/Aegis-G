@@ -19,7 +19,44 @@ class PolicyGuardian:
     Agent 4: Policy Guardian
     Translates natural language policy intent into executable DSL rules
     """
-    
+
+    @staticmethod
+    def _fallback_from_intent(human_intent: str) -> Dict[str, Any]:
+        """Deterministic DSL when Gemini is unavailable (dev / no API key)."""
+        low = (human_intent or "").strip().lower()
+        parts: List[str] = []
+        if any(w in low for w in ("election", "disinformation", "misinformation", "propaganda", "vote", "ballot")):
+            parts.append(
+                '( narrative_match("election") OR narrative_match("vote") OR narrative_match("ballot") )'
+            )
+        if any(w in low for w in ("ai", "synthetic", "generated", "llm", "bot", "deepfake")):
+            parts.append("ai_score > 0.65")
+        if any(w in low for w in ("navy", "naval", "military", "classified", "defense")):
+            parts.append('( contains(content, "naval") OR contains(content, "classified") )')
+        if any(w in low for w in ("cluster", "botnet", "coordinated", "astroturf")):
+            parts.append("graph_cluster_size > 3")
+        if not parts:
+            parts.append("ai_score > 0.5")
+        cond = " AND ".join(parts)
+        dsl = f"IF {cond} THEN BLOCK_AND_LOG"
+        explanation = (
+            "Offline mode: no GEMINI_API_KEY. Built a heuristic IF/THEN from keywords in your intent. "
+            "Add Gemini for refined rules and edge-case analysis."
+        )
+        if len(dsl) < 10:
+            dsl = f"{dsl}\n# aegis"
+        return {
+            "rule_name": "rule_fallback.aegis",
+            "dsl_logic": dsl,
+            "safety_score": 0.55,
+            "edge_cases": [
+                "Heuristic only — collateral hits possible on benign text sharing keywords.",
+                "No cloud model pass to weigh false positives.",
+            ],
+            "explanation": explanation,
+            "ai_reasoning": "",
+        }
+
     @staticmethod
     async def translate_intent_to_rule(human_intent: str) -> Dict[str, Any]:
         """
@@ -64,14 +101,7 @@ class PolicyGuardian:
         """
         
         if not client:
-            return {
-                "rule_name": "rule_error",
-                "dsl_logic": "# Error: GEMINI_API_KEY not configured",
-                "safety_score": 0.0,
-                "edge_cases": [],
-                "explanation": "API key not configured",
-                "ai_reasoning": ""
-            }
+            return PolicyGuardian._fallback_from_intent(human_intent)
         
         user_prompt = f"""
         Translate this human strategic intent into a Shield Rule:

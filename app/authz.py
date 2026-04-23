@@ -54,6 +54,16 @@ class AuthorizationEngine:
                 "PUT": ["admin", "analyst"],
                 "DELETE": ["admin"]
             },
+            "/api/threats/*": {
+                "GET": ["admin", "analyst", "viewer"],
+                "POST": ["admin", "analyst"],
+                "PUT": ["admin", "analyst"],
+                "DELETE": ["admin"]
+            },
+            "/api/forensics/*": {
+                "GET": ["admin", "analyst", "viewer"],
+                "POST": ["admin", "analyst"]
+            },
             "/api/reports": {
                 "GET": ["admin", "analyst", "viewer"],
                 "POST": ["admin", "analyst"],

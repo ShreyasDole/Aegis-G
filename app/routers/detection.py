@@ -77,6 +77,9 @@ async def scan_content(
                 threat_id = threat_record.id
             else:
                 threat_id = existing.id
+                existing.risk_score = result.get("risk_score", existing.risk_score)
+                existing.detected_by = result.get("forensics", {}).get("detected_model", existing.detected_by or mode)
+                db.commit()
         except Exception as save_err:
             logger.warning(f"Threat DB save error: {save_err}")
 
