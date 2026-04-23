@@ -1,117 +1,128 @@
 'use client';
-import React, { useState } from 'react';
-import { Card } from '../ui/Card';
-import { Badge } from '../ui/Badge';
-import { Button } from '../ui/Button';
-import { ReasoningTerminal } from './ReasoningTerminal';
-import { Search, ShieldAlert, Cpu, Brain, FileSearch } from 'lucide-react';
+import React from 'react';
+import { Shield, AlertTriangle } from 'lucide-react';
+import { Badge } from '@/components/ui/Badge';
 
 interface IntelligenceBriefProps {
-  report: any;
-  thoughts: string;
+  report?: {
+    threat_title?: string;
+    executive_summary?: string;
+    threat_type?: string;
+    risk_level?: string;
+    confidence?: number;
+    evidence?: Array<{ source: string; finding: string; weight: number }>;
+    recommendations?: Array<{ action: string; priority: string }>;
+  } | null;
+  thoughts?: string;
 }
 
-export const IntelligenceBrief: React.FC<IntelligenceBriefProps> = ({ report, thoughts }) => {
-  const [showLogic, setShowLogic] = useState(false);
-
+export function IntelligenceBrief({ report, thoughts }: IntelligenceBriefProps) {
   if (!report) {
     return (
-      <Card className="h-full flex flex-col items-center justify-center border border-dashed border-border-medium min-h-[280px]">
-        <div className="flex flex-col items-center justify-center text-center px-4 py-8">
-          <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center mb-4">
-            <FileSearch className="w-7 h-7 text-primary" strokeWidth={1.5} />
-          </div>
-          <h3 className="text-sm font-semibold uppercase tracking-wider text-text-primary mb-1">
-            Intelligence Brief
-          </h3>
-          <p className="text-sm text-text-muted max-w-[220px] leading-relaxed">
-            Select a threat from the list and run <span className="text-primary font-medium">AI Analysis</span> to generate a fused intelligence report.
-          </p>
+      <div className="flex flex-col items-center justify-center h-full text-center gap-3 py-8">
+        <Shield className="w-10 h-10 text-[#4b5563]" strokeWidth={1.5} />
+        <div>
+          <p className="text-sm font-medium text-[#9ca3af] mb-1">No Analysis Selected</p>
+          <p className="text-xs text-[#6b7280]">Select a threat to view intelligence</p>
         </div>
-      </Card>
+      </div>
     );
   }
 
-  // Map risk level to badge variant
-  const riskVariant = report.risk_level?.toLowerCase() as 'critical' | 'high' | 'medium' | 'low' | undefined;
+  const getRiskColor = (level?: string) => {
+    const l = (level || '').toLowerCase();
+    if (l === 'critical') return '#ef4444';
+    if (l === 'high') return '#f97316';
+    if (l === 'medium') return '#ca8a04';
+    return '#10b981';
+  };
 
   return (
-    <Card className="border-l-4 border-l-primary h-full flex flex-col">
-      <div className="flex justify-between items-start mb-6">
+    <div className="space-y-4">
+      {/* Header */}
+      <div>
+        <div className="flex items-center gap-2 mb-2">
+          <AlertTriangle className="w-4 h-4 text-[#5e6ad2]" />
+          <h3 className="text-sm font-semibold text-[#f3f4f6]">{report.threat_title || 'Threat Analysis'}</h3>
+        </div>
+        <div className="flex items-center gap-2">
+          {report.risk_level && (
+            <Badge variant={report.risk_level.toLowerCase() as any}>
+              {report.risk_level}
+            </Badge>
+          )}
+          {report.threat_type && (
+            <span className="text-2xs text-[#6b7280] font-mono">{report.threat_type}</span>
+          )}
+          {report.confidence !== undefined && (
+            <span className="text-2xs text-[#9ca3af]">{(report.confidence * 100).toFixed(0)}% confidence</span>
+          )}
+        </div>
+      </div>
+
+      <div className="divider" />
+
+      {/* Executive Summary */}
+      {report.executive_summary && (
         <div>
-          <Badge variant={riskVariant || 'info'}>{report.risk_level} RISK</Badge>
-          <h2 className="text-2xl font-bold mt-2 font-display uppercase tracking-tight">
-            {report.threat_title}
-          </h2>
-          <p className="text-xs text-text-muted font-mono mt-1">
-            CONFIDENCE: {(report.confidence * 100).toFixed(0)}%
-          </p>
+          <p className="text-2xs uppercase tracking-wider text-[#6b7280] mb-2 font-medium">Executive Summary</p>
+          <p className="text-xs text-[#9ca3af] leading-relaxed">{report.executive_summary}</p>
         </div>
-        <Cpu className="w-8 h-8 text-primary opacity-50" />
-      </div>
-
-      <div className="space-y-6 flex-1">
-        <section>
-          <h3 className="text-xs font-bold uppercase text-primary tracking-widest mb-2">
-            Executive Summary
-          </h3>
-          <p className="text-sm text-text-primary leading-relaxed bg-bg-primary/50 p-3 rounded border border-border-subtle italic">
-            "{report.executive_summary}"
-          </p>
-        </section>
-
-        <section>
-          <h3 className="text-xs font-bold uppercase text-primary tracking-widest mb-2">
-            Fused Evidence Base
-          </h3>
-          <div className="grid grid-cols-1 gap-2">
-            {report.evidence?.map((item: any, idx: number) => (
-              <div key={idx} className="flex items-center justify-between text-xs p-2 bg-bg-tertiary rounded">
-                <span className="text-text-secondary font-bold uppercase">{item.source}</span>
-                <span className="text-text-primary">{item.finding}</span>
-                <span className="text-blue-400">wt: {item.weight?.toFixed(2)}</span>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section>
-          <h3 className="text-xs font-bold uppercase text-primary tracking-widest mb-2">
-            Immediate Mitigation
-          </h3>
-          <ul className="space-y-1">
-            {report.recommendations?.map((rec: any, idx: number) => (
-              <li key={idx} className="flex items-center gap-2 text-xs text-text-secondary">
-                <span className="w-1.5 h-1.5 rounded-full bg-danger"></span>
-                {rec.action} <span className="text-[10px] opacity-50">[{rec.priority}]</span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      </div>
-
-      <div className="mt-6 pt-4 border-t border-border-subtle space-y-3">
-        <Button variant="ai" className="w-full" onClick={() => setShowLogic(true)}>
-          <Brain className="w-4 h-4 mr-2" /> Inspect AI Reasoning logic
-        </Button>
-        <div className="grid grid-cols-2 gap-2">
-          <Button variant="secondary" className="text-xs py-1">
-            <Search className="w-3 h-3 mr-1" /> Deep Research
-          </Button>
-          <Button variant="danger" className="text-xs py-1">
-            <ShieldAlert className="w-3 h-3 mr-1" /> Armed Policy
-          </Button>
-        </div>
-      </div>
-
-      {/* Logic Drawer / Terminal Overlay */}
-      {showLogic && (
-        <ReasoningTerminal 
-          content={thoughts} 
-          onClose={() => setShowLogic(false)} 
-        />
       )}
-    </Card>
-  );
-};
 
+      {/* Evidence */}
+      {report.evidence && report.evidence.length > 0 && (
+        <>
+          <div className="divider" />
+          <div>
+            <p className="text-2xs uppercase tracking-wider text-[#6b7280] mb-2 font-medium">Evidence</p>
+            <div className="space-y-2">
+              {report.evidence.map((ev, i) => (
+                <div key={i} className="flex items-start gap-2">
+                  <span className="w-1 h-1 rounded-full bg-[#5e6ad2] mt-1.5 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-[#f3f4f6] mb-0.5">{ev.finding}</p>
+                    <p className="text-2xs text-[#6b7280] font-mono">{ev.source} • weight: {ev.weight.toFixed(2)}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Recommendations */}
+      {report.recommendations && report.recommendations.length > 0 && (
+        <>
+          <div className="divider" />
+          <div>
+            <p className="text-2xs uppercase tracking-wider text-[#6b7280] mb-2 font-medium">Recommendations</p>
+            <div className="space-y-1.5">
+              {report.recommendations.map((rec, i) => (
+                <div
+                  key={i}
+                  className="flex items-center gap-2 px-2 py-1.5 rounded text-xs"
+                  style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}
+                >
+                  <Badge variant={rec.priority.toLowerCase() as any}>{rec.priority}</Badge>
+                  <span className="text-[#9ca3af]">{rec.action}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* AI Reasoning */}
+      {thoughts && (
+        <>
+          <div className="divider" />
+          <div>
+            <p className="text-2xs uppercase tracking-wider text-[#6b7280] mb-2 font-medium">AI Reasoning Log</p>
+            <p className="text-2xs text-[#6b7280] font-mono leading-relaxed whitespace-pre-wrap">{thoughts}</p>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}

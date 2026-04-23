@@ -1,0 +1,33 @@
+====================================================================
+VERCEL ENVIRONMENT VARIABLES
+====================================================================
+Add this in Vercel → Project Settings → Environment Variables
+====================================================================
+
+Name: NEXT_PUBLIC_API_URL
+Value: https://REPLACE_WITH_RAILWAY_BACKEND_URL
+
+Example:
+Value: https://aegis-backend-production-abc123.up.railway.app
+
+====================================================================
+HOW TO GET BACKEND URL
+====================================================================
+
+1. Go to Railway → Backend Service
+2. Click Settings → Networking
+3. Click "Generate Domain"
+4. Copy the URL (e.g., https://xyz.up.railway.app)
+5. Paste into NEXT_PUBLIC_API_URL in Vercel
+
+====================================================================
+DEPLOYMENT ORDER
+====================================================================
+
+1. Deploy backend to Railway FIRST
+2. Get backend URL
+3. Then deploy frontend to Vercel with backend URL
+4. Update Railway CORS_ORIGINS with Vercel URL
+5. Redeploy backend
+
+====================================================================

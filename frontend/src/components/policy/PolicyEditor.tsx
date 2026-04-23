@@ -1,147 +1,89 @@
-"use client";
+'use client';
 import React, { useState, useEffect } from 'react';
-import { Card } from '../ui/Card';
-import { Button } from '../ui/Button';
-import { Input } from '../ui/Input';
-
-interface Policy {
-  id?: number;
-  name: string;
-  description?: string;
-  policy_type: 'logical' | 'natural';
-  content: string;
-  category?: string;
-  priority: number;
-}
+import { X } from 'lucide-react';
 
 interface PolicyEditorProps {
-  policy?: Policy | null;
-  onSave: (policy: Policy) => void;
+  policy: any;
+  onSave: (policy: any) => void;
   onCancel: () => void;
 }
 
-export const PolicyEditor: React.FC<PolicyEditorProps> = ({
-  policy,
-  onSave,
-  onCancel
-}) => {
-  const [formData, setFormData] = useState<Policy>({
-    name: '',
-    description: '',
-    policy_type: 'natural',
-    content: '',
-    category: '',
-    priority: 5
-  });
+export function PolicyEditor({ policy, onSave, onCancel }: PolicyEditorProps) {
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [content, setContent] = useState('');
+  const [category, setCategory] = useState('threat_blocking');
+  const [priority, setPriority] = useState(50);
 
   useEffect(() => {
     if (policy) {
-      setFormData(policy);
+      setName(policy.name || '');
+      setDescription(policy.description || '');
+      setContent(policy.content || '');
+      setCategory(policy.category || 'threat_blocking');
+      setPriority(policy.priority || 50);
     }
   }, [policy]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    onSave(formData);
+  const handleSave = () => {
+    onSave({
+      ...(policy?.id ? { id: policy.id } : {}),
+      name,
+      description,
+      content,
+      policy_type: 'natural',
+      category,
+      priority,
+    });
   };
 
   return (
-    <Card className="p-6">
-      <h3 className="text-lg font-semibold mb-4">
-        {policy?.id ? 'Edit Policy' : 'Create New Policy'}
-      </h3>
-      
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-text-secondary mb-1">
-            Policy Name *
-          </label>
-          <Input
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            placeholder="e.g., Election Disinformation Block"
-            required
-          />
-        </div>
+    <div className="card space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-[#f3f4f6]">{policy?.id ? 'Edit Policy' : 'New Policy'}</h3>
+        <button onClick={onCancel} className="btn btn-ghost btn-sm">
+          <X className="w-3.5 h-3.5" />
+        </button>
+      </div>
 
-        <div>
-          <label className="block text-sm font-medium text-text-secondary mb-1">
-            Description
-          </label>
-          <Input
-            value={formData.description || ''}
-            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            placeholder="Brief description of the policy"
-          />
-        </div>
+      <div>
+        <label className="text-2xs uppercase tracking-wider text-[#6b7280] mb-2 block font-medium">Policy Name</label>
+        <input className="input" placeholder="e.g., Block Election Disinfo" value={name} onChange={(e) => setName(e.target.value)} />
+      </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-text-secondary mb-1">
-              Category
-            </label>
-            <Input
-              value={formData.category || ''}
-              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-              placeholder="e.g., security, finance"
-            />
-          </div>
+      <div>
+        <label className="text-2xs uppercase tracking-wider text-[#6b7280] mb-2 block font-medium">Description</label>
+        <input className="input" placeholder="Brief description..." value={description} onChange={(e) => setDescription(e.target.value)} />
+      </div>
 
-          <div>
-            <label className="block text-sm font-medium text-text-secondary mb-1">
-              Priority (1-10)
-            </label>
-            <Input
-              type="number"
-              min="1"
-              max="10"
-              value={formData.priority}
-              onChange={(e) => setFormData({ ...formData, priority: parseInt(e.target.value) || 5 })}
-            />
-          </div>
-        </div>
+      <div>
+        <label className="text-2xs uppercase tracking-wider text-[#6b7280] mb-2 block font-medium">Category</label>
+        <select className="input" value={category} onChange={(e) => setCategory(e.target.value)}>
+          <option value="threat_blocking">Threat Blocking</option>
+          <option value="content_moderation">Content Moderation</option>
+          <option value="user_behavior">User Behavior</option>
+          <option value="network_security">Network Security</option>
+        </select>
+      </div>
 
-        <div>
-          <label className="block text-sm font-medium text-text-secondary mb-1">
-            Policy Type
-          </label>
-          <select
-            value={formData.policy_type}
-            onChange={(e) => setFormData({ ...formData, policy_type: e.target.value as 'logical' | 'natural' })}
-            className="w-full bg-bg-primary border border-border-subtle rounded px-3 py-2 text-sm focus:border-primary outline-none"
-          >
-            <option value="natural">Natural Language</option>
-            <option value="logical">DSL (Logical)</option>
-          </select>
-        </div>
+      <div>
+        <label className="text-2xs uppercase tracking-wider text-[#6b7280] mb-2 block font-medium">Priority (0-100)</label>
+        <input type="number" min="0" max="100" className="input" value={priority} onChange={(e) => setPriority(parseInt(e.target.value))} />
+      </div>
 
-        <div>
-          <label className="block text-sm font-medium text-text-secondary mb-1">
-            Policy Content *
-          </label>
-          <textarea
-            value={formData.content}
-            onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-            placeholder={
-              formData.policy_type === 'natural'
-                ? 'e.g., Be extremely aggressive against any election disinformation'
-                : 'IF narrative_match("keyword") AND ai_score > 0.8 THEN BLOCK_AND_LOG'
-            }
-            className="w-full h-32 bg-bg-primary border border-border-subtle rounded p-3 text-sm focus:border-primary outline-none resize-none font-mono"
-            required
-          />
-        </div>
+      <div>
+        <label className="text-2xs uppercase tracking-wider text-[#6b7280] mb-2 block font-medium">Policy Content (DSL or Natural Language)</label>
+        <textarea className="textarea" rows={6} placeholder="IF ai_score > 0.7 THEN BLOCK_AND_LOG" value={content} onChange={(e) => setContent(e.target.value)} />
+      </div>
 
-        <div className="flex gap-3 justify-end">
-          <Button variant="secondary" onClick={onCancel}>
-            Cancel
-          </Button>
-          <Button variant="primary" type="submit">
-            {policy?.id ? 'Update Policy' : 'Create Policy'}
-          </Button>
-        </div>
-      </form>
-    </Card>
+      <div className="flex gap-2 pt-2">
+        <button onClick={handleSave} className="btn btn-primary flex-1">
+          {policy?.id ? 'Update Policy' : 'Create Policy'}
+        </button>
+        <button onClick={onCancel} className="btn btn-secondary flex-1">
+          Cancel
+        </button>
+      </div>
+    </div>
   );
-};
-
+}

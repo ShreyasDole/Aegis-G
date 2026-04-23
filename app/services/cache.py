@@ -11,6 +11,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Redis connection
+REDIS_URL = os.getenv("REDIS_URL")
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
 REDIS_PASSWORD = os.getenv("REDIS_PASSWORD", None)
@@ -22,14 +23,21 @@ class RedisCache:
     
     def __init__(self):
         try:
-            self.client = redis.Redis(
-                host=REDIS_HOST,
-                port=REDIS_PORT,
-                password=REDIS_PASSWORD,
-                db=REDIS_DB,
-                decode_responses=True,
-                socket_connect_timeout=2
-            )
+            if REDIS_URL:
+                self.client = redis.from_url(
+                    REDIS_URL,
+                    decode_responses=True,
+                    socket_connect_timeout=2
+                )
+            else:
+                self.client = redis.Redis(
+                    host=REDIS_HOST,
+                    port=REDIS_PORT,
+                    password=REDIS_PASSWORD,
+                    db=REDIS_DB,
+                    decode_responses=True,
+                    socket_connect_timeout=2
+                )
             # Test connection
             self.client.ping()
             self.enabled = True

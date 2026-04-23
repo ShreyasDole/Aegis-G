@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
+import { AuthBrandingPanel } from '@/components/layout/AuthBrandingPanel';
+import { UserPlus } from 'lucide-react';
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -17,7 +19,7 @@ export default function RegisterPage() {
   const [error, setError] = useState<string | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
     setError(null);
   };
 
@@ -54,91 +56,94 @@ export default function RegisterPage() {
 
   if (isSuccess) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6">
-        <Card className="w-full max-w-md text-center">
-          <div className="text-6xl mb-4">✅</div>
-          <h2 className="text-2xl font-bold mb-4">Registration Successful</h2>
-          <p className="text-text-secondary mb-6">
-            Your account has been created. You can now sign in.
-          </p>
-          <Link href="/login">
-            <Button variant="primary" className="w-full">
-              Back to Login
-            </Button>
-          </Link>
-        </Card>
+      <div className="min-h-screen flex bg-bg-primary">
+        <AuthBrandingPanel />
+        <div className="flex-1 flex items-center justify-center p-6">
+          <Card className="w-full max-w-[420px] text-center border-border-medium/80 shadow-modal">
+            <div className="w-14 h-14 rounded-full bg-success/15 border border-success/30 flex items-center justify-center mx-auto mb-4">
+              <UserPlus className="w-7 h-7 text-success" strokeWidth={1.5} />
+            </div>
+            <h2 className="text-xl font-semibold text-text-primary mb-2">Registration received</h2>
+            <p className="text-text-secondary text-sm mb-6">Your account was created. You can sign in now.</p>
+            <Link href="/login">
+              <Button variant="primary" className="w-full rounded-lg">
+                Back to sign in
+              </Button>
+            </Link>
+          </Card>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6">
-      <Card className="w-full max-w-md">
-        <div className="text-center mb-6">
-          <div className="text-4xl mb-2">🛡️</div>
-          <h1 className="text-2xl font-bold font-display mb-2">Request Access</h1>
-          <p className="text-text-secondary text-sm">Register for Aegis-G Command Center</p>
-        </div>
-
-        <form onSubmit={handleRegister} className="space-y-4">
-          {error && (
-            <div className="p-3 rounded bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
-              {error}
+    <div className="min-h-screen flex bg-bg-primary">
+      <AuthBrandingPanel />
+      <div className="flex-1 flex flex-col justify-center items-center p-6 sm:p-10">
+        <Card className="w-full max-w-[420px] border-border-medium/80 shadow-modal">
+          <div className="flex items-center gap-3 mb-8">
+            <div className="w-10 h-10 rounded-lg bg-bg-primary border border-border-subtle flex items-center justify-center">
+              <UserPlus className="w-5 h-5 text-primary" strokeWidth={1.75} />
             </div>
-          )}
-          <Input
-            type="text"
-            name="fullName"
-            label="Full Name"
-            placeholder="John Doe"
-            value={formData.fullName}
-            onChange={handleChange}
-          />
-          <Input
-            type="email"
-            name="email"
-            label="Email"
-            placeholder="you@agency.gov"
-            value={formData.email}
-            onChange={handleChange}
-            required
-          />
-          <Input
-            type="password"
-            name="password"
-            label="Password"
-            placeholder="••••••••"
-            value={formData.password}
-            onChange={handleChange}
-            required
-          />
-          <Input
-            type="password"
-            name="confirmPassword"
-            label="Confirm Password"
-            placeholder="••••••••"
-            value={formData.confirmPassword}
-            onChange={handleChange}
-            required
-          />
+            <div>
+              <h1 className="text-lg font-semibold text-text-primary tracking-tight">Request access</h1>
+              <p className="text-xs text-text-muted">New analyst account</p>
+            </div>
+          </div>
 
-          <Button
-            type="submit"
-            variant="primary"
-            className="w-full py-3"
-            disabled={isLoading}
-          >
-            {isLoading ? 'Submitting...' : 'Request Access'}
-          </Button>
-        </form>
+          <form onSubmit={handleRegister} className="space-y-4">
+            {error && (
+              <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/25 text-red-400 text-sm">{error}</div>
+            )}
+            <Input
+              type="text"
+              name="fullName"
+              label="Full name"
+              placeholder="Jane Analyst"
+              value={formData.fullName}
+              onChange={handleChange}
+            />
+            <Input
+              type="email"
+              name="email"
+              label="Email"
+              placeholder="you@agency.gov"
+              value={formData.email}
+              onChange={handleChange}
+              required
+            />
+            <Input
+              type="password"
+              name="password"
+              label="Password"
+              placeholder="••••••••"
+              value={formData.password}
+              onChange={handleChange}
+              required
+            />
+            <Input
+              type="password"
+              name="confirmPassword"
+              label="Confirm password"
+              placeholder="••••••••"
+              value={formData.confirmPassword}
+              onChange={handleChange}
+              required
+            />
 
-        <div className="mt-6 text-center text-sm">
-          <span className="text-text-secondary">Already have an account? </span>
-          <Link href="/login" className="text-primary hover:text-blue-400 font-semibold">
-            Sign In
-          </Link>
-        </div>
-      </Card>
+            <Button type="submit" variant="primary" className="w-full py-3 rounded-lg mt-2" disabled={isLoading}>
+              {isLoading ? 'Submitting…' : 'Submit request'}
+            </Button>
+          </form>
+
+          <div className="mt-8 pt-6 border-t border-border-subtle text-center text-sm">
+            <span className="text-text-secondary">Already have an account? </span>
+            <Link href="/login" className="text-primary font-medium hover:underline">
+              Sign in
+            </Link>
+          </div>
+        </Card>
+      </div>
     </div>
   );
 }

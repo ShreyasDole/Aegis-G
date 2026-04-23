@@ -1,52 +1,121 @@
 """
-MCP Client Service - Model Context Protocol (Google AI MCP)
-Connects to MCP servers (e.g. Google Chronicle, BigQuery) for enhanced threat intelligence.
-Uses the official MCP Python SDK: https://github.com/modelcontextprotocol/python-sdk
-Configure MCP_SERVER_URL in env to enable. See: https://docs.cloud.google.com/mcp
+MCP Client Service - Model Context Protocol
+
+Connects to Google and Google Cloud remote MCP servers for threat intelligence,
+BigQuery, Chronicle, and the Developer Knowledge MCP (official Google docs search).
+
+Latest docs:
+  Overview:    https://docs.cloud.google.com/mcp/overview
+  Manage:     https://docs.cloud.google.com/mcp/manage-mcp-servers
+  Products:   https://docs.cloud.google.com/mcp/supported-products
+  Auth:       https://docs.cloud.google.com/mcp/authenticate-mcp
+  Dev Knowledge: https://developers.google.com/knowledge/mcp
+
+Tools discovery uses the MCP tools/list method (no auth required for list).
 """
-import asyncio
 import logging
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 from app.config import settings
 
 logger = logging.getLogger(__name__)
 
-MCP_SERVER_URL = settings.MCP_SERVER_URL
-MCP_ENABLED = bool(MCP_SERVER_URL)
+# Developer Knowledge MCP endpoint (Google official docs: Firebase, Cloud, Android, Maps)
+DEVELOPER_KNOWLEDGE_MCP_URL = "https://developerknowledge.googleapis.com/mcp"
+
+
+def _get_mcp_server_configs() -> List[Tuple[str, Dict[str, str]]]:
+    """
+    Build list of (base_url, headers) for each configured MCP server.
+    Uses MCP_SERVER_URL, MCP_SERVER_URLS, and optionally Developer Knowledge with API key.
+    """
+    configs: List[Tuple[str, Dict[str, str]]] = []
+    headers: Dict[str, str] = {"Content-Type": "application/json"}
+    if settings.MCP_GOOGLE_PROJECT_ID:
+        headers["X-goog-user-project"] = settings.MCP_GOOGLE_PROJECT_ID
+
+    # Single URL
+    if settings.MCP_SERVER_URL:
+        url = settings.MCP_SERVER_URL.rstrip("/")
+        if not url.startswith("http"):
+            url = f"https://{url}"
+        configs.append((url, dict(headers)))
+
+    # Multiple URLs (comma-separated)
+    if settings.MCP_SERVER_URLS:
+        for part in settings.MCP_SERVER_URLS.split(","):
+            url = part.strip().rstrip("/")
+            if not url:
+                continue
+            if not url.startswith("http"):
+                url = f"https://{url}"
+            configs.append((url, dict(headers)))
+
+    # Developer Knowledge MCP (search_documents, get_document, batch_get_documents)
+    if settings.DEVELOPER_KNOWLEDGE_API_KEY:
+        dk_headers = dict(headers)
+        dk_headers["X-Goog-Api-Key"] = settings.DEVELOPER_KNOWLEDGE_API_KEY
+        if (DEVELOPER_KNOWLEDGE_MCP_URL, dk_headers) not in [(u, h) for u, h in configs]:
+            configs.append((DEVELOPER_KNOWLEDGE_MCP_URL, dk_headers))
+
+    return configs
+
+
+def is_mcp_enabled() -> bool:
+    """True if any MCP server is configured."""
+    return len(_get_mcp_server_configs()) > 0
+
+
+async def _list_tools_from_server(base_url: str, headers: Dict[str, str]) -> List[Dict[str, Any]]:
+    """
+    Call MCP tools/list on one server. Endpoint is POST {base_url} with JSON-RPC.
+    Ref: https://docs.cloud.google.com/mcp/manage-mcp-servers#list-available-tools
+    """
+    try:
+        import httpx
+    except ImportError:
+        logger.debug("httpx not available for MCP tools/list")
+        return []
+
+    # MCP JSON-RPC 2.0 tools/list
+    payload = {"jsonrpc": "2.0", "id": 1, "method": "tools/list"}
+    url = base_url if base_url.endswith("/mcp") else f"{base_url.rstrip('/')}/mcp"
+
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            r = await client.post(url, json=payload, headers=headers)
+            r.raise_for_status()
+            data = r.json()
+    except Exception as e:
+        logger.warning("MCP tools/list failed for %s: %s", base_url, e)
+        return []
+
+    result = data.get("result")
+    if not result:
+        return []
+    tools = result.get("tools")
+    if not isinstance(tools, list):
+        return []
+    return [t for t in tools if isinstance(t, dict) and t.get("name")]
 
 
 async def get_mcp_tools() -> List[Dict[str, Any]]:
     """
-    Get tools from the connected MCP server (Google AI MCP or any MCP-compatible server).
-    Returns [] when MCP_SERVER_URL is not set or on any error.
+    Get tools from all configured Google/Google Cloud MCP servers.
+    Returns a combined list; each tool dict includes name, description, input_schema, etc.
+    Returns [] when no MCP servers are configured.
     """
-    if not MCP_ENABLED:
+    configs = _get_mcp_server_configs()
+    if not configs:
         return []
-    try:
-        from mcp import ClientSession
-        from mcp.client.sse import sse_client
-    except ImportError:
-        logger.debug("MCP SDK not installed; pip install mcp")
-        return []
-    try:
-        url = (MCP_SERVER_URL or "").strip()
-        if not url:
-            return []
-        tools: List[Dict[str, Any]] = []
-        async with sse_client(url=url) as (read_stream, write_stream):
-            async with ClientSession(read_stream, write_stream) as session:
-                await session.initialize()
-                result = await session.list_tools()
-                for t in getattr(result, "tools", []) or []:
-                    tools.append({
-                        "name": getattr(t, "name", ""),
-                        "description": getattr(t, "description", "") or "",
-                        "inputSchema": getattr(t, "inputSchema", None) or {},
-                    })
-        return tools
-    except asyncio.CancelledError:
-        raise
-    except Exception as e:
-        logger.warning("MCP tools unavailable: %s", e)
-        return []
+
+    all_tools: List[Dict[str, Any]] = []
+    for base_url, headers in configs:
+        tools = await _list_tools_from_server(base_url, headers)
+        for t in tools:
+            t["_mcp_server"] = base_url
+        all_tools.extend(tools)
+
+    if all_tools:
+        logger.info("MCP: discovered %s tools from %s server(s)", len(all_tools), len(configs))
+    return all_tools

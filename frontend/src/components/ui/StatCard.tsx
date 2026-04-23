@@ -1,49 +1,37 @@
 import React from 'react';
 
 interface StatCardProps {
-  value: string | number;
   label: string;
-  variant?: 'safe' | 'warning' | 'critical' | 'default';
-  trend?: {
-    value: number;
-    isPositive: boolean;
-  };
+  value: string | number;
+  variant?: 'default' | 'safe' | 'warning' | 'critical';
+  icon?: React.ReactNode;
+  subtext?: string;
+  className?: string;
 }
 
-export const StatCard: React.FC<StatCardProps> = ({
-  value,
-  label,
-  variant = 'default',
-  trend
-}) => {
-  const variantClasses = {
-    safe: 'border-l-4 border-l-success',
-    warning: 'border-l-4 border-l-warning',
-    critical: 'border-l-4 border-l-danger',
-    default: 'border-l-4 border-l-primary',
-  };
-
-  return (
-    <div className={`card-hover ${variantClasses[variant]}`}>
-      <div className="text-xs font-semibold uppercase tracking-wider text-text-muted mb-2">
-        {label}
-      </div>
-      <div className="text-3xl font-bold text-text-primary mb-2">{value}</div>
-      {trend && (
-        <div className="flex items-center gap-1">
-          <svg 
-            className={`w-4 h-4 ${trend.isPositive ? 'text-success rotate-180' : 'text-danger'}`} 
-            fill="currentColor" 
-            viewBox="0 0 20 20"
-          >
-            <path fillRule="evenodd" d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z" clipRule="evenodd" />
-          </svg>
-          <span className={`text-xs font-semibold ${trend.isPositive ? 'text-success' : 'text-danger'}`}>
-            {Math.abs(trend.value)}% today
-          </span>
-        </div>
-      )}
-    </div>
-  );
+const variantBorder: Record<string, string> = {
+  default:  'border-[rgba(255,255,255,0.05)]',
+  safe:     'border-[rgba(16,185,129,0.2)]',
+  warning:  'border-[rgba(249,115,22,0.2)]',
+  critical: 'border-[rgba(239,68,68,0.2)]',
 };
 
+const variantText: Record<string, string> = {
+  default:  'text-[#f3f4f6]',
+  safe:     'text-[#10b981]',
+  warning:  'text-[#f97316]',
+  critical: 'text-[#ef4444]',
+};
+
+export function StatCard({ label, value, variant = 'default', icon, subtext, className = '' }: StatCardProps) {
+  return (
+    <div className={`card ${variantBorder[variant]} ${className}`}>
+      <div className="flex items-start justify-between mb-2">
+        <p className="text-2xs font-medium uppercase tracking-wider text-[#6b7280]">{label}</p>
+        {icon && <span className="text-[#6b7280]">{icon}</span>}
+      </div>
+      <p className={`text-2xl font-semibold tabular-nums ${variantText[variant]}`}>{value}</p>
+      {subtext && <p className="text-xs text-[#6b7280] mt-1">{subtext}</p>}
+    </div>
+  );
+}

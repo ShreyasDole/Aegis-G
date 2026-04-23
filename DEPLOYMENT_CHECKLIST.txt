@@ -1,0 +1,99 @@
+====================================================================
+DEPLOYMENT COMMIT CHECKLIST (fix/phase4 branch)
+====================================================================
+
+Before pushing to GitHub, verify:
+
+✅ Railway config files created:
+   - railway.json
+   - .railwayignore
+   - RAILWAY_ENV.txt
+
+✅ Vercel config files created:
+   - frontend/vercel.json
+   - VERCEL_ENV.txt
+
+✅ Dependencies updated:
+   - gunicorn added to app/requirements.txt
+
+✅ Environment configs ready:
+   - SECRET_KEY generated
+   - Branch set to fix/phase4
+
+✅ Documentation created:
+   - DEPLOYMENT_STEPS.txt (complete manual)
+
+====================================================================
+DEPLOYMENT WORKFLOW
+====================================================================
+
+1. COMMIT & PUSH TO GITHUB (fix/phase4 branch)
+────────────────────────────────────────────────────────────────────
+
+git add .
+git commit -m "feat: add Railway/Vercel deployment configs for fix/phase4"
+git push origin fix/phase4
+
+2. DEPLOY BACKEND TO RAILWAY
+────────────────────────────────────────────────────────────────────
+
+Follow: DEPLOYMENT_STEPS.txt → Section 1 (Neo4j) + Section 2 (Railway)
+
+Important:
+- Select branch: fix/phase4
+- Add PostgreSQL + Redis plugins
+- Configure all environment variables from RAILWAY_ENV.txt
+- Generate domain for backend
+
+3. DEPLOY FRONTEND TO VERCEL
+────────────────────────────────────────────────────────────────────
+
+Follow: DEPLOYMENT_STEPS.txt → Section 3 (Vercel)
+
+Important:
+- Select branch: fix/phase4
+- Set root directory: frontend
+- Add NEXT_PUBLIC_API_URL with Railway backend URL
+
+4. UPDATE CORS AND REDEPLOY BACKEND
+────────────────────────────────────────────────────────────────────
+
+- Update CORS_ORIGINS in Railway with Vercel URL
+- Update FRONTEND_URL in Railway with Vercel URL
+- Save variables (auto-redeploys)
+
+====================================================================
+BRANCH DEPLOYMENT NOTES
+====================================================================
+
+Railway:
+- Watches fix/phase4 branch
+- Auto-redeploys on every push to fix/phase4
+- Can deploy multiple branches as separate environments
+
+Vercel:
+- Watches fix/phase4 branch
+- Production deployment URL stays same
+- Auto-redeploys on push
+
+====================================================================
+POST-DEPLOYMENT TESTING
+====================================================================
+
+1. Backend health check:
+   curl https://YOUR-BACKEND.railway.app/health
+
+2. Frontend loads:
+   Open: https://YOUR-APP.vercel.app
+
+3. Test auth flow:
+   - Register user
+   - Login
+   - Check token
+
+4. Test core features:
+   - Upload file
+   - Run scan
+   - View results
+
+====================================================================

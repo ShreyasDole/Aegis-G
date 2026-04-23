@@ -17,7 +17,7 @@ export const AIManager: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
 
-  // Listen for custom event from Navbar
+  // Custom event from EnterpriseShell "AI Assistant" button
   React.useEffect(() => {
     const handleOpenAI = () => {
       setIsOpen(true);
@@ -40,7 +40,7 @@ export const AIManager: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, [isOpen]);
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!message.trim()) return;
 
     const userMessage: Message = {
@@ -51,24 +51,49 @@ export const AIManager: React.FC = () => {
     };
 
     setMessages(prev => [...prev, userMessage]);
+    const currentMessage = message;
     setMessage('');
     setIsTyping(true);
 
-    // Simulate AI response
-    setTimeout(() => {
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const res = await fetch('/api/ai/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ message: currentMessage, use_tools: true }),
+      });
+      const data = res.ok ? await res.json() : null;
+      const reply = data?.message || 'I couldn’t process that. Please try again.';
+      const suggestions = data?.suggestions || [];
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: 'I understand you want to analyze the recent threats. Based on the current data, I\'ve identified 12 critical threats that require immediate attention. Would you like me to generate a detailed report?',
+        content: reply,
         timestamp: new Date(),
-        actions: [
-          { label: 'Generate Report', onClick: () => console.log('Generate report') },
-          { label: 'View Threats', onClick: () => console.log('View threats') },
-        ],
+        actions: suggestions.slice(0, 3).map((label: string) => ({
+          label,
+          onClick: () => {
+            if (label.toLowerCase().includes('threat')) window.location.href = '/threats';
+            else if (label.toLowerCase().includes('report') || label.toLowerCase().includes('dashboard')) window.location.href = '/dashboard';
+            else if (label.toLowerCase().includes('scan')) window.location.href = '/scans';
+          },
+        })),
       };
       setMessages(prev => [...prev, aiMessage]);
+    } catch {
+      setMessages(prev => [...prev, {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: 'Connection error. Please try again.',
+        timestamp: new Date(),
+      }]);
+    } finally {
       setIsTyping(false);
-    }, 1500);
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -170,21 +195,21 @@ export const AIManager: React.FC = () => {
               <div className="flex gap-2 mb-2">
                 <button 
                   className="text-xs px-3 py-1 bg-bg-tertiary hover:bg-bg-primary rounded transition-colors text-text-secondary"
-                  onClick={() => console.log('Show threats clicked')}
+                  onClick={() => window.location.href = '/threats'}
                 >
                   Show threats
                 </button>
                 <button 
                   className="text-xs px-3 py-1 bg-bg-tertiary hover:bg-bg-primary rounded transition-colors text-text-secondary"
-                  onClick={() => console.log('Generate report clicked')}
+                  onClick={() => window.location.href = '/dashboard'}
                 >
-                  Generate report
+                  Dashboard
                 </button>
                 <button 
                   className="text-xs px-3 py-1 bg-bg-tertiary hover:bg-bg-primary rounded transition-colors text-text-secondary"
-                  onClick={() => console.log('System status clicked')}
+                  onClick={() => window.location.href = '/scans'}
                 >
-                  System status
+                  Scans
                 </button>
               </div>
               <div className="flex gap-2">

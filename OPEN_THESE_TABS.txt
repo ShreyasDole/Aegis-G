@@ -1,0 +1,23 @@
+╔═══════════════════════════════════════════════════════════════╗
+║        OPEN THESE 4 TABS - DO THEM IN ORDER                   ║
+╚═══════════════════════════════════════════════════════════════╝
+
+TAB 1: NEO4J AURA
+URL: https://console.neo4j.io
+
+TAB 2: RAILWAY  
+URL: https://railway.app
+
+TAB 3: GEMINI
+URL: https://aistudio.google.com/app/apikey
+
+TAB 4: VERCEL
+URL: https://vercel.com
+
+═══════════════════════════════════════════════════════════════
+
+CREDENTIALS (USE FOR ALL):
+shreyasdole1105@gmail.com
+Shreyas@2005
+
+═══════════════════════════════════════════════════════════════

@@ -1,61 +1,50 @@
-"""
-Graph Router
-Neo4j graph queries and network analysis
-"""
 from fastapi import APIRouter, HTTPException
-from app.schemas.graph import GraphResponse, NetworkQuery, GraphNode
-from app.services.graph.neo4j import Neo4jService
+from app.schemas.graph import GraphResponse, NetworkQuery
+from app.services.graph.neo4j import neo4j_service
 
 router = APIRouter()
 
+def _normalize_edges(edges: list) -> list:
+    """Ensure each edge has 'relationship' for GraphResponse schema."""
+    return [
+        {"source": e["source"], "target": e["target"], "relationship": e.get("type") or e.get("relationship") or "RELATED", "properties": e.get("properties")}
+        for e in edges
+    ]
+
 
 @router.get("/", response_model=GraphResponse)
-async def get_network(query: NetworkQuery = None):
-    """
-    Get graph network visualization data
-    Returns nodes and edges for visualization
-    """
+async def get_network(limit: int = 100):
     try:
-        neo4j_service = Neo4jService()
-        
-        if query and query.node_id:
-            # Get subgraph around specific node
-            graph_data = await neo4j_service.get_subgraph(
-                node_id=query.node_id,
-                depth=query.depth,
-                limit=query.limit
-            )
-        else:
-            # Get full network
-            graph_data = await neo4j_service.get_network(limit=query.limit if query else 100)
-        
-        return GraphResponse(
-            nodes=graph_data.get("nodes", []),
-            edges=graph_data.get("edges", []),
-            stats=graph_data.get("stats", {})
-        )
+        data = await neo4j_service.get_network(limit=limit)
+        edges = _normalize_edges(data.get("edges", []))
+        return GraphResponse(nodes=data["nodes"], edges=edges)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Graph query failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
+@router.get("/campaign/{root_id}", response_model=GraphResponse)
+async def get_campaign_view(root_id: str):
+    """Get the propagation tree for a specific campaign origin (Source -> Botnet -> Targets)."""
+    try:
+        data = await neo4j_service.get_campaign_lineage(root_id)
+        edges = _normalize_edges(data.get("edges", []))
+        return GraphResponse(nodes=data["nodes"], edges=edges)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/clusters")
 async def get_bot_clusters():
-    """Identify bot clusters in the network"""
     try:
-        neo4j_service = Neo4jService()
         clusters = await neo4j_service.detect_clusters()
         return {"clusters": clusters}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Cluster detection failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/nodes")
-async def create_node(node: GraphNode):
-    """Create a new node in the graph"""
+@router.get("/pagerank")
+async def get_influencers(limit: int = 20):
+    """Get top influencers using PageRank algorithm"""
     try:
-        neo4j_service = Neo4jService()
-        result = await neo4j_service.create_node(node)
-        return result
+        influencers = await neo4j_service.calculate_page_rank(limit=limit)
+        return {"influencers": influencers}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Node creation failed: {str(e)}")
-
+        raise HTTPException(status_code=500, detail=str(e))

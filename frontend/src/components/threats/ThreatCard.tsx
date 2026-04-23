@@ -1,5 +1,6 @@
 'use client';
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 
@@ -7,7 +8,7 @@ interface ThreatCardProps {
   id: number;
   title: string;
   description: string;
-  content?: string; // Full content for AI analysis (when different from truncated description)
+  content?: string;
   severity: 'critical' | 'high' | 'medium' | 'low';
   source: string;
   firstSeen: string;
@@ -15,6 +16,7 @@ interface ThreatCardProps {
   riskScore: number;
   onAnalyze?: (id: number, content: string) => void;
   onExportSTIX?: (id: number) => void;
+  onDismiss?: (id: number) => void;
 }
 
 export const ThreatCard: React.FC<ThreatCardProps> = ({
@@ -29,7 +31,9 @@ export const ThreatCard: React.FC<ThreatCardProps> = ({
   riskScore,
   onAnalyze,
   onExportSTIX,
+  onDismiss,
 }) => {
+  const router = useRouter();
   const severityConfig = {
     critical: { class: 'threat-card-critical', label: 'CRITICAL' },
     high: { class: 'threat-card-high', label: 'HIGH' },
@@ -48,13 +52,13 @@ export const ThreatCard: React.FC<ThreatCardProps> = ({
           {config.label}
         </Badge>
         <div className="flex gap-2">
-          <Button variant="secondary" className="text-xs py-1 px-3" onClick={() => console.log('View Details clicked', id)}>
+          <Button variant="secondary" className="text-xs py-1 px-3" onClick={() => router.push(`/forensics/${id}`)}>
             View Details
           </Button>
           <Button variant="secondary" className="text-xs py-1 px-3" onClick={() => onExportSTIX?.(id)}>
             Export STIX
           </Button>
-          <Button variant="secondary" className="text-xs py-1 px-3" onClick={() => console.log('Dismiss clicked', id)}>
+          <Button variant="secondary" className="text-xs py-1 px-3" onClick={() => onDismiss?.(id)}>
             Dismiss
           </Button>
         </div>
@@ -101,16 +105,16 @@ export const ThreatCard: React.FC<ThreatCardProps> = ({
       {/* Actions */}
       <div className="flex gap-2 pt-3 border-t border-border-subtle">
         <Button
-          variant="ai"
+          variant="primary"
           className="text-xs py-1.5 px-3 flex-1"
           onClick={() => onAnalyze?.(id, content ?? description)}
         >
           AI Analysis
         </Button>
-        <Button variant="secondary" className="text-xs py-1.5 px-3" onClick={() => console.log('Graph View clicked', id)}>
+        <Button variant="secondary" className="text-xs py-1.5 px-3" onClick={() => router.push('/network')}>
           Graph View
         </Button>
-        <Button variant="secondary" className="text-xs py-1.5 px-3" onClick={() => console.log('Forensics clicked', id)}>
+        <Button variant="secondary" className="text-xs py-1.5 px-3" onClick={() => router.push(`/forensics/${id}`)}>
           Forensics
         </Button>
       </div>

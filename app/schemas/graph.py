@@ -11,6 +11,8 @@ class GraphNode(BaseModel):
     id: str
     label: str
     type: str  # User, Post, Narrative, IP_Address
+    cluster: Optional[str] = None
+    is_patient_zero: Optional[bool] = False
     properties: Optional[dict] = None
 
 

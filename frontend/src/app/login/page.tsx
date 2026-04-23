@@ -1,196 +1,228 @@
 'use client';
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Button } from '@/components/ui/Button';
+import { useSearchParams } from 'next/navigation';
 import { Input } from '@/components/ui/Input';
-import { Card } from '@/components/ui/Card';
+import { Shield, ChevronRight } from 'lucide-react';
+
+const ERRORS: Record<string, string> = {
+  access_denied: 'Microsoft sign-in was cancelled or denied.',
+  oauth_failed:  'Microsoft sign-in failed. Please try again.',
+  no_email:      'Could not get email from Microsoft account.',
+  account_disabled: 'Your account is not active. Contact your administrator.',
+};
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
+  const searchParams = useSearchParams();
+  const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError]       = useState<string | null>(
+    searchParams.get('error') ? ERRORS[searchParams.get('error')!] || null : null
+  );
+  const [showEmail, setShowEmail] = useState(false);
+
+  const handleMicrosoftLogin = () => {
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    window.location.href = `${API_URL}/api/auth/outlook`;
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
-    setError(null);
     e.preventDefault();
+    setError(null);
     setIsLoading(true);
-
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-
-      // 1. Get the JWT Token
-      const loginResponse = await fetch(`${API_URL}/api/auth/login`, {
+      const res = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
-
-      if (!loginResponse.ok) {
-        const errorData = await loginResponse.json().catch(() => ({}));
-        const detail = Array.isArray(errorData.detail) ? errorData.detail[0]?.msg : errorData.detail;
-        const msg = detail || (loginResponse.status === 500 ? 'Backend error - ensure DB migrations ran' : 'Login failed');
-        throw new Error(msg);
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        const detail = Array.isArray(d.detail) ? d.detail[0]?.msg : d.detail;
+        throw new Error(detail || 'Login failed');
       }
-
-      const data = await loginResponse.json();
+      const data = await res.json();
       localStorage.setItem('token', data.access_token);
-
-      // 2. Fetch the user's actual profile details
-      const userResponse = await fetch(`${API_URL}/api/auth/me`, {
-        headers: { 'Authorization': `Bearer ${data.access_token}` },
+      const userRes = await fetch(`${API_URL}/api/auth/me`, {
+        headers: { Authorization: `Bearer ${data.access_token}` },
       });
-
-      if (userResponse.ok) {
-        const userData = await userResponse.json();
-        localStorage.setItem(
-          'user',
-          JSON.stringify({
-            email: userData.email,
-            name: userData.full_name || 'Agent',
-            role: userData.role,
-          })
-        );
+      if (userRes.ok) {
+        const u = await userRes.json();
+        localStorage.setItem('user', JSON.stringify({ email: u.email, name: u.full_name || 'Agent', role: u.role }));
       }
-
-      // 3. Redirect to Dashboard
       window.location.href = '/dashboard';
     } catch (err: unknown) {
-      console.error('Login error:', err);
-      let msg = 'Login failed';
-      if (err instanceof TypeError && (err.message === 'Failed to fetch' || err.message.includes('fetch'))) {
-        msg = 'Cannot reach backend. Ensure API is running at ' + (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000');
-      } else if (err instanceof Error) {
-        msg = err.message;
-      }
-      setError(msg);
-    } finally {
-      setIsLoading(false);
-    }
+      setError(err instanceof Error ? err.message : 'Login failed');
+    } finally { setIsLoading(false); }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden">
-      {/* Animated Background Grid */}
-      <div className="absolute inset-0 opacity-5">
-        <div className="absolute inset-0" style={{
-          backgroundImage: 'linear-gradient(#334155 1px, transparent 1px), linear-gradient(90deg, #334155 1px, transparent 1px)',
-          backgroundSize: '50px 50px'
-        }}></div>
-      </div>
+    <div className="min-h-screen flex" style={{ background: '#0e0e0e' }}>
 
-      {/* Login Card */}
-      <Card className="w-full max-w-md z-10 relative">
-        {/* Logo & Title */}
-        <div className="text-center mb-8">
-          <div className="font-display text-4xl font-bold tracking-wider text-primary mb-2">
-            AEGIS-G
+      {/* Left branding panel */}
+      <div
+        className="hidden lg:flex flex-col justify-between w-80 p-8 border-r"
+        style={{ background: '#111113', borderColor: 'rgba(255,255,255,0.05)' }}
+      >
+        <div>
+          {/* Logo */}
+          <div className="flex items-center gap-2.5 mb-12">
+            <div
+              className="w-7 h-7 rounded flex items-center justify-center"
+              style={{ background: 'rgba(94,106,210,0.15)', border: '1px solid rgba(94,106,210,0.25)' }}
+            >
+              <Shield className="w-4 h-4" style={{ color: '#5e6ad2' }} />
+            </div>
+            <span className="font-semibold text-[#f3f4f6]">AEGIS-G</span>
           </div>
-          <div className="h-px w-16 bg-primary mx-auto mb-4"></div>
-          <p className="text-text-secondary text-sm">
-            Secure Access Portal
+
+          <h2 className="text-lg font-semibold text-[#f3f4f6] mb-2">Cognitive Defense Grid</h2>
+          <p className="text-sm text-[#6b7280] leading-relaxed mb-8">
+            National security operations platform powered by distributed multi-agent AI forensics.
           </p>
+
+          {/* Feature list */}
+          {[
+            'Multi-modal threat attribution',
+            'Real-time graph intelligence',
+            'Policy enforcement engine',
+            'Blockchain audit ledger',
+            'STIX 2.1 intelligence sharing',
+          ].map(f => (
+            <div key={f} className="flex items-center gap-2.5 mb-3">
+              <ChevronRight className="w-3.5 h-3.5 flex-shrink-0" style={{ color: '#5e6ad2' }} />
+              <span className="text-xs text-[#9ca3af]">{f}</span>
+            </div>
+          ))}
         </div>
 
-        {/* Login Form */}
-        <form onSubmit={handleLogin} className="space-y-4">
+        <p className="text-2xs text-[#4b5563]" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+          v2.0.0 · Classified
+        </p>
+      </div>
+
+      {/* Right login area */}
+      <div className="flex-1 flex items-center justify-center p-8">
+        <div className="w-full max-w-sm">
+
+          {/* Mobile logo */}
+          <div className="flex items-center gap-2 mb-8 lg:hidden">
+            <Shield className="w-5 h-5" style={{ color: '#5e6ad2' }} />
+            <span className="font-semibold text-[#f3f4f6]">AEGIS-G</span>
+          </div>
+
+          <h1 className="text-xl font-semibold text-[#f3f4f6] mb-1">Sign in</h1>
+          <p className="text-sm text-[#6b7280] mb-8">AEGIS-G enterprise portal</p>
+
           {error && (
-            <div className="p-3 rounded bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
+            <div
+              className="mb-4 px-4 py-3 rounded-lg text-sm"
+              style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444' }}
+            >
               {error}
             </div>
           )}
-          <div className="p-3 rounded bg-primary/5 border border-primary/20 text-text-secondary text-xs">
-            <strong>Demo:</strong> test@aegis.com / TestPassword123! or admin@aegis.com / AdminPassword123!
-          </div>
-          <Input
-            type="email"
-            label="Email Address"
-            placeholder="analyst@agency.gov"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
 
-          <Input
-            type="password"
-            label="Password"
-            placeholder="••••••••"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-
-          <div className="flex items-center justify-between text-sm">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                className="w-4 h-4 rounded border-border-medium bg-bg-primary checked:bg-primary"
-              />
-              <span className="text-text-secondary">Remember me</span>
-            </label>
-            <Link href="/forgot-password" className="text-primary hover:text-blue-400">
-              Forgot password?
-            </Link>
-          </div>
-
-          <Button
-            type="submit"
-            variant="primary"
-            className="w-full py-3 text-base"
-            disabled={isLoading}
+          {/* Microsoft SSO */}
+          <button
+            onClick={handleMicrosoftLogin}
+            className="btn btn-secondary btn-lg w-full mb-3 justify-center"
+            style={{ borderRadius: '6px', gap: '8px' }}
           >
-            {isLoading ? 'Authenticating...' : 'Sign In'}
-          </Button>
-        </form>
-
-        {/* Divider */}
-        <div className="relative my-6">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-border-subtle"></div>
-          </div>
-          <div className="relative flex justify-center text-sm">
-            <span className="px-2 bg-bg-secondary text-text-muted">OR</span>
-          </div>
-        </div>
-
-        {/* SSO Options */}
-        <div className="space-y-2">
-          <Button variant="secondary" className="w-full">
-            Sign in with CAC/PIV
-          </Button>
-          <Button variant="secondary" className="w-full">
-            Sign in with Agency SSO
-          </Button>
-        </div>
-
-        {/* Register Link */}
-        <div className="mt-6 text-center text-sm">
-          <span className="text-text-secondary">Need access? </span>
-          <Link href="/register" className="text-primary hover:text-blue-400 font-semibold">
-            Request Account
-          </Link>
-        </div>
-
-        {/* Security Notice */}
-        <div className="mt-6 p-3 bg-warning/10 border border-warning/30 rounded">
-          <div className="flex items-start gap-2 text-xs">
-            <svg className="w-5 h-5 text-warning flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+            <svg className="w-4 h-4 shrink-0" viewBox="0 0 21 21" fill="none">
+              <path d="M10 0H0v10h10V0zm11 0H10.5v10H21V0zM10 10.5H0V21h10V10.5zm11 0H10.5V21H21V10.5z" fill="currentColor" />
             </svg>
-            <div>
-              <div className="font-semibold text-warning mb-1">CLASSIFIED SYSTEM</div>
-              <div className="text-text-secondary">
-                Unauthorized access is prohibited. All activities are monitored and logged.
-              </div>
+            Continue with Microsoft
+          </button>
+
+          {/* Divider */}
+          <div className="relative my-5">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }} />
+            </div>
+            <div className="relative flex justify-center">
+              <span className="px-3 text-xs" style={{ background: '#0e0e0e', color: '#4b5563' }}>or</span>
             </div>
           </div>
-        </div>
-      </Card>
 
-      {/* Footer */}
-      <div className="absolute bottom-4 left-0 right-0 text-center text-text-muted text-xs z-10">
-        <p>National Security Operations Platform</p>
-        <p className="mt-1">Contact: security@agency.gov</p>
+          {/* Email form toggle */}
+          {!showEmail ? (
+            <button
+              onClick={() => setShowEmail(true)}
+              className="btn btn-ghost btn-lg w-full justify-center"
+              style={{ borderRadius: '6px', border: '1px solid rgba(255,255,255,0.08)' }}
+            >
+              Continue with email
+            </button>
+          ) : (
+            <form onSubmit={handleLogin} className="space-y-4">
+              {/* Demo hint */}
+              <div
+                className="px-3 py-2.5 rounded-lg text-xs"
+                style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', color: '#6b7280', fontFamily: 'JetBrains Mono, monospace' }}
+              >
+                Demo: test@aegis.com / TestPassword123!
+              </div>
+
+              <Input
+                type="email"
+                label="Email"
+                placeholder="email@example.com"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                required
+              />
+              <Input
+                type="password"
+                label="Password"
+                placeholder="••••••••"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                required
+              />
+
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowEmail(false)}
+                  className="btn btn-ghost flex-1 justify-center"
+                  style={{ borderRadius: '6px', border: '1px solid rgba(255,255,255,0.08)' }}
+                >
+                  Back
+                </button>
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="btn btn-primary flex-1 justify-center"
+                  style={{ borderRadius: '6px' }}
+                >
+                  {isLoading ? 'Signing in…' : 'Sign in'}
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* Register link */}
+          <p className="mt-6 text-center text-xs text-[#6b7280]">
+            Need access?{' '}
+            <Link href="/register" className="text-[#5e6ad2] hover:underline">
+              Request account
+            </Link>
+          </p>
+
+          {/* Security notice */}
+          <div
+            className="mt-6 px-3 py-2.5 rounded-lg"
+            style={{ background: 'rgba(249,115,22,0.05)', border: '1px solid rgba(249,115,22,0.15)' }}
+          >
+            <p className="text-2xs leading-relaxed" style={{ color: '#9ca3af' }}>
+              <span style={{ color: '#f97316', fontWeight: 500 }}>Classified system. </span>
+              Unauthorized access is prohibited. All activity is monitored and logged.
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );

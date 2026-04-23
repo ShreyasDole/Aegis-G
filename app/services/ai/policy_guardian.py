@@ -25,7 +25,7 @@ class PolicyGuardian:
         """
         Translate human strategic intent into executable DSL logic
         
-        Uses Gemini 3 Pro with Thinking to analyze edge cases and refine rules
+        Uses Gemini 2.5 Flash to analyze edge cases and refine rules
         """
         system_instructions = """
         You are the Policy Guardian (Agent 4) of Project Aegis.
@@ -92,11 +92,9 @@ class PolicyGuardian:
                 system_instruction=system_instructions,
                 response_mime_type="application/json",
             )
-            if hasattr(types, "ThinkingConfig") and "thinking" in getattr(settings, "GEMINI_PRO_MODEL", "").lower():
-                config_kwargs["thinking_config"] = types.ThinkingConfig(include_thoughts=True)
-
+            # Note: Gemini 2.5 Flash doesn't support ThinkingConfig, using standard generation
             response = client.models.generate_content(
-                model=settings.GEMINI_PRO_MODEL,
+                model=settings.GEMINI_FLASH_MODEL,
                 contents=user_prompt,
                 config=types.GenerateContentConfig(**config_kwargs)
             )

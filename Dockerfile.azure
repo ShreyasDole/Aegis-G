@@ -1,0 +1,77 @@
+# ============================================
+# 🛡️ Aegis-G — Azure Container Apps Dockerfile
+# ============================================
+# Single-stage production Dockerfile built from the REPO ROOT.
+# Used for: az acr build / docker build from project root.
+#
+# Why separate from deployment/Dockerfile.backend.prod?
+# → Azure Container Registry (ACR) build context = repo root
+# → This avoids path confusion with the deployment/ subfolder
+# ============================================
+
+FROM python:3.11-slim AS builder
+
+WORKDIR /build
+
+# Install build dependencies (needed for psycopg2, cryptography)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create and activate virtual env
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Install Python dependencies from repo root requirements.txt
+COPY requirements.txt .
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
+
+# ── Production stage ───────────────────────────────────────────────────────
+FROM python:3.11-slim AS production
+
+# Security: run as non-root
+RUN groupadd -r aegis && useradd -r -g aegis aegis
+
+WORKDIR /app
+
+# Runtime libs only (libpq5 for psycopg2, curl for healthcheck)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
+    curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Copy venv from builder
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Copy application code
+COPY --chown=aegis:aegis ./app /app/app
+
+# Copy entrypoint
+COPY --chown=aegis:aegis ./scripts/entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
+# Python settings
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app
+
+# Default port (Azure Container Apps injects PORT env var)
+# Also set WEBSITES_PORT so Azure's ingress layer knows which port to route to
+ENV PORT=8000
+ENV WEBSITES_PORT=8000
+
+# Healthcheck (Azure also does its own liveness probe on /health)
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:${PORT}/health || exit 1
+
+USER aegis
+
+EXPOSE 8000
+
+# Use entrypoint that reads $PORT at runtime
+ENTRYPOINT ["/app/entrypoint.sh"]

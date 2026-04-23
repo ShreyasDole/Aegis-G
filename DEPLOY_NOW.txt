@@ -1,0 +1,117 @@
+╔═══════════════════════════════════════════════════════════════╗
+║           AEGIS-G DEPLOYMENT QUICKSTART                       ║
+║           Branch: fix/phase4                                  ║
+╚═══════════════════════════════════════════════════════════════╝
+
+Account Credentials:
+  Email: shreyasdole1105@gmail.com
+  Password: Shreyas@2005
+
+GitHub Repo:
+  https://github.com/ShreyasDole/Aegis-G
+  Branch: fix/phase4 ✅ PUSHED
+
+═══════════════════════════════════════════════════════════════
+
+DEPLOYMENT ORDER (follow exactly):
+
+1️⃣  NEO4J AURA (Graph Database)
+────────────────────────────────────────────────────────────────
+   URL: https://console.neo4j.io
+   
+   Steps:
+   • Sign up with shreyasdole1105@gmail.com
+   • Create free instance
+   • Save credentials:
+     - NEO4J_URI (neo4j+s://xxx.databases.neo4j.io)
+     - NEO4J_PASSWORD
+
+2️⃣  RAILWAY (Backend + Databases)
+────────────────────────────────────────────────────────────────
+   URL: https://railway.app
+   
+   Steps:
+   • Sign up with GitHub
+   • New Project → Deploy from GitHub
+   • Select: Aegis-G repo
+   • IMPORTANT: Choose branch "fix/phase4"
+   • Add PostgreSQL plugin
+   • Add Redis plugin
+   • Configure backend service:
+     - Start command: (auto-detected from railway.json)
+     - Variables: Copy from RAILWAY_ENV.txt
+   • Generate domain
+   • Copy backend URL
+
+3️⃣  GEMINI API KEY
+────────────────────────────────────────────────────────────────
+   URL: https://aistudio.google.com/app/apikey
+   
+   • Sign in with shreyasdole1105@gmail.com
+   • Create API Key
+   • Add to Railway env vars: GEMINI_API_KEY
+
+4️⃣  VERCEL (Frontend)
+────────────────────────────────────────────────────────────────
+   URL: https://vercel.com
+   
+   Steps:
+   • Sign up with GitHub
+   • Add New → Project
+   • Import: Aegis-G repo
+   • IMPORTANT: Git Branch: fix/phase4
+   • Root Directory: frontend
+   • Environment Variable:
+     Name: NEXT_PUBLIC_API_URL
+     Value: (Railway backend URL)
+   • Deploy
+   • Copy Vercel URL
+
+5️⃣  UPDATE CORS (Final Step)
+────────────────────────────────────────────────────────────────
+   
+   • Go back to Railway → Backend → Variables
+   • Update:
+     CORS_ORIGINS=https://YOUR-APP.vercel.app
+     FRONTEND_URL=https://YOUR-APP.vercel.app
+   • Save (auto-redeploys)
+
+═══════════════════════════════════════════════════════════════
+
+VERIFICATION:
+
+✅ Backend health:
+   https://YOUR-BACKEND.railway.app/health
+
+✅ Frontend:
+   https://YOUR-APP.vercel.app
+
+✅ Test auth:
+   Register → Login → Upload file
+
+═══════════════════════════════════════════════════════════════
+
+GENERATED SECRETS (from deployment):
+
+SECRET_KEY (for Railway):
+89d2e1216bf13829db8a94dc5b21158751dc4d20e958fbd0c4cd2d80ca322a40
+
+═══════════════════════════════════════════════════════════════
+
+DETAILED GUIDES:
+
+📖 Complete manual: DEPLOYMENT_STEPS.txt
+📋 Workflow checklist: DEPLOYMENT_CHECKLIST.txt
+🔧 Env templates: RAILWAY_ENV.txt + VERCEL_ENV.txt
+
+═══════════════════════════════════════════════════════════════
+
+FREE TIER LIMITS:
+
+Railway:     $5/month credit (apps sleep after 30min)
+Vercel:      Generous free tier
+Neo4j Aura:  50k nodes (free forever)
+Redis:       Railway managed (free tier)
+PostgreSQL:  Railway managed (free tier)
+
+═══════════════════════════════════════════════════════════════

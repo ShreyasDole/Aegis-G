@@ -4,7 +4,7 @@ Admin-only endpoints for user management, system config, and audit logs
 """
 from fastapi import APIRouter, Depends, HTTPException, status, Response
 from sqlalchemy.orm import Session
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import List, Optional
 from datetime import datetime
 
@@ -22,6 +22,8 @@ router = APIRouter()
 # ============================================
 
 class UserResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     email: str
     full_name: Optional[str]
@@ -29,9 +31,6 @@ class UserResponse(BaseModel):
     is_active: bool
     status: str
     created_at: datetime
-    
-    class Config:
-        from_attributes = True
 
 
 class UserApproval(BaseModel):
