@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Shield, Activity, Lock, Network } from 'lucide-react';
+import { Activity, Lock, Network } from 'lucide-react';
 
 export default function DashboardPage() {
   return (

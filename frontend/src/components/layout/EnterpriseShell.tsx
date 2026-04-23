@@ -5,7 +5,6 @@ import { usePathname, useRouter } from 'next/navigation';
 import React, { useEffect, useState, useRef } from 'react';
 import {
   Shield,
-  Activity,
   LogOut,
   Sparkles,
   Cpu,
@@ -34,8 +33,7 @@ export function EnterpriseShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const checkHealth = async () => {
       try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-        const res = await fetch(`${API_URL}/api/system/health`);
+        const res = await fetch('/api/system/health');
         if (res.ok) {
           const data = await res.json();
           setHealth({ database: !!data.database, ai_engine: !!data.ai_engine });
@@ -66,12 +64,6 @@ export function EnterpriseShell({ children }: { children: React.ReactNode }) {
   const openAi = () => {
     window.dispatchEvent(new CustomEvent('openAIAssistant'));
   };
-
-  const navLinks = [
-    { href: '/dashboard', label: 'Dashboard' },
-    { href: '/forensics', label: 'Forensic Lab' },
-    { href: '/network', label: 'Graph Intel' },
-  ];
 
   return (
     <div className="flex flex-col min-h-screen bg-black-true font-satoshi selection:bg-neon-magenta/30 selection:text-white">

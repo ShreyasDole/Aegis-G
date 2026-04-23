@@ -154,6 +154,7 @@ export default function ForensicChatPage() {
             {/* User Image Attachment rendering */}
             {msg.imageObj && (
               <div className="mb-3 rounded border border-white/10 overflow-hidden relative group">
+                {/* eslint-disable-next-line @next/next/no-img-element -- data URL / blob preview */}
                 <img src={msg.imageObj} alt="payload" className="w-full max-w-sm object-cover" />
                 <div className="absolute top-2 left-2 px-2 py-0.5 bg-black-true/60 backdrop-blur border border-white/10 rounded flex items-center gap-1.5 text-[9px] font-space font-bold uppercase tracking-widest text-white/70">
                   <ImageIcon className="w-2.5 h-2.5" /> Image Object
@@ -260,6 +261,7 @@ export default function ForensicChatPage() {
       {/* Upload Preview Banner */}
       {imagePreview && (
         <div className="mx-4 mt-2 mb-2 p-2 bg-black-true/80 border border-neon-lime/40 backdrop-blur rounded flex items-center gap-4 animate-slide-in relative z-20">
+          {/* eslint-disable-next-line @next/next/no-img-element -- blob URL preview */}
           <img src={imagePreview} className="w-12 h-12 object-cover rounded border border-white/20" alt="upload-preview" />
           <div className="flex-1 font-space text-[10px] text-neon-lime font-bold uppercase tracking-widest">
             Visual Payload Attached ({(imageFile?.size ? (imageFile.size / 1024).toFixed(1) : 0)} KB)

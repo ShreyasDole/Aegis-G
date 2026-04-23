@@ -1,6 +1,5 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { PolicyAuthor } from '@/components/policy/PolicyAuthor';
 import { PolicyList } from '@/components/policy/PolicyList';
@@ -240,7 +239,7 @@ export default function PolicyPage() {
                         </span>
                         {item.source_platform && (
                           <span className="text-[10px] text-neon-cyan/70 uppercase tracking-widest">
-                            // {item.source_platform}
+                            {item.source_platform}
                           </span>
                         )}
                       </div>
