@@ -44,6 +44,7 @@ async def core_scan(
             status_code=500, detail=f"Phase 1 processing failed: {str(e)}"
         )
 
+    from datetime import datetime
     # The orchestrator now returns a dict with denoised_text, risk_score and attribution.
     return ScanResponse(
         content_hash=result.get("content_hash", ""),
@@ -51,11 +52,13 @@ async def core_scan(
         is_ai_generated=result.get("is_ai_generated", False),
         confidence=result.get("confidence", 0.0),
         detected_model=result.get("detected_model", ""),
-        timestamp=result.get("timestamp"),
+        timestamp=result.get("timestamp") or datetime.utcnow(),
         recommendation=result.get("recommendation", ""),
+        reasoning=result.get("reasoning", ""),
         # Extra fields for UI mapping
         denoised_text=result.get("denoised_text", ""),
         attribution=result.get("attribution", {}),
         explainability=result.get("explainability", []),
         rag_memory=result.get("rag_memory", []),
+        is_conversational=result.get("is_conversational", False),
     )

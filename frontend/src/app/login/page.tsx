@@ -86,8 +86,8 @@ function LoginInner() {
 
         <Card className="w-full max-w-[420px] z-10 border-border-medium/80 shadow-modal">
           <div className="flex items-center gap-3 mb-8">
-            <div className="w-10 h-10 rounded-lg bg-bg-primary border border-border-subtle flex items-center justify-center">
-              <Lock className="w-5 h-5 text-primary" strokeWidth={1.75} />
+            <div className="w-10 h-10 rounded-lg bg-bg-primary border border-border-subtle flex items-center justify-center overflow-hidden p-1">
+              <img src="/logo.png" alt="Aegis Logo" className="w-full h-full object-contain" />
             </div>
             <div>
               <h1 className="text-lg font-semibold text-text-primary tracking-tight">Sign in</h1>

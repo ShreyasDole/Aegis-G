@@ -15,8 +15,8 @@ export default function LandingPage() {
         <div className="flex items-center justify-between px-6 py-3 bg-white/5 backdrop-blur-xl border border-white/10 rounded-full shadow-2xl">
           {/* Logo */}
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded bg-white flex items-center justify-center">
-              <Shield className="w-5 h-5 text-black-true" />
+            <div className="w-8 h-8 rounded bg-white flex items-center justify-center overflow-hidden">
+              <img src="/logo.png" alt="Aegis Logo" className="w-full h-full object-contain" />
             </div>
             <span className="font-cabinet font-bold uppercase tracking-tight text-lg text-white">Aegis-G</span>
           </div>
