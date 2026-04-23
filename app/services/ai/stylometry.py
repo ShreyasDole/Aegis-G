@@ -24,8 +24,8 @@ class ForensicInvestigator:
     
     def __init__(self):
         self.burstiness_threshold = 3.0  # Low burstiness indicates AI
-        self.high_risk_threshold = 0.75
-        self.medium_risk_threshold = 0.50
+        self.high_risk_threshold = 0.65  # Lowered from 0.75
+        self.medium_risk_threshold = 0.40  # Lowered from 0.50
     
     def analyze(self, text: str) -> Dict[str, Any]:
         """
@@ -200,8 +200,24 @@ class ForensicInvestigator:
         - Symbol substitution: @dmin, p@ssword
         - Zero-width characters
         - Excessive punctuation
+        - Space removal (CRITICAL for phishing)
         """
         patterns_detected = []
+        
+        # Pattern 0: CRITICAL - No-space obfuscation (phishing signature)
+        words = text.split()
+        has_suspicious_long_words = any(len(word) > 50 for word in words)
+        
+        # Calculate space ratio
+        total_chars = len(text)
+        space_count = text.count(' ')
+        space_ratio = space_count / total_chars if total_chars > 0 else 0
+        
+        # Normal English: ~17-20% spaces. Below 10% = obfuscation
+        if space_ratio < 0.10 and total_chars > 30:
+            patterns_detected.append("Space removal obfuscation (phishing signature)")
+        elif has_suspicious_long_words:
+            patterns_detected.append("Abnormally long words detected")
         
         # Pattern 1: Leetspeak detection (numbers mixed with letters)
         leetspeak_pattern = r'\b\w*[0-9]\w*[a-zA-Z]\w*[0-9]\w*\b'

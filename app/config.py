@@ -125,6 +125,20 @@ def validate_production_settings() -> None:
             "Get a real key from https://aistudio.google.com and add it to Railway env vars."
         )
 
+    # 4. FRONTEND_URL must be set for CORS (warn only)
+    if settings.FRONTEND_URL in ("http://localhost:3000", ""):
+        logger.warning(
+            "⚠️  FRONTEND_URL is not set or is localhost. "
+            "CORS may fail in production. Set to your Vercel/deployed frontend URL."
+        )
+
+    # 5. NEO4J_URI check (warn only if default/localhost)
+    if settings.NEO4J_URI in ("bolt://localhost:7687", "bolt://neo4j:7687"):
+        logger.warning(
+            "⚠️  NEO4J_URI points to localhost. "
+            "Graph features will be disabled in production. Set to Neo4j Aura URL if needed."
+        )
+
     if errors:
         msg = "❌ Production configuration errors:\n" + "\n".join(f"  • {e}" for e in errors)
         logger.critical(msg)

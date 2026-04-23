@@ -238,7 +238,7 @@ export function EnterpriseShell({ children }: { children: React.ReactNode }) {
 
       {/* ── MAIN AREA ── */}
       <div
-        className="flex flex-col flex-1 min-h-screen"
+        className="flex flex-col flex-1 min-h-screen min-w-0"
         style={{ marginLeft: '240px', marginBottom: '32px' }}
       >
         {/* Header — 48px */}
@@ -296,7 +296,7 @@ export function EnterpriseShell({ children }: { children: React.ReactNode }) {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-auto scrollbar-thin">
+        <main className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden scrollbar-thin">
           {children}
         </main>
       </div>

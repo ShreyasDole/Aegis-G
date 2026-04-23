@@ -2,7 +2,7 @@
 Analyst Router - Agent 3 (Intelligence Analyst)
 Fusion endpoint and full Orchestrator pipeline
 """
-from fastapi import APIRouter, Depends, Body
+from fastapi import APIRouter, Depends, Body, HTTPException
 from sqlalchemy.orm import Session
 from app.models.database import get_db
 from app.schemas.intelligence import FusionRequest
@@ -11,7 +11,9 @@ from app.services.ai.orchestrator import orchestrator
 from app.core.blockchain import add_to_ledger  # For Prisha's component
 from app.auth import get_current_active_user
 from app.models.user import User
+import logging
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
@@ -20,33 +22,41 @@ async def analyze_threat_fusion(request: FusionRequest, db: Session = Depends(ge
     """
     Endpoint for Agent 3 to combine Forensics and Graph data.
     """
-    # 1. Run the Synthesis
-    result = await AnalystAgent.synthesize_intelligence(
-        content=request.content,
-        forensics=request.forensic_data,
-        graph=request.graph_data
-    )
-    
-    report = result["report"]
-    thoughts = result["ai_reasoning_log"]
+    try:
+        # 1. Run the Synthesis
+        result = await AnalystAgent.synthesize_intelligence(
+            content=request.content,
+            forensics=request.forensic_data,
+            graph=request.graph_data
+        )
+        
+        report = result["report"]
+        thoughts = result["ai_reasoning_log"]
 
-    # 2. Log to the Blockchain (Trust Layer - Agent 5)
-    # We include the AI's internal reasoning so the logic is immutable.
-    ledger_hash = await add_to_ledger(
-        db=db,
-        report_id=request.threat_id,
-        analyst_id=1,  # System analyst ID
-        content=f"Threat: {report.threat_title}",
-        recipient_agency="Internal-Audit",
-        thought_process=thoughts
-    )
+        # 2. Log to the Blockchain (Trust Layer - Agent 5)
+        ledger_hash = None
+        try:
+            ledger_hash = await add_to_ledger(
+                db=db,
+                report_id=request.threat_id,
+                analyst_id=1,
+                content=f"Threat: {report.threat_title}",
+                recipient_agency="Internal-Audit",
+                thought_process=thoughts
+            )
+        except Exception as ledger_err:
+            logger.warning(f"Ledger write failed: {ledger_err}")
+            ledger_hash = "ledger_unavailable"
 
-    return {
-        "report": report,
-        "thought_process": thoughts,
-        "ledger_hash": ledger_hash,
-        "status": "Verified by Agent 3"
-    }
+        return {
+            "report": report,
+            "thought_process": thoughts,
+            "ledger_hash": ledger_hash,
+            "status": "Verified by Agent 3"
+        }
+    except Exception as e:
+        logger.error(f"Fusion analysis failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/orchestrate", response_model=dict)

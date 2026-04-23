@@ -1,6 +1,7 @@
 # Core - latest versions
 fastapi>=0.115.0
 uvicorn[standard]>=0.32.0
+gunicorn>=21.2.0
 pydantic>=2.10.0
 pydantic-settings>=2.6.0
 python-multipart>=0.0.17
@@ -42,3 +43,6 @@ onnxruntime>=1.18.0
 onnx>=1.16.0
 pgvector==0.2.4
 sentence-transformers==2.2.2
+
+# Image processing
+pillow>=10.0.0

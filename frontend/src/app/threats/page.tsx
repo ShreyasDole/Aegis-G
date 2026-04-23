@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/Badge';
+import { ThreatMap } from '@/components/visual/ThreatMap';
 import { exportToSTIX } from '@/lib/export';
 import { AlertTriangle, RefreshCw, Download, Network } from 'lucide-react';
 
@@ -139,6 +140,14 @@ export default function ThreatsPage() {
               </div>
             ))
           )}
+        </div>
+
+        {/* Geo map */}
+        <div className="border-t" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+          <div className="px-4 py-2 border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+            <span className="text-2xs uppercase tracking-wider text-[#6b7280] font-medium">Threat Heatmap</span>
+          </div>
+          <ThreatMap threats={threats.map(t => ({ id: t.id, risk_score: t.riskScore, source_platform: t.source, timestamp: t.firstSeen }))} />
         </div>
 
         {/* Graph link */}

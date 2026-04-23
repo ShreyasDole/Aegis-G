@@ -1,0 +1,1 @@
+Use https://svgtopng.com or ImageMagick to convert icon128.svg to PNG files (16x16, 48x48, 128x128)

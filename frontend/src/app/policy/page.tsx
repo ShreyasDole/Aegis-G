@@ -1,5 +1,8 @@
 'use client';
 import React, { useState, useEffect } from 'react';
+import { PolicyAuthor } from '@/components/policy/PolicyAuthor';
+import { PolicyList } from '@/components/policy/PolicyList';
+import { PolicyEditor } from '@/components/policy/PolicyEditor';
 import { Badge } from '@/components/ui/Badge';
 import { RefreshCw, Plus } from 'lucide-react';
 
@@ -111,25 +114,12 @@ export default function PolicyPage() {
       <div className="flex-1 overflow-auto scrollbar-thin">
         <div className="p-4 max-w-4xl">
 
-          {tab === 'author' && (
-            <div className="card">
-              <p className="text-2xs uppercase tracking-wider text-[#6b7280] mb-3 font-medium">Natural Language Policy Author</p>
-              <textarea 
-                className="textarea" 
-                rows={6} 
-                placeholder="Describe your policy in natural language... e.g., 'Block any post about election fraud with AI score above 0.7'"
-              />
-              <div className="flex gap-2 mt-3">
-                <button className="btn btn-primary">Translate to DSL</button>
-                <button className="btn btn-secondary">Clear</button>
-              </div>
-            </div>
-          )}
+          {tab === 'author' && <PolicyAuthor />}
 
           {tab === 'manage' && (
-            <div className="card">
-              <p className="text-xs text-[#6b7280]">Policy list will appear here. Create policies using the Author tab.</p>
-            </div>
+            showEditor
+              ? <PolicyEditor policy={editPolicy} onSave={savePolicy} onCancel={() => { setShowEditor(false); setEditPolicy(null); }} />
+              : <PolicyList onEdit={p => { setEditPolicy(p); setShowEditor(true); }} onDelete={id => console.log('del', id)} onToggleActive={(id, active) => console.log('toggle', id, active)} />
           )}
 
           {/* Live block log */}

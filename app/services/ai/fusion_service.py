@@ -4,11 +4,13 @@ Synthesizes forensics and graph data into human-readable intelligence reports
 Uses google-genai with structured output
 """
 import os
+import logging
 from google import genai
 from google.genai import types
 from app.schemas.intelligence import IntelligenceReport
 from app.config import settings
 
+logger = logging.getLogger(__name__)
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or settings.GEMINI_API_KEY
 client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
 
@@ -42,7 +44,20 @@ class AnalystAgent:
         """
 
         if not client:
-            raise ValueError("GEMINI_API_KEY environment variable is not set")
+            return {
+                "report": IntelligenceReport(
+                    threat_title="Fusion Analysis Unavailable",
+                    executive_summary="Gemini API not configured — using fallback analysis",
+                    threat_type="Human Error",
+                    risk_level="Medium" if forensics.get("is_ai") else "Low",
+                    confidence=0.5,
+                    evidence=[],
+                    recommendations=[
+                        {"action": "Configure GEMINI_API_KEY for full analysis", "priority": "Routine"}
+                    ]
+                ),
+                "ai_reasoning_log": "Gemini API key not set — fusion analysis using fallback mode"
+            }
         
         try:
             config_kwargs = dict(
@@ -69,5 +84,17 @@ class AnalystAgent:
             }
 
         except Exception as e:
-            print(f"Agent 3 Synthesis Error: {e}")
-            raise e
+            logger.error(f"Agent 3 Synthesis Error: {e}")
+            # Fallback report
+            return {
+                "report": IntelligenceReport(
+                    threat_title="Analysis Error",
+                    executive_summary=f"Fusion service encountered error: {str(e)[:100]}",
+                    threat_type="Human Error",
+                    risk_level="Medium",
+                    confidence=0.0,
+                    evidence=[],
+                    recommendations=[{"action": "Check Gemini API configuration", "priority": "Routine"}]
+                ),
+                "ai_reasoning_log": f"Error: {str(e)}"
+            }

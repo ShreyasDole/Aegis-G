@@ -6,6 +6,7 @@
   "/api/auth/register",
   "/api/auth/outlook",
   "/api/auth/outlook/callback",
+  "/api/scan/*",
   "/docs",
   "/redoc",
   "/openapi.json",

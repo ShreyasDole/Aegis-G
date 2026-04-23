@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Badge } from '@/components/ui/Badge';
 import { AIAgentControlCard } from '@/components/ui/AIAgentControlCard';
-import { Paperclip, Send, X, ImageIcon, Bot, User, AlertCircle } from 'lucide-react';
+import { Paperclip, Send, X, Bot, User, AlertCircle } from 'lucide-react';
 
 /* ─── Message types ─── */
 interface UserMessage {
@@ -35,24 +35,54 @@ type Message = UserMessage | AssistantMessage;
 /* ─── Helpers ─── */
 const getRiskColor   = (s: number) => s >= 0.7 ? '#ef4444' : s >= 0.4 ? '#f97316' : '#10b981';
 const getRiskVariant = (s: number): any => s >= 0.7 ? 'critical' : s >= 0.4 ? 'warning' : 'low';
-const fileToBase64   = (f: File): Promise<string> =>
-  new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result as string); r.onerror = rej; r.readAsDataURL(f); });
 const uid            = () => Math.random().toString(36).slice(2, 10);
 
+/** Strip pasted data URLs / old attachment payload so UI never renders megabytes on one line */
+function sanitizeUserMessageText(raw: string | undefined): string | undefined {
+  if (!raw?.trim()) return raw;
+  let s = raw;
+  s = s.replace(/data:image\/[a-z0-9.+-]+;base64,[A-Za-z0-9+/=\s\r\n]+/gi, ' ');
+  s = s.replace(/\[IMAGE_ATTACHMENT:[^\]]*\]/gi, '');
+  s = s.replace(/\s+/g, ' ').trim();
+  return s || undefined;
+}
+
+function scrubMetaFromDisplay(s: string): string {
+  return s.replace(/data:image\/[a-z0-9.+-]+;base64,[A-Za-z0-9+/=]+/gi, '[image omitted]');
+}
+
+/** Prevent base64 / long tokens from blowing layout */
+const MAX_TOKEN_DISPLAY = 48;
+function displayToken(word: string): string {
+  if (!word || word === '\n') return word;
+  const w = String(word);
+  return w.length > MAX_TOKEN_DISPLAY ? `${w.slice(0, MAX_TOKEN_DISPLAY)}…` : w;
+}
+
 /* ─── Token highlight ─── */
+const MAX_SHAP_TOKENS = 400;
+
 function ShapTokens({ tokens, isAI }: { tokens: any[]; isAI: boolean }) {
+  const slice = tokens.length > MAX_SHAP_TOKENS ? tokens.slice(0, MAX_SHAP_TOKENS) : tokens;
+  const truncated = tokens.length > MAX_SHAP_TOKENS;
   return (
-    <span className="font-mono text-xs leading-relaxed">
-      {tokens.map((tok: any, i: number) => {
+    <span className="font-mono text-xs leading-relaxed block max-w-full overflow-hidden break-words [word-break:break-word] [overflow-wrap:anywhere]">
+      {truncated && (
+        <p className="text-[#6b7280] mb-2 normal-case font-sans">
+          Showing first {MAX_SHAP_TOKENS} tokens ({tokens.length} total).
+        </p>
+      )}
+      {slice.map((tok: any, i: number) => {
         if (tok.word === '\n') return <br key={i} />;
         const opacity = tok.importance;
         const bg = isAI
           ? `rgba(239,68,68,${opacity * 0.7})`
           : `rgba(16,185,129,${opacity * 0.5})`;
+        const shown = displayToken(tok.word);
         return (
           <span key={i} title={`Importance: ${(tok.importance * 100).toFixed(1)}%`}
-            className="mr-0.5 px-0.5 rounded cursor-help" style={{ background: bg }}>
-            {tok.word}
+            className="mr-0.5 px-0.5 rounded cursor-help inline-block max-w-full align-top" style={{ background: bg }}>
+            {shown}
           </span>
         );
       })}
@@ -90,23 +120,28 @@ function AnalysisResult({ result, loading, error }: AssistantMessage) {
   const isAI = result.type === 'AI_GENERATED';
 
   return (
-    <div className="space-y-3 text-xs">
+    <div className="space-y-3 text-xs min-w-0 max-w-full overflow-hidden">
       {/* Risk summary row */}
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2 gap-y-2 min-w-0">
         <span
-          className="text-xl font-semibold tabular-nums"
+          className="text-xl font-semibold tabular-nums shrink-0"
           style={{ color: getRiskColor(result.risk) }}
         >
           {(result.risk * 100).toFixed(0)}%
         </span>
-        <span className="text-[#6b7280]">risk score</span>
+        <span className="text-[#6b7280] shrink-0">risk score</span>
         <Badge variant={getRiskVariant(result.risk)}>{isAI ? 'AI-Generated' : 'Human'}</Badge>
-        <Badge variant="accent">{result.recommendation}</Badge>
+        <Badge variant="accent" className="max-w-full whitespace-normal break-words text-left leading-snug">
+          {scrubMetaFromDisplay(result.recommendation)}
+        </Badge>
       </div>
 
       {/* SHAP tokens */}
       {result.explainability?.length > 0 && (
-        <div className="rounded-md p-3" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
+        <div
+          className="rounded-md p-3 min-w-0 max-w-full max-h-[min(50vh,20rem)] overflow-x-hidden overflow-y-auto"
+          style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}
+        >
           <p className="mono-10 text-[#6b7280] uppercase tracking-wider mb-2">SHAP Token Attribution</p>
           <ShapTokens tokens={result.explainability} isAI={isAI} />
         </div>
@@ -114,20 +149,20 @@ function AnalysisResult({ result, loading, error }: AssistantMessage) {
 
       {/* Model bars */}
       {Object.keys(result.attribution || {}).length > 0 && (
-        <div>
-          <p className="mono-10 text-[#6b7280] uppercase tracking-wider mb-2">Model Attribution</p>
-          <div className="space-y-1.5">
+        <div className="min-w-0 max-w-full space-y-2 pt-1">
+          <p className="mono-10 text-[#6b7280] uppercase tracking-wider">Model Attribution</p>
+          <div className="space-y-2.5">
             {Object.entries(result.attribution).map(([model, prob]) => {
-              const pct = (prob * 100).toFixed(1);
+              const pct = Math.min(100, Number(prob) * 100);
               const colors: Record<string, string> = { 'gpt-4': '#10a37f', 'claude-3': '#d97757', 'llama-3': '#5e6ad2', 'human': '#10b981' };
               return (
-                <div key={model} className="flex items-center gap-2">
-                  <span className="mono-10 text-[#6b7280] w-14 text-right">{model}</span>
-                  <div className="flex-1 h-1 rounded-full" style={{ background: 'rgba(255,255,255,0.06)' }}>
-                    <div className="h-full rounded-full transition-all duration-700"
+                <div key={model} className="flex items-center gap-2 min-w-0">
+                  <span className="mono-10 text-[#6b7280] w-14 text-right shrink-0">{model}</span>
+                  <div className="flex-1 min-w-0 h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                    <div className="h-full rounded-full transition-all duration-700 max-w-full"
                       style={{ width: `${pct}%`, background: colors[model] || '#5e6ad2' }} />
                   </div>
-                  <span className="mono-10 text-[#9ca3af] w-8">{pct}%</span>
+                  <span className="mono-10 text-[#9ca3af] w-10 shrink-0 text-right">{pct.toFixed(1)}%</span>
                 </div>
               );
             })}
@@ -241,28 +276,61 @@ export default function ScansPage() {
       const mode    = localStorage.getItem('inference-mode') || 'local';
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
       const token   = localStorage.getItem('token');
+      const headers: Record<string, string> = {
+        'X-Inference-Mode': mode,
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      };
 
-      // Build content — include base64 image if present
-      let content = userMsg.text || '';
+      let data: Record<string, any>;
+
       if (img) {
-        const b64 = await fileToBase64(img.file);
-        content = content
-          ? `${content}\n\n[IMAGE_ATTACHMENT: ${img.file.name}]\n${b64}`
-          : `[IMAGE_ATTACHMENT: ${img.file.name}]\n${b64}`;
+        const fd = new FormData();
+        fd.append('content', userMsg.text || '');
+        fd.append('image', img.file, img.file.name);
+        fd.append('source_platform', 'web');
+        fd.append('username', 'anonymous');
+        const res = await fetch(`${API_URL}/api/scan/with-image`, {
+          method: 'POST',
+          headers,
+          body: fd,
+        });
+        if (!res.ok) throw new Error(`Scan failed (${res.status})`);
+        data = await res.json();
+        const ta = data.text_analysis;
+        const combined =
+          typeof data.combined_risk === 'number' ? data.combined_risk : (ta?.risk_score ?? 0);
+        const isAi =
+          typeof data.is_ai_generated === 'boolean'
+            ? data.is_ai_generated
+            : combined >= 0.4;
+        data._ui = {
+          risk: combined,
+          type: isAi ? 'AI_GENERATED' : 'HUMAN',
+          recommendation: data.recommendation || ta?.recommendation || 'Unknown',
+          explainability: ta?.explainability ?? [],
+          attribution: ta?.attribution ?? {},
+          ragMemory: ta?.rag_memory ?? [],
+        };
+      } else {
+        const content = userMsg.text || '';
+        const res = await fetch(`${API_URL}/api/scan/core`, {
+          method: 'POST',
+          headers: { ...headers, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content }),
+        });
+        if (!res.ok) throw new Error(`Scan failed (${res.status})`);
+        data = await res.json();
+        data._ui = {
+          risk: data.risk_score ?? 0,
+          type: data.is_ai_generated ? 'AI_GENERATED' : 'HUMAN',
+          recommendation: data.recommendation || 'Unknown',
+          explainability: data.explainability || [],
+          attribution: data.attribution || {},
+          ragMemory: data.rag_memory || [],
+        };
       }
 
-      const res = await fetch(`${API_URL}/api/scan/core`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Inference-Mode': mode,
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ content }),
-      });
-
-      if (!res.ok) throw new Error(`Scan failed (${res.status})`);
-      const data = await res.json();
+      const ui = data._ui;
 
       setMessages(prev => prev.map(m =>
         m.id === assistantId
@@ -270,13 +338,13 @@ export default function ScansPage() {
               ...m,
               loading: false,
               result: {
-                risk:           data.risk_score ?? 0,
-                type:           data.is_ai_generated ? 'AI_GENERATED' : 'HUMAN',
-                recommendation: data.recommendation || 'Unknown',
-                explainability: data.explainability || [],
-                attribution:    data.attribution || {},
-                ragMemory:      data.rag_memory || [],
-                denoisedContent: data.denoised_text || '',
+                risk: ui.risk,
+                type: ui.type,
+                recommendation: ui.recommendation,
+                explainability: ui.explainability,
+                attribution: ui.attribution,
+                ragMemory: ui.ragMemory,
+                denoisedContent: '',
               },
             }
           : m
@@ -299,13 +367,13 @@ export default function ScansPage() {
   const hasInput = inputText.trim().length > 0 || !!pendingImage;
 
   return (
-    <div className="flex h-full relative" style={{ height: 'calc(100vh - 32px)' }}>
+    <div className="flex h-full relative min-w-0" style={{ height: 'calc(100vh - 32px)' }}>
 
       {/* ── CHAT COLUMN ── */}
-      <div className="flex flex-col flex-1 overflow-hidden">
+      <div className="flex flex-col flex-1 overflow-hidden min-w-0">
 
         {/* Message thread */}
-        <div className="flex-1 overflow-y-auto scrollbar-thin px-4 py-4 space-y-4">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin px-4 py-4 space-y-4 min-w-0">
 
           {/* Welcome state */}
           {messages.length === 1 && !messages[0].loading && !(messages[0] as AssistantMessage).result && (
@@ -346,9 +414,10 @@ export default function ScansPage() {
           {messages.map((msg) => {
             if (msg.role === 'user') {
               const um = msg as UserMessage;
+              const displayText = sanitizeUserMessageText(um.text);
               return (
-                <div key={msg.id} className="flex justify-end gap-3 animate-slide-up">
-                  <div className="max-w-[70%] space-y-2">
+                <div key={msg.id} className="flex justify-end gap-3 animate-slide-up min-w-0 w-full">
+                  <div className="max-w-[min(85%,42rem)] min-w-0 space-y-2 ml-auto">
                     {/* Image preview */}
                     {um.image && (
                       <div className="flex justify-end">
@@ -363,12 +432,12 @@ export default function ScansPage() {
                       </div>
                     )}
                     {/* Text bubble */}
-                    {um.text && (
+                    {displayText && (
                       <div
-                        className="px-4 py-2.5 rounded-2xl rounded-tr-sm text-sm text-[#f3f4f6] whitespace-pre-wrap"
-                        style={{ background: '#5e6ad2' }}
+                        className="px-4 py-2.5 rounded-2xl rounded-tr-sm text-sm text-[#f3f4f6] whitespace-pre-wrap break-words overflow-hidden"
+                        style={{ background: '#5e6ad2', wordBreak: 'break-word', overflowWrap: 'anywhere' }}
                       >
-                        {um.text}
+                        {displayText}
                       </div>
                     )}
                     <p className="text-right mono-10 text-[#4b5563]">{msg.ts}</p>
@@ -386,16 +455,16 @@ export default function ScansPage() {
             /* Assistant bubble */
             const am = msg as AssistantMessage;
             return (
-              <div key={msg.id} className="flex gap-3 animate-slide-up">
+              <div key={msg.id} className="flex gap-3 animate-slide-up min-w-0 w-full">
                 <div
                   className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5"
                   style={{ background: 'rgba(94,106,210,0.15)', border: '1px solid rgba(94,106,210,0.2)' }}
                 >
                   <Bot className="w-3.5 h-3.5 text-[#5e6ad2]" />
                 </div>
-                <div className="flex-1 max-w-[85%]">
+                <div className="flex-1 min-w-0 max-w-[min(85%,52rem)]">
                   <div
-                    className="rounded-2xl rounded-tl-sm px-4 py-3"
+                    className="rounded-2xl rounded-tl-sm px-4 py-3 min-w-0 overflow-hidden max-w-full"
                     style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.06)' }}
                   >
                     {/* Welcome message */}
@@ -465,7 +534,11 @@ export default function ScansPage() {
               rows={1}
               value={inputText}
               onChange={e => {
-                setInputText(e.target.value);
+                let v = e.target.value;
+                if (/data:image\//i.test(v)) {
+                  v = v.replace(/data:image\/[a-z0-9.+-]+;base64,[A-Za-z0-9+/=\s\r\n]+/gi, '').trim();
+                }
+                setInputText(v);
                 e.target.style.height = 'auto';
                 e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
               }}

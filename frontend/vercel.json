@@ -1,16 +1,8 @@
 {
-  "framework": "nextjs",
+  "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "npm run build",
-  "outputDirectory": ".next",
-  "installCommand": "npm install",
   "devCommand": "npm run dev",
-  "env": {
-    "NEXT_PUBLIC_API_URL": "https://your-railway-backend.up.railway.app"
-  },
-  "rewrites": [
-    {
-      "source": "/api/:path*",
-      "destination": "https://your-railway-backend.up.railway.app/api/:path*"
-    }
-  ]
+  "installCommand": "npm install",
+  "framework": "nextjs",
+  "outputDirectory": ".next"
 }

@@ -14,7 +14,11 @@ exported to ONNX for air‑gap inference (see ``scripts/convert_to_onnx.py``).
 from __future__ import annotations
 
 import os
+import warnings
+import logging
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 try:
     import torch
@@ -55,12 +59,25 @@ class MultiClassAttributor:
             
             # Load tokenizer and model dynamically
             self._tokenizer = AutoTokenizer.from_pretrained(model_path)
-            self._model = AutoModelForSequenceClassification.from_pretrained(
-                model_path,
-                num_labels=4,
-                ignore_mismatched_sizes=True
-            )
+            # HF warns when resizing classifier head — expected until you ship a fine-tuned checkpoint under models/deberta-attribution
+            with warnings.catch_warnings():
+                warnings.filterwarnings(
+                    "ignore",
+                    message=r".*Some weights of.*not initialized.*",
+                    category=UserWarning,
+                )
+                self._model = AutoModelForSequenceClassification.from_pretrained(
+                    model_path,
+                    num_labels=4,
+                    ignore_mismatched_sizes=True,
+                )
             self._model.eval()
+            if not self._model_dir.is_dir():
+                logger.info(
+                    "Attribution: using HF hub base model — classifier head is randomly initialized "
+                    "(not meaningful for attribution until you train or add checkpoints under %s).",
+                    self._model_dir,
+                )
 
     def predict(self, text: str) -> dict[str, float]:
         """Return class probabilities for *text*.

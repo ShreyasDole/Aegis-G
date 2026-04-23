@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AEGIS-G Extension Test</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0e0e0e;
+      color: #f3f4f6;
+      padding: 40px;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    h1 {
+      color: #5e6ad2;
+      margin-bottom: 20px;
+    }
+    .section {
+      background: #111113;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    h2 {
+      font-size: 16px;
+      color: #9ca3af;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-size: 12px;
+    }
+    .test-text {
+      background: rgba(255,255,255,0.03);
+      padding: 12px;
+      border-radius: 6px;
+      border: 1px solid rgba(255,255,255,0.08);
+      font-family: monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      margin-bottom: 10px;
+      cursor: pointer;
+    }
+    .test-text:hover {
+      background: rgba(255,255,255,0.05);
+      border-color: #5e6ad2;
+    }
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 600;
+      margin-left: 8px;
+    }
+    .badge.high { background: rgba(239,68,68,0.15); color: #ef4444; }
+    .badge.medium { background: rgba(249,115,22,0.15); color: #f97316; }
+    .badge.low { background: rgba(16,185,129,0.15); color: #10b981; }
+    .instructions {
+      background: rgba(94,106,210,0.08);
+      border: 1px solid rgba(94,106,210,0.2);
+      padding: 16px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .instructions strong {
+      color: #5e6ad2;
+    }
+    code {
+      background: rgba(255,255,255,0.08);
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🛡️ AEGIS-G Extension Test Page</h1>
+    
+    <div class="instructions">
+      <strong>Instructions:</strong><br>
+      1. Install the extension from <code>chrome://extensions/</code><br>
+      2. Click the AEGIS-G icon in your toolbar<br>
+      3. Copy any text below and paste into the extension<br>
+      4. Or click the attachment icon to upload an image<br>
+      5. View analysis results in the chat interface
+    </div>
+
+    <div class="section">
+      <h2>High Risk Samples <span class="badge high">Suspicious</span></h2>
+      
+      <div class="test-text" onclick="copyToClipboard(this)">
+        🚨 URGENT: Your account has been compromised! Click here immediately to verify your identity and prevent account suspension. Limited time offer expires in 24 hours. Act now! 💰
+      </div>
+
+      <div class="test-text" onclick="copyToClipboard(this)">
+        BREAKING: Election fraud discovered in 47 states! Thousands of illegal votes counted. Share this before it gets deleted by the government! #StopTheSteal #FakeNews
+      </div>
+
+      <div class="test-text" onclick="copyToClipboard(this)">
+        Congratulations! You've won $1,000,000 in the Microsoft Lottery. To claim your prize, send your bank details and social security number to winner@microsoft-lottery.com immediately.
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Medium Risk Samples <span class="badge medium">Questionable</span></h2>
+      
+      <div class="test-text" onclick="copyToClipboard(this)">
+        I heard from a friend that the new vaccine contains microchips for tracking. Not saying it's true, but makes you think... Do your own research! 🧐
+      </div>
+
+      <div class="test-text" onclick="copyToClipboard(this)">
+        Check out this amazing crypto opportunity! 10x returns guaranteed in 30 days. My cousin made $50K last month. DM me for details. Not financial advice.
+      </div>
+
+      <div class="test-text" onclick="copyToClipboard(this)">
+        The mainstream media won't report this, but scientists have proven that 5G towers cause COVID-19. Wake up sheeple! Share before they censor this post.
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Low Risk Samples <span class="badge low">Safe</span></h2>
+      
+      <div class="test-text" onclick="copyToClipboard(this)">
+        Team meeting scheduled for tomorrow at 2 PM in Conference Room B. Please review the Q4 roadmap document before the meeting. Let me know if you have conflicts.
+      </div>
+
+      <div class="test-text" onclick="copyToClipboard(this)">
+        Just finished reading "The Phoenix Project" - great book on DevOps culture and continuous improvement. Highly recommend for anyone in software engineering.
+      </div>
+
+      <div class="test-text" onclick="copyToClipboard(this)">
+        Reminder: Our deployment is scheduled for Friday night at 11 PM. Please ensure all tests pass and documentation is updated. Roll-back plan is ready.
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>AI-Generated Content <span class="badge high">Synthetic</span></h2>
+      
+      <div class="test-text" onclick="copyToClipboard(this)">
+        As an AI language model, I must emphasize the importance of cybersecurity in today's digital landscape. Organizations should implement multi-layered defense strategies including endpoint protection, network segmentation, and regular security audits to mitigate potential threats.
+      </div>
+
+      <div class="test-text" onclick="copyToClipboard(this)">
+        Here's a comprehensive guide to improving your productivity: First, prioritize tasks based on urgency and importance. Second, eliminate distractions during focused work periods. Third, take regular breaks to maintain mental clarity. Fourth, use tools and automation where possible.
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Image Test Suggestions</h2>
+      <p style="color: #9ca3af; font-size: 14px; line-height: 1.6;">
+        Try uploading these types of images to test multimodal analysis:<br><br>
+        • Screenshots of phishing emails<br>
+        • Social media posts with misinformation<br>
+        • Memes with embedded text<br>
+        • QR codes from suspicious sources<br>
+        • Deepfake or manipulated images<br>
+        • Charts with misleading data visualization
+      </p>
+    </div>
+  </div>
+
+  <script>
+    function copyToClipboard(element) {
+      const text = element.textContent.trim();
+      navigator.clipboard.writeText(text).then(() => {
+        const original = element.style.background;
+        element.style.background = 'rgba(16,185,129,0.1)';
+        element.style.borderColor = '#10b981';
+        setTimeout(() => {
+          element.style.background = original;
+          element.style.borderColor = 'rgba(255,255,255,0.08)';
+        }, 500);
+      });
+    }
+  </script>
+</body>
+</html>

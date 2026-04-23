@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useEffect, useMemo } from 'react';
 import { Badge } from '@/components/ui/Badge';
+import { NetworkGraph } from '@/components/visual/NetworkGraph';
 import { Circle, Skull, Globe, Server, RefreshCw, Camera } from 'lucide-react';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -122,12 +123,8 @@ export default function NetworkPage() {
       </div>
 
       {/* Graph canvas — fills remaining space */}
-      <div className="flex-1 relative flex items-center justify-center" style={{ background: '#0e0e0e' }}>
-        <div className="text-center">
-          <Circle className="w-12 h-12 text-[#4b5563] mx-auto mb-3" />
-          <p className="text-sm text-[#6b7280]">Network graph visualization</p>
-          <p className="text-xs text-[#4b5563] mt-1">D3.js force-directed layout</p>
-        </div>
+      <div className="flex-1 relative">
+        <NetworkGraph refreshKey={graphKey} highlightPatientZero={patientZero} dataSource="api" />
       </div>
     </div>
   );

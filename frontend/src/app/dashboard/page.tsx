@@ -5,6 +5,8 @@ import { ShieldCheck, RefreshCw, AlertTriangle, Activity, Cpu, Database } from '
 import { Badge } from '@/components/ui/Badge';
 import { StatCard } from '@/components/ui/StatCard';
 import { AIAgentControlCard } from '@/components/ui/AIAgentControlCard';
+import { ThreatMapGlobe } from '@/components/visual/ThreatMapGlobe';
+import { IntelligenceBrief } from '@/components/intel/IntelligenceBrief';
 import { exportToSTIX } from '@/lib/export';
 
 function getSeverity(score: number) {
@@ -168,26 +170,14 @@ export default function DashboardPage() {
         className="w-80 border-l flex flex-col overflow-hidden shrink-0"
         style={{ borderColor: 'rgba(255,255,255,0.05)', background: '#111113' }}
       >
+        {/* Globe */}
+        <div className="border-b" style={{ borderColor: 'rgba(255,255,255,0.05)', height: '200px', overflow: 'hidden' }}>
+          <ThreatMapGlobe />
+        </div>
+
         {/* Intelligence Brief */}
         <div className="flex-1 overflow-y-auto scrollbar-thin p-4">
-          {activeReport ? (
-            <div className="space-y-3">
-              <div>
-                <p className="text-2xs uppercase tracking-wider text-[#6b7280] mb-1 font-medium">Executive Summary</p>
-                <p className="text-xs text-[#9ca3af] leading-relaxed">{activeReport.executive_summary}</p>
-              </div>
-              <div className="divider" />
-              <div>
-                <p className="text-2xs uppercase tracking-wider text-[#6b7280] mb-2 font-medium">AI Reasoning</p>
-                <p className="text-2xs text-[#6b7280] font-mono leading-relaxed">{reasoning}</p>
-              </div>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center h-full text-center gap-3">
-              <ShieldCheck className="w-8 h-8 text-[#4b5563]" />
-              <p className="text-xs text-[#6b7280]">Select a threat to view intelligence analysis</p>
-            </div>
-          )}
+          <IntelligenceBrief report={activeReport} thoughts={reasoning} />
         </div>
 
         {/* AI Agent controls */}

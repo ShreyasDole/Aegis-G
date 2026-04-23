@@ -13,7 +13,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
     <>
       {useShell ? (
         <EnterpriseShell>
-          <main className="min-h-screen">{children}</main>
+          <main className="min-h-screen min-w-0 max-w-full">{children}</main>
         </EnterpriseShell>
       ) : (
         <main className="min-h-screen">{children}</main>

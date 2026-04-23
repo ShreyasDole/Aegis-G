@@ -1,0 +1,276 @@
+====================================================================
+AEGIS-G DEPLOYMENT GUIDE
+====================================================================
+Account: shreyasdole1105@gmail.com
+Password: Shreyas@2005
+
+====================================================================
+STEP 1: NEO4J AURA (GRAPH DATABASE)
+====================================================================
+
+1. Go to: https://console.neo4j.io
+2. Sign up with: shreyasdole1105@gmail.com / Shreyas@2005
+3. Click "New Instance"
+4. Select FREE tier (AuraDB Free)
+5. Name: aegis-graph
+6. Region: closest to you
+7. Click "Create"
+8. IMPORTANT: Save credentials shown (only shown once):
+   
+   NEO4J_URI=neo4j+s://XXXXXXXX.databases.neo4j.io
+   NEO4J_USER=neo4j
+   NEO4J_PASSWORD=XXXXXXXXXXX
+
+9. Click "Open with Neo4j Browser" to verify connection
+
+====================================================================
+STEP 2: RAILWAY (BACKEND + POSTGRES + REDIS)
+====================================================================
+
+────────────────────────────────────────────────────────────────────
+2A. CREATE RAILWAY PROJECT
+────────────────────────────────────────────────────────────────────
+
+1. Go to: https://railway.app
+2. Sign up with GitHub:
+   - Use: shreyasdole1105@gmail.com / Shreyas@2005
+   - Authorize Railway
+3. Click "New Project"
+4. Select "Deploy from GitHub repo"
+5. Connect GitHub account
+6. Select repository: Aegis-G (ShreyasDole/Aegis-G)
+7. IMPORTANT: Select branch "fix/phase4" (NOT main)
+8. Click "Deploy Now"
+
+────────────────────────────────────────────────────────────────────
+2B. ADD POSTGRESQL
+────────────────────────────────────────────────────────────────────
+
+1. In Railway project dashboard:
+2. Click "+ New"
+3. Select "Database" → "PostgreSQL"
+4. Wait for provisioning (~30 seconds)
+5. Click PostgreSQL service
+6. Go to "Variables" tab
+7. Copy DATABASE_URL value (starts with postgresql://)
+
+────────────────────────────────────────────────────────────────────
+2C. ADD REDIS
+────────────────────────────────────────────────────────────────────
+
+1. Click "+ New"
+2. Select "Database" → "Redis"
+3. Wait for provisioning
+4. Click Redis service
+5. Go to "Variables" tab
+6. Copy:
+   - REDIS_HOST
+   - REDIS_PORT
+
+────────────────────────────────────────────────────────────────────
+2D. CONFIGURE BACKEND SERVICE
+────────────────────────────────────────────────────────────────────
+
+1. Click on your main service (backend)
+2. Go to "Settings" tab
+3. Set "Root Directory": leave empty or set to "/"
+4. Set "Start Command":
+   
+   gunicorn app.main:app -k uvicorn.workers.UvicornWorker -b 0.0.0.0:$PORT --workers 2
+
+5. Go to "Variables" tab
+6. Click "RAW Editor"
+7. Paste this (replace XXXXXX with real values):
+
+ENVIRONMENT=production
+DEBUG=false
+LOG_LEVEL=INFO
+
+# Security
+SECRET_KEY=89d2e1216bf13829db8a94dc5b21158751dc4d20e958fbd0c4cd2d80ca322a40
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+
+# AI
+GEMINI_API_KEY=YOUR_GEMINI_KEY_HERE
+GEMINI_FLASH_MODEL=gemini-2.5-flash
+
+# Database (paste from PostgreSQL Variables tab)
+DATABASE_URL=postgresql://postgres:XXXXXX@XXXX.railway.internal:5432/railway
+
+# Redis (paste from Redis Variables tab)
+REDIS_HOST=XXXXX.railway.internal
+REDIS_PORT=6379
+
+# Neo4j (paste from Aura)
+NEO4J_URI=neo4j+s://XXXXXXXX.databases.neo4j.io
+NEO4J_USER=neo4j
+NEO4J_PASSWORD=XXXXXXXXX
+
+# CORS (update after Vercel deployment)
+CORS_ORIGINS=http://localhost:3000
+FRONTEND_URL=http://localhost:3000
+
+8. Click "Save Variables"
+9. Wait for redeploy (~2 minutes)
+10. Go to "Settings" → "Networking"
+11. Click "Generate Domain"
+12. Copy domain (e.g., aegis-backend-production-xxxx.up.railway.app)
+13. Save this as: BACKEND_URL
+
+────────────────────────────────────────────────────────────────────
+2E. GET GEMINI API KEY
+────────────────────────────────────────────────────────────────────
+
+1. Go to: https://aistudio.google.com/app/apikey
+2. Sign in with shreyasdole1105@gmail.com
+3. Click "Create API Key"
+4. Copy key
+5. Go back to Railway → Backend → Variables
+6. Update GEMINI_API_KEY with real key
+7. Click "Save Variables"
+
+====================================================================
+STEP 3: VERCEL (FRONTEND)
+====================================================================
+
+────────────────────────────────────────────────────────────────────
+3A. DEPLOY TO VERCEL
+────────────────────────────────────────────────────────────────────
+
+1. Go to: https://vercel.com
+2. Sign up with GitHub (use shreyasdole1105@gmail.com)
+3. Click "Add New" → "Project"
+4. Import your GitHub repo: Aegis-G
+5. IMPORTANT: In "Configure Project"
+   - Git Branch: fix/phase4
+6. Framework Preset: Next.js (auto-detected)
+7. Root Directory: frontend
+8. Click "Environment Variables"
+9. Add this (use BACKEND_URL from Railway):
+
+   Name: NEXT_PUBLIC_API_URL
+   Value: https://aegis-backend-production-xxxx.up.railway.app
+
+10. Click "Deploy"
+11. Wait ~3 minutes
+12. Copy deployment URL (e.g., aegis-frontend.vercel.app)
+
+────────────────────────────────────────────────────────────────────
+3B. UPDATE RAILWAY CORS
+────────────────────────────────────────────────────────────────────
+
+1. Go back to Railway
+2. Click backend service
+3. Go to Variables
+4. Update these two:
+
+   CORS_ORIGINS=https://aegis-frontend.vercel.app
+   FRONTEND_URL=https://aegis-frontend.vercel.app
+
+5. Save Variables
+6. Wait for redeploy
+
+====================================================================
+STEP 4: VERIFY DEPLOYMENT
+====================================================================
+
+1. Open: https://aegis-frontend.vercel.app
+2. Check console for errors
+3. Try backend health check:
+   https://BACKEND_URL/health
+   
+   Should return: {"status":"healthy","version":"2.0.0"}
+
+4. Try login/register flow
+
+====================================================================
+CRITICAL NOTES
+====================================================================
+
+1. Railway free tier:
+   - $5 credit/month
+   - Apps sleep after 30min inactivity
+   - Add credit card for continuous uptime
+
+2. Neo4j AuraDB:
+   - Free forever
+   - 50k nodes limit
+   - No GDS plugin (fallback handles it)
+
+3. Vercel:
+   - Generous free tier
+   - No sleep issue
+
+4. File uploads:
+   - Railway filesystem is ephemeral
+   - Uploads disappear on redeploy
+   - For persistence → use S3/GCS later
+
+5. WebSocket endpoints:
+   - Use wss://BACKEND_URL/ws/...
+   - Update frontend if hardcoded
+
+====================================================================
+TROUBLESHOOTING
+====================================================================
+
+Backend not starting:
+→ Check Railway logs
+→ Verify DATABASE_URL format
+→ Ensure gunicorn installed (in requirements.txt)
+
+Frontend can't reach backend:
+→ Check CORS_ORIGINS matches Vercel URL
+→ Check NEXT_PUBLIC_API_URL is set
+→ Open browser console for errors
+
+Database connection failed:
+→ Verify DATABASE_URL from Railway PostgreSQL service
+→ Check pgvector extension (Railway auto-installs)
+
+Neo4j connection failed:
+→ Verify URI format: neo4j+s:// (not bolt://)
+→ Check firewall allows connection
+→ Test in Neo4j Browser first
+
+====================================================================
+NEXT STEPS AFTER DEPLOYMENT
+====================================================================
+
+1. Test all endpoints:
+   - Register user
+   - Login
+   - Upload file
+   - Run scan
+   - View graph
+
+2. Monitor Railway usage:
+   - Check dashboard for credit consumption
+   - Add payment if needed
+
+3. Optimize costs:
+   - Cache aggressively
+   - Batch AI calls
+   - Reduce worker count if CPU spikes
+
+4. Security hardening:
+   - Rotate SECRET_KEY regularly
+   - Rotate GEMINI_API_KEY if exposed
+   - Add rate limiting
+
+====================================================================
+FINAL CHECKLIST
+====================================================================
+
+✅ Neo4j Aura instance created
+✅ Railway project with PostgreSQL + Redis
+✅ Backend deployed with all env vars
+✅ Backend domain generated
+✅ Gemini API key added
+✅ Vercel frontend deployed
+✅ CORS updated in Railway
+✅ /health endpoint works
+✅ Frontend loads without errors
+
+====================================================================

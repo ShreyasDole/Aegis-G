@@ -35,8 +35,8 @@ class ONNXAttributor:
     """
 
     _model_path: Path = Path(__file__).resolve().parents[2] / "models" / "deberta-attribution" / "model.onnx"
-    _session: ort.InferenceSession | None = None
-    _tokenizer: AutoTokenizer | None = None
+    _session: object | None = None  # ort.InferenceSession when available
+    _tokenizer: object | None = None  # AutoTokenizer when available
 
     def __init__(self):
         if not self._model_path.is_file():

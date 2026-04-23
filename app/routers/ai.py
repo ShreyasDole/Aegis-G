@@ -342,15 +342,24 @@ async def chat(
     Chat with AI Manager
     Context-aware assistant with tool execution
     """
-    response = await chat_service.chat(
-        message=request.message,
-        context=request.context,
-        conversation_id=request.conversation_id,
-        use_tools=request.use_tools,
-        db=db
-    )
-    
-    return ChatResponse(**response)
+    try:
+        response = await chat_service.chat(
+            message=request.message,
+            context=request.context,
+            conversation_id=request.conversation_id,
+            use_tools=request.use_tools,
+            db=db
+        )
+        
+        return ChatResponse(**response)
+    except Exception as e:
+        # Fallback response
+        return ChatResponse(
+            message=f"Chat service temporarily unavailable. Error: {str(e)[:100]}",
+            conversation_id=request.conversation_id or "fallback",
+            tool_calls=None,
+            suggestions=["Check system health", "Try again later"]
+        )
 
 
 @router.delete("/chat/{conversation_id}")
