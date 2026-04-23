@@ -1,32 +1,26 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { Card } from '@/components/ui/Card';
-import { AuthBrandingPanel } from '@/components/layout/AuthBrandingPanel';
-import { Lock } from 'lucide-react';
+import { Shield, ChevronRight } from 'lucide-react';
 
-const ERROR_MESSAGES: Record<string, string> = {
+const ERRORS: Record<string, string> = {
   access_denied: 'Microsoft sign-in was cancelled or denied.',
-  oauth_failed: 'Microsoft sign-in failed. Please try again.',
-  no_email: 'Could not get email from Microsoft account.',
+  oauth_failed:  'Microsoft sign-in failed. Please try again.',
+  no_email:      'Could not get email from Microsoft account.',
   account_disabled: 'Your account is not active. Contact your administrator.',
 };
 
 export default function LoginPage() {
   const searchParams = useSearchParams();
-  const [email, setEmail] = useState('');
+  const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [showEmailForm, setShowEmailForm] = useState(false);
-
-  useEffect(() => {
-    const err = searchParams.get('error');
-    if (err && ERROR_MESSAGES[err]) setError(ERROR_MESSAGES[err]);
-  }, [searchParams]);
+  const [error, setError]       = useState<string | null>(
+    searchParams.get('error') ? ERRORS[searchParams.get('error')!] || null : null
+  );
+  const [showEmail, setShowEmail] = useState(false);
 
   const handleMicrosoftLogin = () => {
     const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -34,113 +28,150 @@ export default function LoginPage() {
   };
 
   const handleLogin = async (e: React.FormEvent) => {
-    setError(null);
     e.preventDefault();
+    setError(null);
     setIsLoading(true);
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-      const loginResponse = await fetch(`${API_URL}/api/auth/login`, {
+      const res = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
-      if (!loginResponse.ok) {
-        const errorData = await loginResponse.json().catch(() => ({}));
-        const detail = Array.isArray(errorData.detail) ? errorData.detail[0]?.msg : errorData.detail;
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        const detail = Array.isArray(d.detail) ? d.detail[0]?.msg : d.detail;
         throw new Error(detail || 'Login failed');
       }
-      const data = await loginResponse.json();
+      const data = await res.json();
       localStorage.setItem('token', data.access_token);
-      const userResponse = await fetch(`${API_URL}/api/auth/me`, {
+      const userRes = await fetch(`${API_URL}/api/auth/me`, {
         headers: { Authorization: `Bearer ${data.access_token}` },
       });
-      if (userResponse.ok) {
-        const userData = await userResponse.json();
-        localStorage.setItem(
-          'user',
-          JSON.stringify({
-            email: userData.email,
-            name: userData.full_name || 'Agent',
-            role: userData.role,
-          })
-        );
+      if (userRes.ok) {
+        const u = await userRes.json();
+        localStorage.setItem('user', JSON.stringify({ email: u.email, name: u.full_name || 'Agent', role: u.role }));
       }
       window.location.href = '/dashboard';
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Login failed');
-    } finally {
-      setIsLoading(false);
-    }
+    } finally { setIsLoading(false); }
   };
 
   return (
-    <div className="min-h-screen flex bg-bg-primary">
-      <AuthBrandingPanel />
+    <div className="min-h-screen flex" style={{ background: '#0e0e0e' }}>
 
-      <div className="flex-1 flex flex-col justify-center items-center p-6 sm:p-10 relative">
-        <div
-          className="pointer-events-none absolute inset-0 opacity-[0.04]"
-          style={{
-            backgroundImage:
-              'radial-gradient(ellipse 80% 50% at 50% -20%, rgba(59,130,246,0.35), transparent)',
-          }}
-        />
-
-        <Card className="w-full max-w-[420px] z-10 border-border-medium/80 shadow-modal">
-          <div className="flex items-center gap-3 mb-8">
-            <div className="w-10 h-10 rounded-lg bg-bg-primary border border-border-subtle flex items-center justify-center">
-              <Lock className="w-5 h-5 text-primary" strokeWidth={1.75} />
+      {/* Left branding panel */}
+      <div
+        className="hidden lg:flex flex-col justify-between w-80 p-8 border-r"
+        style={{ background: '#111113', borderColor: 'rgba(255,255,255,0.05)' }}
+      >
+        <div>
+          {/* Logo */}
+          <div className="flex items-center gap-2.5 mb-12">
+            <div
+              className="w-7 h-7 rounded flex items-center justify-center"
+              style={{ background: 'rgba(94,106,210,0.15)', border: '1px solid rgba(94,106,210,0.25)' }}
+            >
+              <Shield className="w-4 h-4" style={{ color: '#5e6ad2' }} />
             </div>
-            <div>
-              <h1 className="text-lg font-semibold text-text-primary tracking-tight">Sign in</h1>
-              <p className="text-xs text-text-muted">AEGIS-G enterprise portal</p>
-            </div>
+            <span className="font-semibold text-[#f3f4f6]">AEGIS-G</span>
           </div>
 
+          <h2 className="text-lg font-semibold text-[#f3f4f6] mb-2">Cognitive Defense Grid</h2>
+          <p className="text-sm text-[#6b7280] leading-relaxed mb-8">
+            National security operations platform powered by distributed multi-agent AI forensics.
+          </p>
+
+          {/* Feature list */}
+          {[
+            'Multi-modal threat attribution',
+            'Real-time graph intelligence',
+            'Policy enforcement engine',
+            'Blockchain audit ledger',
+            'STIX 2.1 intelligence sharing',
+          ].map(f => (
+            <div key={f} className="flex items-center gap-2.5 mb-3">
+              <ChevronRight className="w-3.5 h-3.5 flex-shrink-0" style={{ color: '#5e6ad2' }} />
+              <span className="text-xs text-[#9ca3af]">{f}</span>
+            </div>
+          ))}
+        </div>
+
+        <p className="text-2xs text-[#4b5563]" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+          v2.0.0 · Classified
+        </p>
+      </div>
+
+      {/* Right login area */}
+      <div className="flex-1 flex items-center justify-center p-8">
+        <div className="w-full max-w-sm">
+
+          {/* Mobile logo */}
+          <div className="flex items-center gap-2 mb-8 lg:hidden">
+            <Shield className="w-5 h-5" style={{ color: '#5e6ad2' }} />
+            <span className="font-semibold text-[#f3f4f6]">AEGIS-G</span>
+          </div>
+
+          <h1 className="text-xl font-semibold text-[#f3f4f6] mb-1">Sign in</h1>
+          <p className="text-sm text-[#6b7280] mb-8">AEGIS-G enterprise portal</p>
+
           {error && (
-            <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/25 text-red-400 text-sm">
+            <div
+              className="mb-4 px-4 py-3 rounded-lg text-sm"
+              style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444' }}
+            >
               {error}
             </div>
           )}
 
-          <div className="space-y-3">
-            <Button
-              type="button"
-              variant="primary"
-              className="w-full py-3 text-sm flex items-center justify-center gap-2 rounded-lg"
-              onClick={handleMicrosoftLogin}
-            >
-              <svg className="w-5 h-5 shrink-0" viewBox="0 0 21 21" fill="none" aria-hidden>
-                <path d="M10 0H0v10h10V0zm11 0H10.5v10H21V0zM10 10.5H0V21h10V10.5zm11 0H10.5V21H21V10.5z" fill="currentColor" />
-              </svg>
-              Sign in with Microsoft
-            </Button>
-          </div>
+          {/* Microsoft SSO */}
+          <button
+            onClick={handleMicrosoftLogin}
+            className="btn btn-secondary btn-lg w-full mb-3 justify-center"
+            style={{ borderRadius: '6px', gap: '8px' }}
+          >
+            <svg className="w-4 h-4 shrink-0" viewBox="0 0 21 21" fill="none">
+              <path d="M10 0H0v10h10V0zm11 0H10.5v10H21V0zM10 10.5H0V21h10V10.5zm11 0H10.5V21H21V10.5z" fill="currentColor" />
+            </svg>
+            Continue with Microsoft
+          </button>
 
-          <div className="relative my-6">
+          {/* Divider */}
+          <div className="relative my-5">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-border-subtle" />
+              <div className="w-full" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }} />
             </div>
-            <div className="relative flex justify-center text-xs">
-              <span className="px-3 bg-bg-secondary text-text-muted uppercase tracking-wider">or</span>
+            <div className="relative flex justify-center">
+              <span className="px-3 text-xs" style={{ background: '#0e0e0e', color: '#4b5563' }}>or</span>
             </div>
           </div>
 
-          {!showEmailForm ? (
-            <Button variant="secondary" className="w-full rounded-lg text-sm" onClick={() => setShowEmailForm(true)}>
+          {/* Email form toggle */}
+          {!showEmail ? (
+            <button
+              onClick={() => setShowEmail(true)}
+              className="btn btn-ghost btn-lg w-full justify-center"
+              style={{ borderRadius: '6px', border: '1px solid rgba(255,255,255,0.08)' }}
+            >
               Continue with email
-            </Button>
+            </button>
           ) : (
             <form onSubmit={handleLogin} className="space-y-4">
-              <div className="p-3 rounded-lg bg-bg-primary border border-border-subtle text-text-secondary text-xs leading-relaxed">
+              {/* Demo hint */}
+              <div
+                className="px-3 py-2.5 rounded-lg text-xs"
+                style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', color: '#6b7280', fontFamily: 'JetBrains Mono, monospace' }}
+              >
                 Demo: test@aegis.com / TestPassword123!
               </div>
+
               <Input
                 type="email"
                 label="Email"
                 placeholder="email@example.com"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={e => setEmail(e.target.value)}
                 required
               />
               <Input
@@ -148,36 +179,50 @@ export default function LoginPage() {
                 label="Password"
                 placeholder="••••••••"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={e => setPassword(e.target.value)}
                 required
               />
+
               <div className="flex gap-2 pt-1">
-                <Button type="button" variant="secondary" className="flex-1 rounded-lg" onClick={() => setShowEmailForm(false)}>
+                <button
+                  type="button"
+                  onClick={() => setShowEmail(false)}
+                  className="btn btn-ghost flex-1 justify-center"
+                  style={{ borderRadius: '6px', border: '1px solid rgba(255,255,255,0.08)' }}
+                >
                   Back
-                </Button>
-                <Button type="submit" variant="primary" className="flex-1 rounded-lg" disabled={isLoading}>
+                </button>
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="btn btn-primary flex-1 justify-center"
+                  style={{ borderRadius: '6px' }}
+                >
                   {isLoading ? 'Signing in…' : 'Sign in'}
-                </Button>
+                </button>
               </div>
             </form>
           )}
 
-          <div className="mt-8 pt-6 border-t border-border-subtle text-center text-sm">
-            <span className="text-text-secondary">Need access? </span>
-            <Link href="/register" className="text-primary font-medium hover:underline">
+          {/* Register link */}
+          <p className="mt-6 text-center text-xs text-[#6b7280]">
+            Need access?{' '}
+            <Link href="/register" className="text-[#5e6ad2] hover:underline">
               Request account
             </Link>
-          </div>
+          </p>
 
-          <div className="mt-6 p-3 rounded-lg bg-amber-500/5 border border-amber-500/20">
-            <p className="text-[11px] text-text-secondary leading-snug">
-              <span className="text-amber-500/90 font-semibold uppercase tracking-wide">Notice · </span>
-              Classified system. Unauthorized access prohibited; activity is logged.
+          {/* Security notice */}
+          <div
+            className="mt-6 px-3 py-2.5 rounded-lg"
+            style={{ background: 'rgba(249,115,22,0.05)', border: '1px solid rgba(249,115,22,0.15)' }}
+          >
+            <p className="text-2xs leading-relaxed" style={{ color: '#9ca3af' }}>
+              <span style={{ color: '#f97316', fontWeight: 500 }}>Classified system. </span>
+              Unauthorized access is prohibited. All activity is monitored and logged.
             </p>
           </div>
-        </Card>
-
-        <p className="mt-8 text-[11px] text-text-muted z-10">National Security Operations Platform</p>
+        </div>
       </div>
     </div>
   );

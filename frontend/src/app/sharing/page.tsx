@@ -1,72 +1,84 @@
 'use client';
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Card } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { Download, Shield } from 'lucide-react';
 
 export default function SharingPage() {
-  const [ledgerHash, setLedgerHash] = useState('');
-  const [ledgerResult, setLedgerResult] = useState<{ verified: boolean; timestamp?: string } | null>(null);
+  const [hash, setHash] = useState('');
+  const [result, setResult] = useState<{ verified: boolean; timestamp?: string } | null>(null);
+  const [loading, setLoading] = useState(false);
 
+  const token   = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
-  const verifyLedger = async () => {
-    if (!ledgerHash.trim()) return;
-    setLedgerResult(null);
+  const verify = async () => {
+    if (!hash.trim()) return;
+    setLoading(true);
+    setResult(null);
     try {
-      const res = await fetch(`/api/sharing/ledger/${encodeURIComponent(ledgerHash.trim())}`, {
+      const res = await fetch(`${API_URL}/api/sharing/ledger/${encodeURIComponent(hash.trim())}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (res.ok) {
-        const data = await res.json();
-        setLedgerResult({ verified: data.verified === true, timestamp: data.timestamp });
-      }
-    } catch {
-      setLedgerResult({ verified: false });
-    }
+        const d = await res.json();
+        setResult({ verified: d.verified === true, timestamp: d.timestamp });
+      } else { setResult({ verified: false }); }
+    } catch { setResult({ verified: false }); }
+    finally { setLoading(false); }
   };
 
   return (
-    <div className="p-6 min-h-screen max-w-4xl mx-auto">
-        <h1 className="text-2xl font-bold text-text-primary mb-2">Intelligence Sharing</h1>
-        <p className="text-text-muted text-sm mb-6">
-          Export STIX 2.1 bundles and verify ledger entries.
-        </p>
+    <div className="p-6 max-w-2xl space-y-4">
 
-        <div className="grid gap-6 max-w-2xl">
-          <Card className="p-6">
-            <h2 className="text-sm font-semibold uppercase tracking-widest text-primary mb-3">Export STIX</h2>
-            <p className="text-text-secondary text-sm mb-4">
-              Use the <strong>Export STIX</strong> button on any threat card on the Dashboard or Threats page to download a STIX 2.1 JSON bundle for that threat.
-            </p>
-            <Link href="/threats">
-              <Button variant="primary">Go to Threats</Button>
-            </Link>
-          </Card>
-
-          <Card className="p-6">
-            <h2 className="text-sm font-semibold uppercase tracking-widest text-primary mb-3">Verify ledger entry</h2>
-            <p className="text-text-secondary text-sm mb-4">
-              Enter a ledger hash to verify a shared intelligence record.
-            </p>
-            <div className="flex gap-2 mb-3">
-              <Input
-                placeholder="Ledger hash"
-                value={ledgerHash}
-                onChange={(e) => setLedgerHash(e.target.value)}
-                className="flex-1 font-mono text-sm"
-              />
-              <Button variant="secondary" onClick={verifyLedger}>Verify</Button>
-            </div>
-            {ledgerResult !== null && (
-              <div className={`p-3 rounded text-sm ${ledgerResult.verified ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger'}`}>
-                {ledgerResult.verified ? `Verified${ledgerResult.timestamp ? ` — ${ledgerResult.timestamp}` : ''}` : 'Not verified'}
-              </div>
-            )}
-          </Card>
+      {/* Export STIX */}
+      <div className="card">
+        <div className="flex items-center gap-2 mb-3">
+          <Download className="w-4 h-4 text-[#5e6ad2]" />
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-[#9ca3af]">Export STIX 2.1</h2>
         </div>
+        <p className="text-sm text-[#6b7280] mb-4 leading-relaxed">
+          Use the <strong className="text-[#f3f4f6]">Export STIX</strong> button on any threat card in the Dashboard or Threats page to download a STIX 2.1 JSON bundle.
+        </p>
+        <Link href="/threats">
+          <button className="btn btn-primary btn-md">Go to Threat Analysis</button>
+        </Link>
+      </div>
+
+      {/* Verify Ledger */}
+      <div className="card">
+        <div className="flex items-center gap-2 mb-3">
+          <Shield className="w-4 h-4 text-[#5e6ad2]" />
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-[#9ca3af]">Verify Ledger Entry</h2>
+        </div>
+        <p className="text-sm text-[#6b7280] mb-4">Enter a ledger hash to verify a shared intelligence record.</p>
+        <div className="flex gap-2 mb-3">
+          <input
+            className="input flex-1 font-mono text-xs"
+            placeholder="Enter ledger hash…"
+            value={hash}
+            onChange={e => setHash(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && verify()}
+          />
+          <button onClick={verify} disabled={loading || !hash.trim()} className="btn btn-secondary btn-md">
+            {loading ? 'Verifying…' : 'Verify'}
+          </button>
+        </div>
+        {result !== null && (
+          <div
+            className="px-4 py-3 rounded-md text-sm"
+            style={{
+              background: result.verified ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)',
+              border: `1px solid ${result.verified ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'}`,
+              color: result.verified ? '#10b981' : '#ef4444',
+            }}
+          >
+            {result.verified
+              ? `✓ Verified${result.timestamp ? ` — ${new Date(result.timestamp).toLocaleString()}` : ''}`
+              : '✕ Not verified — hash not found in ledger'}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

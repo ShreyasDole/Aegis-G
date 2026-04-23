@@ -87,48 +87,40 @@ async def share_intelligence(
         raise HTTPException(status_code=500, detail=f"Sharing failed: {str(e)}")
 
 
-@router.get("/ledger/{hash}")
-async def verify_ledger_entry(hash: str, db: Session = Depends(get_db)):
-    """
-    Verify a ledger entry by hash.
-    Agent 5: Trust Layer - Blockchain verification
-    """
-    try:
-        is_valid = verify_ledger_integrity(db, hash)
-        
-        # Get entry details
-        from app.models.ledger import LedgerEntry
-        entry = db.query(LedgerEntry).filter(LedgerEntry.current_hash == hash).first()
-        
-        if not entry:
-            raise HTTPException(status_code=404, detail="Ledger entry not found")
-        
-        return {
-            "hash": hash,
-            "verified": is_valid,
-            "report_id": entry.report_id,
-            "recipient_agency": entry.recipient_agency,
-            "timestamp": entry.timestamp.isoformat() if entry.timestamp else None,
-            "previous_hash": entry.previous_hash,
-            "status": entry.verified
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Verification failed: {str(e)}")
-
-
 @router.get("/ledger/verify/chain")
 async def verify_blockchain_chain(db: Session = Depends(get_db)):
     """
     Verify integrity of the entire blockchain ledger.
-    Agent 5: Trust Layer - Full chain verification
+    Agent 5: Trust Layer - Full chain verification.
+    IMPORTANT: This route must be registered BEFORE /ledger/{hash} to avoid
+    FastAPI treating 'verify/chain' as a hash value.
     """
     try:
         result = await verify_full_chain(db)
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Chain verification failed: {str(e)}")
+
+
+@router.get("/ledger/integrity")
+async def check_chain_integrity(
+    current_user=Depends(get_current_active_user)
+):
+    """
+    Check blockchain integrity - verifies all blocks are linked correctly.
+    IMPORTANT: Must be registered BEFORE /ledger/{hash} wildcard route.
+    """
+    from app.core.blockchain import verify_chain_integrity
+
+    try:
+        is_valid = verify_chain_integrity()
+        return {
+            "is_valid": is_valid,
+            "status": "INTACT" if is_valid else "TAMPERED",
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Integrity check failed: {str(e)}")
 
 
 @router.get("/ledger")
@@ -144,15 +136,11 @@ async def get_ledger_history(
     """
     from app.models.ledger import LedgerEntry
     from sqlalchemy import desc
-    
+
     try:
-        # Get ledger entries
         entries = db.query(LedgerEntry).order_by(desc(LedgerEntry.timestamp)).offset(offset).limit(limit).all()
-        
-        # Get total count
         total = db.query(LedgerEntry).count()
-        
-        # Format response
+
         ledger_data = []
         for entry in entries:
             ledger_data.append({
@@ -163,34 +151,45 @@ async def get_ledger_history(
                 "recipient_agency": entry.recipient_agency,
                 "timestamp": entry.timestamp.isoformat() if entry.timestamp else None,
                 "verified": entry.verified,
-                "content_preview": entry.redacted_content[:100] + "..." if entry.redacted_content and len(entry.redacted_content) > 100 else entry.redacted_content
+                "content_preview": (
+                    entry.redacted_content[:100] + "..."
+                    if entry.redacted_content and len(entry.redacted_content) > 100
+                    else entry.redacted_content
+                )
             })
-        
-        return {
-            "entries": ledger_data,
-            "total": total,
-            "limit": limit,
-            "offset": offset
-        }
+
+        return {"entries": ledger_data, "total": total, "limit": limit, "offset": offset}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to retrieve ledger: {str(e)}")
 
 
-@router.get("/ledger/integrity")
-async def check_chain_integrity(
-    current_user=Depends(get_current_active_user)
-):
+@router.get("/ledger/{hash}")
+async def verify_ledger_entry(hash: str, db: Session = Depends(get_db)):
     """
-    Check blockchain integrity - verifies all blocks are linked correctly.
+    Verify a single ledger entry by its SHA-256 hash.
+    Agent 5: Trust Layer - Block-level blockchain verification.
+    NOTE: This parameterized route is intentionally last so static routes
+    (/verify/chain, /integrity, '') are matched first by FastAPI.
     """
-    from app.core.blockchain import verify_chain_integrity
-    
     try:
-        is_valid = verify_chain_integrity()
+        is_valid = verify_ledger_integrity(db, hash)
+
+        from app.models.ledger import LedgerEntry
+        entry = db.query(LedgerEntry).filter(LedgerEntry.current_hash == hash).first()
+
+        if not entry:
+            raise HTTPException(status_code=404, detail="Ledger entry not found")
+
         return {
-            "is_valid": is_valid,
-            "status": "INTACT" if is_valid else "TAMPERED",
-            "timestamp": datetime.utcnow().isoformat()
+            "hash": hash,
+            "verified": is_valid,
+            "report_id": entry.report_id,
+            "recipient_agency": entry.recipient_agency,
+            "timestamp": entry.timestamp.isoformat() if entry.timestamp else None,
+            "previous_hash": entry.previous_hash,
+            "status": entry.verified
         }
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Integrity check failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Verification failed: {str(e)}")

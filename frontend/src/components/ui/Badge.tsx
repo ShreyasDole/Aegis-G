@@ -1,29 +1,31 @@
 import React from 'react';
 
+type BadgeVariant = 'critical' | 'high' | 'medium' | 'low' | 'info' | 'accent' | 'success' | 'warning' | 'secondary';
+
 interface BadgeProps {
+  variant?: BadgeVariant;
   children: React.ReactNode;
-  variant?: 'critical' | 'high' | 'medium' | 'low' | 'info' | 'success' | 'secondary' | 'default';
+  icon?: React.ReactNode;
+  className?: string;
 }
 
-export const Badge: React.FC<BadgeProps> = ({ 
-  children, 
-  variant = 'info',
-}) => {
-  const variantClasses = {
-    critical: 'badge-critical',
-    high: 'badge-high',
-    medium: 'badge-medium',
-    low: 'badge-low',
-    info: 'badge-info',
-    success: 'badge-success',
-    secondary: 'badge-secondary',
-    default: 'badge-info',
-  };
+const variantMap: Record<string, string> = {
+  critical:  'badge-critical',
+  high:      'badge-high',
+  medium:    'badge-medium',
+  low:       'badge-low',
+  info:      'badge-info',
+  accent:    'badge-accent',
+  success:   'badge-success',
+  warning:   'badge-warning',
+  secondary: 'badge',
+};
 
+export function Badge({ variant = 'secondary', children, icon, className = '' }: BadgeProps) {
   return (
-    <span className={variantClasses[variant]}>
+    <span className={`badge ${variantMap[variant] || ''} ${className}`}>
+      {icon && <span className="shrink-0">{icon}</span>}
       {children}
     </span>
   );
-};
-
+}

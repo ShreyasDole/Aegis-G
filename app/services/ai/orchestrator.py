@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 
 # Real services imports
 from app.services.gemini.client import GeminiClient  # Cloud AI fallback
-from app.services.graph.neo4j import Neo4jService  # Graph mapping
+from app.services.graph.neo4j import neo4j_service as _neo4j_singleton  # Safe singleton
 from app.services.ai.fusion_service import AnalystAgent  # Analyst agent (placeholder)
 from app.services.ai.policy_guardian import policy_guardian  # Policy engine
 from app.core.blockchain import add_to_ledger  # Trust layer
@@ -38,7 +38,7 @@ class ThreatOrchestrator:
     def __init__(self):
         # Core services
         self.gemini_client = GeminiClient()
-        self.neo4j_service = Neo4jService()
+        self.neo4j_service = _neo4j_singleton  # BUG FIX: use SafeNeo4jService singleton
         self.analyst_agent = AnalystAgent()
         self.policy_guardian = policy_guardian
 
@@ -116,11 +116,11 @@ class ThreatOrchestrator:
         risk_score = forensics_data.get("risk_score", 0.0)
         logger.info(f"📊 Agent 1 results: Risk={risk_score:.2f}")
 
-        # RAG Memory Context
+        # RAG Memory Context — generate real embedding and query pgvector ANN
         logger.info("🧠 Agent 1b Contextualizing with RAG Memory...")
         try:
-            # We skip real embeddings generation and just pass mock vector array for performance in dev
-            similar_hits = await self.embedding_service.find_similar([]) 
+            rag_embedding = await self.embedding_service.generate_embedding(denoised)
+            similar_hits = await self.embedding_service.find_similar(rag_embedding)
             forensics_data["rag_memory"] = similar_hits
         except Exception as e:
             logger.warning(f"RAG lookup failed: {e}")

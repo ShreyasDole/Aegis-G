@@ -1,328 +1,561 @@
 'use client';
-import React, { useState, useEffect } from 'react';
-import { Card } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
+import React, { useState, useEffect, useRef } from 'react';
 import { Badge } from '@/components/ui/Badge';
+import { AIAgentControlCard } from '@/components/ui/AIAgentControlCard';
+import { Paperclip, Send, X, ImageIcon, Bot, User, AlertCircle } from 'lucide-react';
 
+/* ─── Message types ─── */
+interface UserMessage {
+  role: 'user';
+  id: string;
+  text?: string;
+  image?: { url: string; name: string; size: number };
+  ts: string;
+}
+
+interface AssistantMessage {
+  role: 'assistant';
+  id: string;
+  ts: string;
+  loading?: boolean;
+  result?: {
+    risk: number;
+    type: string;
+    recommendation: string;
+    explainability: any[];
+    attribution: Record<string, number>;
+    ragMemory: any[];
+    denoisedContent: string;
+  };
+  error?: string;
+}
+
+type Message = UserMessage | AssistantMessage;
+
+/* ─── Helpers ─── */
+const getRiskColor   = (s: number) => s >= 0.7 ? '#ef4444' : s >= 0.4 ? '#f97316' : '#10b981';
+const getRiskVariant = (s: number): any => s >= 0.7 ? 'critical' : s >= 0.4 ? 'warning' : 'low';
+const fileToBase64   = (f: File): Promise<string> =>
+  new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result as string); r.onerror = rej; r.readAsDataURL(f); });
+const uid            = () => Math.random().toString(36).slice(2, 10);
+
+/* ─── Token highlight ─── */
+function ShapTokens({ tokens, isAI }: { tokens: any[]; isAI: boolean }) {
+  return (
+    <span className="font-mono text-xs leading-relaxed">
+      {tokens.map((tok: any, i: number) => {
+        if (tok.word === '\n') return <br key={i} />;
+        const opacity = tok.importance;
+        const bg = isAI
+          ? `rgba(239,68,68,${opacity * 0.7})`
+          : `rgba(16,185,129,${opacity * 0.5})`;
+        return (
+          <span key={i} title={`Importance: ${(tok.importance * 100).toFixed(1)}%`}
+            className="mr-0.5 px-0.5 rounded cursor-help" style={{ background: bg }}>
+            {tok.word}
+          </span>
+        );
+      })}
+    </span>
+  );
+}
+
+/* ─── Assistant bubble content ─── */
+function AnalysisResult({ result, loading, error }: AssistantMessage) {
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2 py-2">
+        <span className="flex gap-1">
+          {[0, 1, 2].map(i => (
+            <span key={i} className="w-1.5 h-1.5 rounded-full bg-[#5e6ad2]"
+              style={{ animation: `bounce 1.2s ease-in-out ${i * 0.15}s infinite` }} />
+          ))}
+        </span>
+        <span className="text-xs text-[#6b7280]">Analyzing payload…</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center gap-2 text-xs text-[#ef4444]">
+        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+        {error}
+      </div>
+    );
+  }
+
+  if (!result) return null;
+
+  const isAI = result.type === 'AI_GENERATED';
+
+  return (
+    <div className="space-y-3 text-xs">
+      {/* Risk summary row */}
+      <div className="flex flex-wrap items-center gap-2">
+        <span
+          className="text-xl font-semibold tabular-nums"
+          style={{ color: getRiskColor(result.risk) }}
+        >
+          {(result.risk * 100).toFixed(0)}%
+        </span>
+        <span className="text-[#6b7280]">risk score</span>
+        <Badge variant={getRiskVariant(result.risk)}>{isAI ? 'AI-Generated' : 'Human'}</Badge>
+        <Badge variant="accent">{result.recommendation}</Badge>
+      </div>
+
+      {/* SHAP tokens */}
+      {result.explainability?.length > 0 && (
+        <div className="rounded-md p-3" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
+          <p className="mono-10 text-[#6b7280] uppercase tracking-wider mb-2">SHAP Token Attribution</p>
+          <ShapTokens tokens={result.explainability} isAI={isAI} />
+        </div>
+      )}
+
+      {/* Model bars */}
+      {Object.keys(result.attribution || {}).length > 0 && (
+        <div>
+          <p className="mono-10 text-[#6b7280] uppercase tracking-wider mb-2">Model Attribution</p>
+          <div className="space-y-1.5">
+            {Object.entries(result.attribution).map(([model, prob]) => {
+              const pct = (prob * 100).toFixed(1);
+              const colors: Record<string, string> = { 'gpt-4': '#10a37f', 'claude-3': '#d97757', 'llama-3': '#5e6ad2', 'human': '#10b981' };
+              return (
+                <div key={model} className="flex items-center gap-2">
+                  <span className="mono-10 text-[#6b7280] w-14 text-right">{model}</span>
+                  <div className="flex-1 h-1 rounded-full" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                    <div className="h-full rounded-full transition-all duration-700"
+                      style={{ width: `${pct}%`, background: colors[model] || '#5e6ad2' }} />
+                  </div>
+                  <span className="mono-10 text-[#9ca3af] w-8">{pct}%</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* RAG Memory */}
+      {result.ragMemory?.length > 0 && (
+        <div>
+          <p className="mono-10 text-[#6b7280] uppercase tracking-wider mb-2">Similar Historical Cases</p>
+          <div className="space-y-1.5">
+            {result.ragMemory.map((m: any, i: number) => (
+              <div key={i} className="flex items-start gap-2 px-2 py-1.5 rounded"
+                style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
+                <span className="mono-10 text-[#5e6ad2] shrink-0 mt-0.5">#{m.threat_id}</span>
+                <span className="text-[#9ca3af] flex-1 truncate">{m.summary}</span>
+                <span className="mono-10 text-[#10b981] shrink-0">{(m.similarity * 100).toFixed(0)}%</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─── Main Component ─── */
 export default function ScansPage() {
-  const [manualText, setManualText] = useState('');
-  const [liveScans, setLiveScans] = useState<any[]>([]);
-  const [isScanning, setIsScanning] = useState(false);
-  const [glowEffect, setGlowEffect] = useState(false);
+  const [messages, setMessages]     = useState<Message[]>([]);
+  const [inputText, setInputText]   = useState('');
+  const [pendingImage, setPendingImage] = useState<{ file: File; url: string } | null>(null);
+  const [sending, setSending]       = useState(false);
+  const [panelOpen, setPanelOpen]   = useState(false);
 
-  // Trigger subtle pulse glow on mount
+  const bottomRef  = useRef<HTMLDivElement>(null);
+  const fileRef    = useRef<HTMLInputElement>(null);
+  const textRef    = useRef<HTMLTextAreaElement>(null);
+
+  // Auto-scroll
   useEffect(() => {
-    setGlowEffect(true);
-    const timeout = setTimeout(() => setGlowEffect(false), 2000);
-    return () => clearTimeout(timeout);
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  // Welcome message
+  useEffect(() => {
+    setMessages([{
+      role: 'assistant',
+      id: uid(),
+      ts: new Date().toLocaleTimeString(),
+      result: undefined,
+      loading: false,
+      error: undefined,
+    }]);
   }, []);
 
-  const handleManualScan = async () => {
-    if (!manualText.trim()) return;
-    const mode = typeof window !== 'undefined' ? (localStorage.getItem('inference-mode') || 'local') : 'local';
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-    
-    setIsScanning(true);
+  /* Handle image pick */
+  const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    setPendingImage({ file, url });
+    e.target.value = '';
+  };
+
+  /* Paste image support */
+  const onPaste = (e: React.ClipboardEvent) => {
+    const item = Array.from(e.clipboardData.items).find(i => i.type.startsWith('image/'));
+    if (!item) return;
+    const file = item.getAsFile();
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    setPendingImage({ file, url });
+  };
+
+  /* Send */
+  const handleSend = async () => {
+    const hasText  = inputText.trim().length > 0;
+    const hasImage = !!pendingImage;
+    if (!hasText && !hasImage) return;
+    if (sending) return;
+
+    setSending(true);
+
+    // User message
+    const userMsg: UserMessage = {
+      role: 'user',
+      id: uid(),
+      ts: new Date().toLocaleTimeString(),
+      text: inputText.trim() || undefined,
+      image: pendingImage
+        ? { url: pendingImage.url, name: pendingImage.file.name, size: pendingImage.file.size }
+        : undefined,
+    };
+
+    // Placeholder assistant message
+    const assistantId = uid();
+    const assistantPlaceholder: AssistantMessage = {
+      role: 'assistant',
+      id: assistantId,
+      ts: new Date().toLocaleTimeString(),
+      loading: true,
+    };
+
+    setMessages(prev => [...prev, userMsg, assistantPlaceholder]);
+    setInputText('');
+    const img = pendingImage;
+    setPendingImage(null);
+
     try {
-      // Phase 1: Call the new core scan endpoint
-      const response = await fetch(`${API_URL}/api/scan/core`, {
+      const mode    = localStorage.getItem('inference-mode') || 'local';
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const token   = localStorage.getItem('token');
+
+      // Build content — include base64 image if present
+      let content = userMsg.text || '';
+      if (img) {
+        const b64 = await fileToBase64(img.file);
+        content = content
+          ? `${content}\n\n[IMAGE_ATTACHMENT: ${img.file.name}]\n${b64}`
+          : `[IMAGE_ATTACHMENT: ${img.file.name}]\n${b64}`;
+      }
+
+      const res = await fetch(`${API_URL}/api/scan/core`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'X-Inference-Mode': mode,
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ content: manualText }),
+        body: JSON.stringify({ content }),
       });
-      
-      if (!response.ok) throw new Error('Scan failed');
-      const result = await response.json();
-      
-      setLiveScans(prev => [{
-        id: result.content_hash?.slice(0, 9) || Math.random().toString(36).substring(2, 9),
-        originalContent: manualText,
-        denoisedContent: result.denoised_text || manualText,
-        risk: result.risk_score ?? 0,
-        source: 'Manual Triage',
-        timestamp: new Date().toLocaleTimeString(),
-        type: result.is_ai_generated ? 'AI_GENERATED' : 'HUMAN',
-        attribution: result.attribution || {},
-        recommendation: result.recommendation || 'Unknown',
-        explainability: result.explainability || [],
-        ragMemory: result.rag_memory || []
-      }, ...prev].slice(0, 10));
-      
-      // Clear input after success
-      setManualText('');
-    } catch (error) {
-      console.error('Scan error:', error);
-      alert('Forensic scan failed. Ensure the backend is running.');
+
+      if (!res.ok) throw new Error(`Scan failed (${res.status})`);
+      const data = await res.json();
+
+      setMessages(prev => prev.map(m =>
+        m.id === assistantId
+          ? {
+              ...m,
+              loading: false,
+              result: {
+                risk:           data.risk_score ?? 0,
+                type:           data.is_ai_generated ? 'AI_GENERATED' : 'HUMAN',
+                recommendation: data.recommendation || 'Unknown',
+                explainability: data.explainability || [],
+                attribution:    data.attribution || {},
+                ragMemory:      data.rag_memory || [],
+                denoisedContent: data.denoised_text || '',
+              },
+            }
+          : m
+      ));
+    } catch (err: any) {
+      setMessages(prev => prev.map(m =>
+        m.id === assistantId
+          ? { ...m, loading: false, error: err.message || 'Forensic scan failed. Check backend.' }
+          : m
+      ));
     } finally {
-      setIsScanning(false);
+      setSending(false);
     }
   };
 
-  const getRiskColor = (score: number) => {
-    if (score >= 0.7) return 'text-danger';
-    if (score >= 0.4) return 'text-warning';
-    return 'text-success';
+  const onKey = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
   };
 
-  const getRiskGradient = (score: number) => {
-    if (score >= 0.7) return 'from-danger/20 to-danger/5 border-danger/30';
-    if (score >= 0.4) return 'from-warning/20 to-warning/5 border-warning/30';
-    return 'from-success/20 to-success/5 border-success/30';
-  };
+  const hasInput = inputText.trim().length > 0 || !!pendingImage;
 
   return (
-    <div className="p-4 md:p-8 min-h-screen w-full relative overflow-hidden bg-bg-primary text-text-primary">
-      {/* Background ambient light */}
-      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-primary/5 blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-secondary/5 blur-[120px] pointer-events-none" />
+    <div className="flex h-full relative" style={{ height: 'calc(100vh - 32px)' }}>
 
-      <div className="max-w-7xl mx-auto relative z-10">
-        <header className="mb-8 flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-black font-display tracking-tight uppercase bg-clip-text text-transparent bg-gradient-to-r from-primary via-info to-secondary animate-pulse-slow">
-              Core Scanning Engine
-            </h1>
-            <p className="text-text-secondary text-sm mt-1 uppercase tracking-widest font-mono">
-              Phase 1 / Adversarial Denoising &amp; Attribution
-            </p>
-          </div>
-          <span className={`border-primary text-primary ${glowEffect ? 'shadow-glow-blue' : ''} transition-all duration-1000`}>
-            <Badge variant="secondary">
-              SYSTEM ONLINE
-            </Badge>
-          </span>
-        </header>
+      {/* ── CHAT COLUMN ── */}
+      <div className="flex flex-col flex-1 overflow-hidden">
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          
-          {/* LEFT: MANUAL TRIAGE */}
-          <div className="lg:col-span-5 transform transition-all hover:-translate-y-1">
-            <div className="relative h-full">
-              {/* Glassmorphic border glow wrapper */}
-              <div className="absolute -inset-0.5 bg-gradient-to-br from-primary/30 to-secondary/30 rounded-xl blur opacity-30"></div>
-              
-              <div className="relative h-full bg-bg-secondary/80 backdrop-blur-md rounded-xl border border-border-medium shadow-card flex flex-col p-6">
-                <div className="flex items-center mb-6 gap-3">
-                  <div className="w-2 h-2 rounded-full bg-info animate-pulse"></div>
-                  <h2 className="text-xs font-bold text-text-primary tracking-[0.2em] uppercase">Manual Triage</h2>
-                </div>
-                
-                <div className="relative flex-1 flex flex-col group">
-                  <div className="absolute inset-0 bg-primary/5 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none blur-sm" />
-                  <textarea
-                    className="flex-1 min-h-[250px] w-full bg-bg-primary/50 backdrop-blur border border-border-subtle p-5 rounded font-mono text-sm leading-relaxed text-text-primary focus:border-primary/70 focus:ring-1 focus:ring-primary/50 outline-none resize-none transition-all placeholder:text-text-disabled shadow-inner"
-                    placeholder="[Await Input] Enter suspicious text or adversarial payload here for forensic analysis..."
-                    value={manualText}
-                    onChange={(e) => setManualText(e.target.value)}
-                  />
-                  
-                  {/* Decorative corner accents */}
-                  <div className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 border-primary/40 -translate-x-1 -translate-y-1 pointer-events-none" />
-                  <div className="absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 border-primary/40 translate-x-1 translate-y-1 pointer-events-none" />
-                </div>
+        {/* Message thread */}
+        <div className="flex-1 overflow-y-auto scrollbar-thin px-4 py-4 space-y-4">
 
-                <button 
-                  className={`mt-6 w-full py-4 rounded-lg font-bold uppercase tracking-wider text-sm transition-all duration-300 ease-out overflow-hidden relative ${
-                    !manualText.trim() || isScanning 
-                      ? 'bg-bg-tertiary text-text-disabled cursor-not-allowed' 
-                      : 'bg-gradient-to-r from-primary to-secondary text-white shadow-glow-blue hover:shadow-glow-purple hover:scale-[1.02]'
-                  }`}
-                  onClick={handleManualScan} 
-                  disabled={isScanning || !manualText.trim()}
-                >
-                  <span className="relative z-10">{isScanning ? 'Executing Initial Scan...' : 'Execute Forensic Scan'}</span>
-                  {/* Sweep animation on hover */}
-                  {!isScanning && manualText.trim() && (
-                    <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent group-hover:animate-[sweep_1.5s_ease-in-out_infinite]" />
-                  )}
-                </button>
+          {/* Welcome state */}
+          {messages.length === 1 && !messages[0].loading && !(messages[0] as AssistantMessage).result && (
+            <div className="flex flex-col items-center justify-center py-16 text-center gap-4">
+              <div
+                className="w-12 h-12 rounded-full flex items-center justify-center"
+                style={{ background: 'rgba(94,106,210,0.12)', border: '1px solid rgba(94,106,210,0.2)' }}
+              >
+                <Bot className="w-6 h-6 text-[#5e6ad2]" />
               </div>
-            </div>
-          </div>
-
-          {/* RIGHT: RESULTS */}
-          <div className="lg:col-span-7 flex flex-col space-y-6">
-            <div className="flex justify-between items-end border-b border-border-subtle pb-2">
-              <div className="flex items-center gap-3">
-                <div className="w-2 h-2 rounded-full bg-success"></div>
-                <h2 className="text-xs font-bold text-text-primary tracking-[0.2em] uppercase">Scan Results</h2>
+              <div>
+                <p className="text-sm font-medium text-[#f3f4f6] mb-1">AEGIS-G Forensic Scanner</p>
+                <p className="text-xs text-[#6b7280] max-w-sm leading-relaxed">
+                  Submit text or images for AI-powered forensic analysis. I'll detect AI-generated content,
+                  attribute models, highlight adversarial tokens, and provide threat recommendations.
+                </p>
               </div>
-              <span className="text-xs font-mono text-text-muted">Total Processed: {liveScans.length}</span>
-            </div>
-
-            <div className="flex-1 space-y-5 overflow-y-auto pr-2 scrollbar-thin max-h-[700px]">
-              {liveScans.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center text-center py-20 border border-dashed border-border-medium rounded-xl bg-bg-secondary/20">
-                  <div className="w-16 h-16 mb-4 rounded-full border-4 border-bg-tertiary border-t-border-medium animate-spin-slow" />
-                  <p className="text-text-muted font-mono text-sm uppercase tracking-widest">Awaiting telemetry...</p>
-                </div>
-              ) : (
-                liveScans.map((scan, idx) => (
-                  <div 
-                    key={scan.id + idx} 
-                    className={`animate-slide-up relative bg-gradient-to-br ${getRiskGradient(scan.risk)} bg-opacity-10 backdrop-blur-sm border rounded-xl p-6 transition-all shadow-card hover:shadow-modal group`}
+              <div className="flex flex-wrap gap-2 justify-center">
+                {[
+                  'Analyze this text for AI generation',
+                  'Check for adversarial payload',
+                  'Is this phishing content?',
+                ].map(hint => (
+                  <button
+                    key={hint}
+                    onClick={() => { setInputText(hint); textRef.current?.focus(); }}
+                    className="px-3 py-1.5 rounded-full text-xs text-[#9ca3af] transition-colors"
+                    style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
                   >
-                    <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-4">
-                      <div className="flex flex-col">
-                        <div className="flex items-center gap-3 mb-1">
-                          <span className="bg-bg-primary px-3 py-1 rounded text-xs font-mono text-primary font-bold shadow-inner">
-                            ID: {scan.id}
-                          </span>
-                          <span className="text-xs font-mono text-text-muted">{scan.timestamp}</span>
-                        </div>
-                        <div className="flex items-center gap-3 mt-2">
-                          <span className={`uppercase ${scan.type === 'AI_GENERATED' ? 'border-warning text-warning' : 'border-success text-success'}`}>
-                             <Badge variant="secondary">
-                              {scan.type}
-                            </Badge>
-                          </span>
-                          <span className="text-xs uppercase tracking-widest text-text-secondary font-bold">
-                            Action: <span className="text-text-primary">{scan.recommendation}</span>
-                          </span>
-                        </div>
-                      </div>
+                    {hint}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
-                      {/* Risk Gauge */}
-                      <div className="flex flex-col items-end">
-                        <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1">Risk Score</span>
-                        <div className={`text-3xl font-black font-display tracking-tighter ${getRiskColor(scan.risk)}`}>
-                          {(scan.risk * 100).toFixed(0)}%
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-                      {/* Denoised Text Area / Token Explainer */}
-                      <div className="bg-bg-primary/60 border border-border-subtle rounded-lg p-4 shadow-inner flex flex-col">
-                        <div className="text-[10px] text-primary uppercase font-bold tracking-widest mb-2 flex justify-between">
-                          <span>Token Attribution (SHAP)</span>
-                          <span className="opacity-50">Score Overlay</span>
-                        </div>
-                        <div className="text-sm font-mono text-text-secondary whitespace-pre-wrap break-words leading-relaxed max-h-40 overflow-y-auto scrollbar-thin flex-1 bg-bg-secondary p-3 rounded border border-border-medium/30">
-                          {scan.explainability && scan.explainability.length > 0 ? (
-                            scan.explainability.map((token: any, tIdx: number) => {
-                              if (token.word === '\\n' || token.word === '\n') return <br key={tIdx} />;
-                              // Compute heat map color (Red/Orange for high AI importance, Green for human)
-                              const opacity = token.importance;
-                              const heatColor = scan.type === 'AI_GENERATED' 
-                                ? `rgba(239, 68, 68, ${opacity * 0.8})` // danger red
-                                : `rgba(34, 197, 94, ${opacity * 0.5})`; // success green
-                              
-                              return (
-                                <span 
-                                  key={tIdx}
-                                  className="relative group inline-block mr-1 transition-colors rounded px-0.5"
-                                  style={{ backgroundColor: heatColor }}
-                                >
-                                  {token.word}
-                                  <div className="absolute opacity-0 group-hover:opacity-100 bottom-full left-1/2 -translate-x-1/2 mb-1 bg-bg-tertiary text-text-primary text-[9px] px-2 py-1 rounded border border-border-subtle shadow-modal z-50 whitespace-nowrap transition-opacity pointer-events-none">
-                                    Importance: {(token.importance * 100).toFixed(1)}%
-                                  </div>
-                                </span>
-                              );
-                            })
-                          ) : (
-                            <span className="opacity-70">{scan.denoisedContent}</span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Attribution Chart */}
-                      <div className="bg-bg-primary/60 border border-border-subtle rounded-lg p-4 shadow-inner flex flex-col justify-center">
-                        <div className="text-[10px] text-info uppercase font-bold tracking-widest mb-3">Model Attribution Map</div>
-                        <div className="space-y-3">
-                          {Object.entries(scan.attribution || {}).map(([model, prob]: [string, any]) => {
-                            const percent = (prob * 100).toFixed(1);
-                            
-                            // Map colors based on model
-                            let barColor = 'bg-text-disabled';
-                            if (model === 'gpt-4') barColor = 'bg-[#10a37f]'; // OpenAI green
-                            else if (model === 'claude-3') barColor = 'bg-[#d97757]'; // Anthropic orange
-                            else if (model === 'llama-3') barColor = 'bg-primary'; // Meta blue
-                            else if (model === 'human') barColor = 'bg-success';
-
-                            return (
-                              <div key={model} className="flex items-center gap-3 relative group">
-                                <div className="w-16 text-right text-[10px] uppercase font-bold text-text-muted">
-                                  {model}
-                                </div>
-                                <div className="flex-1 h-2 bg-bg-secondary rounded-full overflow-hidden relative">
-                                  <div 
-                                    className={`absolute left-0 top-0 h-full ${barColor} transition-all duration-1000 ease-out`} 
-                                    style={{ width: `${percent}%` }}
-                                  />
-                                </div>
-                                <div className="w-8 text-[10px] text-text-primary text-right font-mono">
-                                  {percent}%
-                                </div>
-                              </div>
-                            );
-                          })}
-                          
-                          {Object.keys(scan.attribution || {}).length === 0 && (
-                            <div className="text-xs font-mono text-text-muted italic text-center py-4">
-                              Distribution unavailable (Model Air-Gapped / Fallback Active)
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* RAG Memory Panel */}
-                    {scan.ragMemory && scan.ragMemory.length > 0 && (
-                      <div className="mt-4 border-t border-border-subtle pt-4">
-                        <div className="flex items-center gap-2 mb-3 text-[10px] text-warning uppercase font-bold tracking-widest">
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
-                          RAG Institutional Memory (Similar Historical Matches)
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          {scan.ragMemory.map((mem: any, mIdx: number) => (
-                            <div key={mIdx} className="bg-bg-primary/40 border border-warning/20 rounded p-3 text-xs shadow-sm hover:border-warning/50 transition-colors">
-                              <div className="flex justify-between items-start mb-2">
-                                <span className="font-mono text-primary bg-primary/10 px-1.5 py-0.5 rounded">ID: {mem.threat_id}</span>
-                                <span className="text-[10px] font-mono text-success">{(mem.similarity * 100).toFixed(1)}% Match</span>
-                              </div>
-                              <p className="text-text-secondary truncate mt-1">{mem.summary}</p>
-                              <div className="mt-2 flex justify-between items-center text-[10px] text-text-muted">
-                                <span>{mem.timestamp}</span>
-                                <span className={`uppercase font-bold ${mem.action_taken === 'BLOCKED' ? 'text-danger' : 'text-warning'}`}>
-                                  {mem.action_taken}
-                                </span>
-                              </div>
-                            </div>
-                          ))}
+          {/* Message bubbles */}
+          {messages.map((msg) => {
+            if (msg.role === 'user') {
+              const um = msg as UserMessage;
+              return (
+                <div key={msg.id} className="flex justify-end gap-3 animate-slide-up">
+                  <div className="max-w-[70%] space-y-2">
+                    {/* Image preview */}
+                    {um.image && (
+                      <div className="flex justify-end">
+                        <div className="relative rounded-lg overflow-hidden"
+                          style={{ maxWidth: '240px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                          <img src={um.image.url} alt={um.image.name} className="max-h-48 object-cover" />
+                          <div className="absolute bottom-0 left-0 right-0 px-2 py-1 mono-10 text-[#9ca3af]"
+                            style={{ background: 'rgba(0,0,0,0.6)' }}>
+                            {um.image.name} · {(um.image.size / 1024).toFixed(1)}KB
+                          </div>
                         </div>
                       </div>
                     )}
-                    
+                    {/* Text bubble */}
+                    {um.text && (
+                      <div
+                        className="px-4 py-2.5 rounded-2xl rounded-tr-sm text-sm text-[#f3f4f6] whitespace-pre-wrap"
+                        style={{ background: '#5e6ad2' }}
+                      >
+                        {um.text}
+                      </div>
+                    )}
+                    <p className="text-right mono-10 text-[#4b5563]">{msg.ts}</p>
                   </div>
-                ))
-              )}
+                  <div
+                    className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 text-xs font-semibold text-white"
+                    style={{ background: 'rgba(255,255,255,0.1)' }}
+                  >
+                    <User className="w-3.5 h-3.5" />
+                  </div>
+                </div>
+              );
+            }
+
+            /* Assistant bubble */
+            const am = msg as AssistantMessage;
+            return (
+              <div key={msg.id} className="flex gap-3 animate-slide-up">
+                <div
+                  className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5"
+                  style={{ background: 'rgba(94,106,210,0.15)', border: '1px solid rgba(94,106,210,0.2)' }}
+                >
+                  <Bot className="w-3.5 h-3.5 text-[#5e6ad2]" />
+                </div>
+                <div className="flex-1 max-w-[85%]">
+                  <div
+                    className="rounded-2xl rounded-tl-sm px-4 py-3"
+                    style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.06)' }}
+                  >
+                    {/* Welcome message */}
+                    {!am.loading && !am.result && !am.error && (
+                      <p className="text-xs text-[#9ca3af]">
+                        Ready for forensic analysis. Submit text or an image below.
+                      </p>
+                    )}
+                    <AnalysisResult {...am} />
+                  </div>
+                  <p className="mono-10 text-[#4b5563] mt-1 ml-1">{msg.ts}</p>
+                </div>
+              </div>
+            );
+          })}
+
+          <div ref={bottomRef} />
+        </div>
+
+        {/* ── INPUT BAR ── */}
+        <div
+          className="border-t px-4 py-3"
+          style={{ borderColor: 'rgba(255,255,255,0.05)', background: '#0e0e0e' }}
+        >
+          {/* Image preview strip */}
+          {pendingImage && (
+            <div className="flex items-center gap-3 mb-2 px-1">
+              <div className="relative rounded-lg overflow-hidden shrink-0"
+                style={{ width: '56px', height: '56px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                <img src={pendingImage.url} alt="attachment" className="w-full h-full object-cover" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-[#9ca3af] truncate">{pendingImage.file.name}</p>
+                <p className="mono-10 text-[#4b5563]">{(pendingImage.file.size / 1024).toFixed(1)} KB</p>
+              </div>
+              <button
+                onClick={() => setPendingImage(null)}
+                className="w-5 h-5 rounded-full flex items-center justify-center text-[#6b7280] hover:text-[#f3f4f6] transition-colors"
+                style={{ background: 'rgba(255,255,255,0.06)' }}
+              >
+                <X className="w-3 h-3" />
+              </button>
             </div>
+          )}
+
+          {/* Textarea + actions */}
+          <div
+            className="flex items-end gap-2 rounded-xl px-3 py-2"
+            style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.08)' }}
+          >
+            {/* Attach image */}
+            <button
+              onClick={() => fileRef.current?.click()}
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-[#6b7280] hover:text-[#f3f4f6] hover:bg-[rgba(255,255,255,0.06)] transition-colors shrink-0 mb-0.5"
+              title="Attach image"
+            >
+              <Paperclip className="w-4 h-4" />
+            </button>
+            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onFileChange} />
+
+            {/* Textarea */}
+            <textarea
+              ref={textRef}
+              className="flex-1 bg-transparent border-none outline-none resize-none text-sm text-[#f3f4f6] leading-relaxed placeholder:text-[#4b5563]"
+              style={{ fontFamily: 'Inter, sans-serif', maxHeight: '200px', minHeight: '24px' }}
+              placeholder="Enter text or paste an image for forensic analysis… (Shift+Enter for newline)"
+              rows={1}
+              value={inputText}
+              onChange={e => {
+                setInputText(e.target.value);
+                e.target.style.height = 'auto';
+                e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
+              }}
+              onKeyDown={onKey}
+              onPaste={onPaste}
+            />
+
+            {/* Send */}
+            <button
+              onClick={handleSend}
+              disabled={!hasInput || sending}
+              className="w-8 h-8 rounded-lg flex items-center justify-center transition-all shrink-0 mb-0.5"
+              style={{
+                background: hasInput && !sending ? '#5e6ad2' : 'rgba(255,255,255,0.06)',
+                color: hasInput && !sending ? '#fff' : '#4b5563',
+              }}
+              title="Send (Enter)"
+            >
+              {sending
+                ? <span className="w-3.5 h-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin-slow" />
+                : <Send className="w-3.5 h-3.5" />
+              }
+            </button>
           </div>
 
+          <p className="text-center mono-10 text-[#4b5563] mt-1.5">
+            Enter · send &nbsp;·&nbsp; Shift+Enter · newline &nbsp;·&nbsp; Paste image · attach
+          </p>
         </div>
       </div>
-      
-      {/* Add custom styles for sweeping animation */}
-      <style dangerouslySetInnerHTML={{__html: `
-        @keyframes sweep {
-          0% { transform: translateX(-100%); }
-          100% { transform: translateX(200%); }
+
+      {/* ── RIGHT PANEL: AI Controls ── */}
+      <div
+        className="border-l flex flex-col overflow-hidden transition-all duration-200"
+        style={{
+          width: panelOpen ? '280px' : '0px',
+          minWidth: panelOpen ? '280px' : '0px',
+          borderColor: 'rgba(255,255,255,0.05)',
+          overflow: panelOpen ? undefined : 'hidden',
+        }}
+      >
+        {panelOpen && (
+          <div className="p-4 space-y-4 overflow-y-auto scrollbar-thin flex-1">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-[#9ca3af]">Agent Controls</span>
+              <button onClick={() => setPanelOpen(false)} className="text-[#4b5563] hover:text-[#9ca3af] text-xs">✕</button>
+            </div>
+            <AIAgentControlCard />
+            <div>
+              <p className="mono-10 text-[#4b5563] uppercase tracking-wider mb-2">Session</p>
+              <div className="space-y-1">
+                <div className="flex justify-between text-xs">
+                  <span className="text-[#6b7280]">Scans this session</span>
+                  <span className="text-[#f3f4f6] tabular-nums">{messages.filter(m => m.role === 'user').length}</span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-[#6b7280]">Status</span>
+                  <span className="text-[#10b981]">Online</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Panel toggle */}
+      <button
+        onClick={() => setPanelOpen(!panelOpen)}
+        className="absolute right-0 top-1/2 -translate-y-1/2 w-5 h-10 rounded-l-md flex items-center justify-center transition-colors"
+        style={{
+          background: panelOpen ? 'rgba(94,106,210,0.15)' : 'rgba(255,255,255,0.04)',
+          borderLeft: '1px solid rgba(255,255,255,0.08)',
+          borderTop: '1px solid rgba(255,255,255,0.08)',
+          borderBottom: '1px solid rgba(255,255,255,0.08)',
+          color: '#6b7280',
+          right: panelOpen ? '280px' : '0px',
+          zIndex: 10,
+        }}
+        title={panelOpen ? 'Close panel' : 'Agent controls'}
+      >
+        <span className="text-[9px]">{panelOpen ? '›' : '‹'}</span>
+      </button>
+
+      {/* Bounce keyframes */}
+      <style>{`
+        @keyframes bounce {
+          0%, 80%, 100% { transform: translateY(0); }
+          40% { transform: translateY(-6px); }
         }
-        @keyframes spin-slow {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-        .animate-spin-slow {
-          animation: spin-slow 3s linear infinite;
-        }
-      `}} />
+      `}</style>
     </div>
   );
 }

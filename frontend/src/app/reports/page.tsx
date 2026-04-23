@@ -1,182 +1,127 @@
 'use client';
-
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Card } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { FileText, Shield, AlertTriangle, Link2 } from 'lucide-react';
+import { FileText, Shield, AlertTriangle, Link2, RefreshCw } from 'lucide-react';
 
-interface Insight {
-  id: number;
-  title: string;
-  description: string;
-  severity: string;
-  category?: string;
-  created_at?: string;
-  confidence_score?: number;
-}
+interface Insight { id: number; title: string; description: string; severity: string; created_at?: string; confidence_score?: number; }
+interface LedgerRow { id: number; report_id: number; recipient_agency: string; timestamp: string; verified: string; }
 
-function insightBadgeVariant(sev: string): 'critical' | 'high' | 'medium' | 'low' | 'info' | 'secondary' {
-  const s = (sev || '').toLowerCase();
+function insightVariant(sev: string): any {
+  const s = sev.toLowerCase();
   if (s === 'critical') return 'critical';
-  if (s === 'warning') return 'high';
-  if (s === 'recommendation') return 'info';
-  if (s === 'high') return 'high';
+  if (s === 'warning' || s === 'high') return 'high';
+  if (s === 'recommendation' || s === 'low') return 'low';
   if (s === 'medium') return 'medium';
-  if (s === 'low') return 'low';
-  return 'secondary';
-}
-
-interface LedgerRow {
-  id: number;
-  report_id: number;
-  recipient_agency: string;
-  timestamp: string;
-  verified: string;
-  content_preview?: string;
+  return 'info';
 }
 
 export default function ReportsPage() {
-  const [insights, setInsights] = useState<Insight[]>([]);
-  const [ledger, setLedger] = useState<LedgerRow[]>([]);
+  const [insights, setInsights]   = useState<Insight[]>([]);
+  const [ledger, setLedger]       = useState<LedgerRow[]>([]);
   const [threatCount, setThreatCount] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
   const [integrity, setIntegrity] = useState<{ is_valid?: boolean; status?: string } | null>(null);
+  const [loading, setLoading]     = useState(true);
 
   const load = async () => {
-    const token = localStorage.getItem('token');
-    const headers: HeadersInit = { ...(token ? { Authorization: `Bearer ${token}` } : {}) };
+    const token   = localStorage.getItem('token');
+    const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
     setLoading(true);
     try {
       const [insRes, ledRes, thrRes, intRes] = await Promise.all([
-        fetch('/api/ai/insights', { headers }),
-        fetch('/api/sharing/ledger?limit=15&offset=0', { headers }),
-        fetch('/api/threats', { headers }),
-        fetch('/api/sharing/ledger/integrity', { headers }),
+        fetch('/api/ai/insights',                { headers }),
+        fetch('/api/sharing/ledger?limit=20',    { headers }),
+        fetch('/api/threats',                    { headers }),
+        fetch('/api/sharing/ledger/integrity',   { headers }),
       ]);
-
-      if (insRes.ok) {
-        const data = await insRes.json();
-        setInsights(Array.isArray(data) ? data.slice(0, 12) : []);
-      } else setInsights([]);
-
-      if (ledRes.ok) {
-        const data = await ledRes.json();
-        setLedger(Array.isArray(data?.entries) ? data.entries : Array.isArray(data) ? data : []);
-      } else setLedger([]);
-
-      if (thrRes.ok) {
-        const data = await thrRes.json();
-        setThreatCount(Array.isArray(data) ? data.length : 0);
-      } else setThreatCount(null);
-
+      if (insRes.ok) setInsights((await insRes.json()).slice(0, 15));
+      if (ledRes.ok) { const d = await ledRes.json(); setLedger(Array.isArray(d?.entries) ? d.entries : Array.isArray(d) ? d : []); }
+      if (thrRes.ok) { const d = await thrRes.json(); setThreatCount(Array.isArray(d) ? d.length : 0); }
       if (intRes.ok) setIntegrity(await intRes.json());
-      else setIntegrity(null);
-    } catch {
-      setInsights([]);
-      setLedger([]);
-      setThreatCount(null);
-    } finally {
-      setLoading(false);
-    }
+    } catch {} finally { setLoading(false); }
   };
 
-  useEffect(() => {
-    load();
-  }, []);
+  useEffect(() => { load(); }, []);
 
   return (
-    <div className="p-6 max-w-7xl mx-auto min-h-screen">
-      <header className="flex flex-wrap items-start justify-between gap-4 mb-8">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-text-primary">Reports Overview</h1>
-          <p className="text-text-muted text-sm mt-1">AI insights, ledger integrity, and threat volume</p>
-        </div>
-        <Button variant="primary" onClick={load} disabled={loading}>
-          Refresh
-        </Button>
-      </header>
+    <div className="flex flex-col" style={{ height: 'calc(100vh - 32px)' }}>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-        <Card className="p-4 border-l-4 border-l-primary">
-          <div className="flex items-center gap-2 text-text-muted text-xs uppercase tracking-wider mb-2">
-            <AlertTriangle className="w-4 h-4" />
-            Active threats
+      {/* Stat band */}
+      <div className="grid grid-cols-3 border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+        {[
+          { label: 'Active Threats', value: threatCount === null ? '—' : threatCount, icon: <AlertTriangle className="w-4 h-4" />, color: '#ef4444' },
+          { label: 'AI Insights',    value: insights.length, icon: <FileText className="w-4 h-4" />, color: '#10b981' },
+          { label: 'Ledger Chain',   value: integrity?.status || '—', icon: <Shield className="w-4 h-4" />, color: integrity?.is_valid ? '#10b981' : '#f97316' },
+        ].map((s, i) => (
+          <div key={i} className="px-5 py-4 flex items-start gap-3"
+            style={{ borderRight: i < 2 ? '1px solid rgba(255,255,255,0.05)' : undefined }}>
+            <span style={{ color: s.color }} className="mt-1">{s.icon}</span>
+            <div>
+              <div className="text-2xs uppercase tracking-wider text-[#6b7280] font-medium mb-1.5">{s.label}</div>
+              <div className="text-2xl font-semibold text-[#f3f4f6]">{s.value}</div>
+            </div>
           </div>
-          <div className="text-3xl font-bold text-text-primary tabular-nums">
-            {threatCount === null ? '—' : threatCount}
-          </div>
-          <Link href="/threats" className="text-xs text-primary mt-2 inline-block hover:underline">
-            Open threat analysis →
-          </Link>
-        </Card>
-        <Card className="p-4 border-l-4 border-l-success">
-          <div className="flex items-center gap-2 text-text-muted text-xs uppercase tracking-wider mb-2">
-            <FileText className="w-4 h-4" />
-            AI insights
-          </div>
-          <div className="text-3xl font-bold text-text-primary tabular-nums">{insights.length}</div>
-          <p className="text-xs text-text-muted mt-2">Latest generated intelligence</p>
-        </Card>
-        <Card className="p-4 border-l-4 border-l-secondary">
-          <div className="flex items-center gap-2 text-text-muted text-xs uppercase tracking-wider mb-2">
-            <Shield className="w-4 h-4" />
-            Ledger chain
-          </div>
-          <div className="text-sm font-medium text-text-primary">
-            {integrity?.status || (integrity?.is_valid === false ? 'Check failed' : integrity?.is_valid ? 'Verified' : 'Unknown')}
-          </div>
-          <Link href="/ledger" className="text-xs text-primary mt-2 inline-block hover:underline">
-            Ledger explorer →
-          </Link>
-        </Card>
+        ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <h2 className="text-sm font-semibold uppercase tracking-widest text-text-muted mb-4">Recent AI insights</h2>
-          {insights.length === 0 && !loading ? (
-            <p className="text-sm text-text-muted">No insights yet. An admin can generate them from the API.</p>
-          ) : (
-            <ul className="space-y-3 max-h-[480px] overflow-y-auto scrollbar-thin">
-              {insights.map((i) => (
-                <li key={i.id} className="p-3 rounded-lg bg-bg-primary border border-border-subtle">
-                  <div className="flex items-start justify-between gap-2 mb-1">
-                    <span className="text-sm font-medium text-text-primary">{i.title}</span>
-                    <Badge variant={insightBadgeVariant(String(i.severity))}>
-                      {String(i.severity)}
-                    </Badge>
-                  </div>
-                  <p className="text-xs text-text-secondary line-clamp-2">{i.description}</p>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
+      {/* Toolbar */}
+      <div className="flex items-center justify-between px-4 py-2.5 border-b"
+        style={{ borderColor: 'rgba(255,255,255,0.05)', minHeight: '44px' }}>
+        <span className="text-2xs uppercase tracking-wider text-[#6b7280] font-medium">Intelligence Overview</span>
+        <button onClick={load} disabled={loading} className="btn btn-ghost btn-sm gap-1">
+          <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin-slow' : ''}`} /> Refresh
+        </button>
+      </div>
 
-        <Card>
-          <h2 className="text-sm font-semibold uppercase tracking-widest text-text-muted mb-4">Ledger activity</h2>
-          {ledger.length === 0 && !loading ? (
-            <p className="text-sm text-text-muted">No ledger entries returned.</p>
-          ) : (
-            <ul className="space-y-2 max-h-[480px] overflow-y-auto scrollbar-thin">
-              {ledger.map((row) => (
-                <li
-                  key={row.id}
-                  className="flex items-start gap-3 p-3 rounded-lg bg-bg-primary border border-border-subtle text-xs"
-                >
-                  <Link2 className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                  <div className="min-w-0">
-                    <div className="font-mono text-text-primary truncate">#{row.report_id}</div>
-                    <div className="text-text-muted truncate">{row.recipient_agency}</div>
-                    <div className="text-text-muted">{row.timestamp}</div>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
+      {/* Content */}
+      <div className="flex flex-1 overflow-hidden">
+
+        {/* AI Insights */}
+        <div className="flex-1 flex flex-col border-r overflow-hidden" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+          <div className="px-4 py-2.5 border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+            <span className="text-xs font-medium text-[#9ca3af]">AI Insights</span>
+          </div>
+          <div className="flex-1 overflow-y-auto scrollbar-thin">
+            {insights.length === 0 && !loading ? (
+              <div className="px-4 py-8 text-sm text-[#6b7280] text-center">No insights yet.</div>
+            ) : (
+              insights.map(ins => (
+                <div key={ins.id} className="row-item">
+                  <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-[#5e6ad2]" />
+                  <span className="flex-1 text-sm text-[#f3f4f6] truncate">{ins.title}</span>
+                  <Badge variant={insightVariant(ins.severity)}>{ins.severity}</Badge>
+                  {ins.confidence_score !== undefined && (
+                    <span className="mono-10 text-[#4b5563]">{(ins.confidence_score * 100).toFixed(0)}%</span>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Ledger Activity */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-2.5 border-b"
+            style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+            <span className="text-xs font-medium text-[#9ca3af]">Ledger Activity</span>
+            <Link href="/ledger" className="text-2xs text-[#5e6ad2] hover:underline">Explorer →</Link>
+          </div>
+          <div className="flex-1 overflow-y-auto scrollbar-thin">
+            {ledger.length === 0 && !loading ? (
+              <div className="px-4 py-8 text-sm text-[#6b7280] text-center">No ledger entries yet.</div>
+            ) : (
+              ledger.map(row => (
+                <div key={row.id} className="row-item">
+                  <Link2 className="w-3 h-3 text-[#5e6ad2] shrink-0" />
+                  <span className="mono-10 text-[#6b7280] shrink-0">#{row.report_id}</span>
+                  <span className="flex-1 text-sm text-[#f3f4f6] truncate">{row.recipient_agency || 'Internal'}</span>
+                  <Badge variant={row.verified === 'verified' ? 'success' : 'warning'}>{row.verified}</Badge>
+                  <span className="mono-10 text-[#4b5563] shrink-0">{new Date(row.timestamp).toLocaleTimeString()}</span>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

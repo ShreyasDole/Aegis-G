@@ -1,8 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { Card } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
 import { StatCard } from '@/components/ui/StatCard';
+import { Link2, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface LedgerEntry {
   id: number;
@@ -12,209 +11,124 @@ interface LedgerEntry {
   recipient_agency: string;
   timestamp: string;
   verified: string;
-  content_preview?: string;
 }
 
-export default function LedgerExplorerPage() {
+const trim = (h: string) => h ? `${h.slice(0, 8)}…${h.slice(-8)}` : 'N/A';
+
+export default function LedgerPage() {
   const [entries, setEntries] = useState<LedgerEntry[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [integrityStatus, setIntegrityStatus] = useState<{is_valid: boolean, status: string} | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [integrity, setIntegrity] = useState<{ is_valid: boolean; status: string } | null>(null);
   const [total, setTotal] = useState(0);
   const [offset, setOffset] = useState(0);
   const limit = 50;
 
-  useEffect(() => {
-    loadLedger();
-    checkIntegrity();
-  }, [offset]);
-
-  const loadLedger = async () => {
+  const load = async () => {
+    setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-      
-      const response = await fetch(`${API_URL}/api/sharing/ledger?limit=${limit}&offset=${offset}`, {
-        headers: { 'Authorization': `Bearer ${token}` },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setEntries(data.entries || []);
-        setTotal(data.total || 0);
-      }
-    } catch (error) {
-      console.error('Failed to load ledger:', error);
-    } finally {
-      setIsLoading(false);
-    }
+      const API   = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const h     = { Authorization: `Bearer ${token}` };
+      const [ledRes, intRes] = await Promise.all([
+        fetch(`${API}/api/sharing/ledger?limit=${limit}&offset=${offset}`, { headers: h }),
+        fetch(`${API}/api/sharing/ledger/integrity`, { headers: h }),
+      ]);
+      if (ledRes.ok) { const d = await ledRes.json(); setEntries(d.entries || []); setTotal(d.total || 0); }
+      if (intRes.ok) setIntegrity(await intRes.json());
+    } catch {} finally { setLoading(false); }
   };
 
-  const checkIntegrity = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-      
-      const response = await fetch(`${API_URL}/api/sharing/ledger/integrity`, {
-        headers: { 'Authorization': `Bearer ${token}` },
-      });
+  useEffect(() => { load(); }, [offset]);
 
-      if (response.ok) {
-        const data = await response.json();
-        setIntegrityStatus(data);
-      }
-    } catch (error) {
-      console.error('Failed to check integrity:', error);
-    }
-  };
-
-  const formatHash = (hash: string) => {
-    if (!hash) return 'N/A';
-    return `${hash.substring(0, 8)}...${hash.substring(hash.length - 8)}`;
-  };
+  const agencies = new Set(entries.map(e => e.recipient_agency)).size;
+  const verified = entries.filter(e => e.verified === 'verified').length;
 
   return (
-    <div className="min-h-screen bg-bg-primary p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-text-primary">🔗 Ledger Explorer</h1>
-            <p className="text-text-secondary mt-2">Blockchain audit trail for threat intelligence sharing</p>
-          </div>
-          <Button variant="primary" onClick={checkIntegrity}>
-            Verify Chain Integrity
-          </Button>
-        </div>
+    <div className="flex flex-col" style={{ height: 'calc(100vh - 32px)' }}>
 
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <StatCard
-            label="Total Blocks"
-            value={total.toString()}
-          />
-          <StatCard
-            label="Chain Status"
-            value={integrityStatus?.status || "CHECKING"}
-            variant={integrityStatus?.is_valid ? "safe" : "warning"}
-          />
-          <StatCard
-            label="Verified Blocks"
-            value={entries.filter(e => e.verified === 'verified').length.toString()}
-          />
-          <StatCard
-            label="Agencies"
-            value={new Set(entries.map(e => e.recipient_agency)).size.toString()}
-          />
-        </div>
-
-        {/* Integrity Status */}
-        {integrityStatus && (
-          <Card className={`p-4 ${integrityStatus.is_valid ? 'bg-success/10 border-success' : 'bg-danger/10 border-danger'}`}>
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">{integrityStatus.is_valid ? '✅' : '🚨'}</span>
-              <div>
-                <h3 className="font-semibold text-text-primary">
-                  Chain Integrity: {integrityStatus.status}
-                </h3>
-                <p className="text-sm text-text-secondary">
-                  {integrityStatus.is_valid 
-                    ? 'All blocks are cryptographically linked. No tampering detected.'
-                    : 'WARNING: Chain integrity compromised. Tampering detected.'}
-                </p>
-              </div>
+      {/* Stats */}
+      <div className="grid grid-cols-4 border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+        {[
+          { label: 'Total Blocks',    value: total.toString() },
+          { label: 'Chain Status',    value: integrity?.status || 'Checking…', variant: integrity?.is_valid ? 'safe' as const : 'warning' as const },
+          { label: 'Verified Blocks', value: verified.toString() },
+          { label: 'Agencies',        value: agencies.toString() },
+        ].map((s, i) => (
+          <div key={i} className="px-5 py-4"
+            style={{ borderRight: i < 3 ? '1px solid rgba(255,255,255,0.05)' : undefined }}>
+            <div className="text-2xs uppercase tracking-wider text-[#6b7280] font-medium mb-1.5">{s.label}</div>
+            <div className={`text-2xl font-semibold ${s.variant === 'safe' ? 'text-[#10b981]' : s.variant === 'warning' ? 'text-[#f97316]' : 'text-[#f3f4f6]'}`}>
+              {s.value}
             </div>
-          </Card>
-        )}
-
-        {/* Ledger Table */}
-        <Card>
-          <div className="p-6">
-            <h2 className="text-xl font-semibold mb-4">Blockchain History</h2>
-            
-            {isLoading ? (
-              <div className="text-center py-12 text-text-secondary">Loading ledger...</div>
-            ) : entries.length === 0 ? (
-              <div className="text-center py-12 text-text-secondary">
-                <p className="text-lg mb-2">No ledger entries found</p>
-                <p className="text-sm">Threat intelligence will appear here once shared.</p>
-              </div>
-            ) : (
-              <>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-border-subtle">
-                        <th className="text-left p-3 text-text-secondary font-semibold">Block #</th>
-                        <th className="text-left p-3 text-text-secondary font-semibold">Timestamp</th>
-                        <th className="text-left p-3 text-text-secondary font-semibold">Report ID</th>
-                        <th className="text-left p-3 text-text-secondary font-semibold">Agency</th>
-                        <th className="text-left p-3 text-text-secondary font-semibold">Previous Hash</th>
-                        <th className="text-left p-3 text-text-secondary font-semibold">Current Hash</th>
-                        <th className="text-left p-3 text-text-secondary font-semibold">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {entries.map((entry, idx) => (
-                        <tr key={entry.id} className="border-b border-border-subtle hover:bg-bg-secondary/50">
-                          <td className="p-3 font-mono text-text-primary">{entry.id}</td>
-                          <td className="p-3 text-text-secondary">
-                            {entry.timestamp ? new Date(entry.timestamp).toLocaleString() : 'N/A'}
-                          </td>
-                          <td className="p-3 text-text-primary">#{entry.report_id}</td>
-                          <td className="p-3 text-text-secondary">{entry.recipient_agency || 'Internal'}</td>
-                          <td className="p-3 font-mono text-xs text-text-muted">
-                            {formatHash(entry.previous_hash)}
-                          </td>
-                          <td className="p-3 font-mono text-xs text-primary">
-                            {formatHash(entry.current_hash)}
-                          </td>
-                          <td className="p-3">
-                            <span className={`px-2 py-1 rounded text-xs ${
-                              entry.verified === 'verified' 
-                                ? 'bg-success/20 text-success' 
-                                : 'bg-warning/20 text-warning'
-                            }`}>
-                              {entry.verified}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Pagination */}
-                <div className="flex items-center justify-between mt-4 pt-4 border-t border-border-subtle">
-                  <div className="text-sm text-text-secondary">
-                    Showing {offset + 1} to {Math.min(offset + limit, total)} of {total} blocks
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="secondary"
-                      onClick={() => setOffset(Math.max(0, offset - limit))}
-                      disabled={offset === 0}
-                    >
-                      Previous
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      onClick={() => setOffset(offset + limit)}
-                      disabled={offset + limit >= total}
-                    >
-                      Next
-                    </Button>
-                  </div>
-                </div>
-              </>
-            )}
           </div>
-        </Card>
+        ))}
+      </div>
+
+      {/* Integrity banner */}
+      {integrity && (
+        <div
+          className="flex items-center gap-3 px-5 py-3 border-b text-sm"
+          style={{
+            borderColor: 'rgba(255,255,255,0.05)',
+            background: integrity.is_valid ? 'rgba(16,185,129,0.05)' : 'rgba(239,68,68,0.05)',
+          }}
+        >
+          <span className={`w-2 h-2 rounded-full ${integrity.is_valid ? 'bg-[#10b981]' : 'bg-[#ef4444]'}`} />
+          <span style={{ color: integrity.is_valid ? '#10b981' : '#ef4444' }}>
+            {integrity.is_valid ? 'Chain integrity verified — no tampering detected' : 'WARNING: Chain integrity compromised'}
+          </span>
+          <button onClick={load} className="btn btn-ghost btn-sm ml-auto"><RefreshCw className="w-3 h-3" /></button>
+        </div>
+      )}
+
+      {/* Table header */}
+      <div
+        className="grid text-2xs uppercase tracking-wider text-[#4b5563] px-4 py-2 border-b"
+        style={{ gridTemplateColumns: '60px 140px 80px 140px 120px 120px 80px', borderColor: 'rgba(255,255,255,0.05)' }}
+      >
+        <span>Block</span><span>Timestamp</span><span>Report</span><span>Agency</span>
+        <span>Prev Hash</span><span>Curr Hash</span><span>Status</span>
+      </div>
+
+      {/* Rows */}
+      <div className="flex-1 overflow-y-auto scrollbar-thin">
+        {loading ? (
+          <div className="flex items-center justify-center py-14 text-sm text-[#6b7280]">Loading ledger…</div>
+        ) : entries.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-14 gap-2">
+            <Link2 className="w-6 h-6 text-[#4b5563]" />
+            <p className="text-sm text-[#6b7280]">No ledger entries found</p>
+          </div>
+        ) : entries.map(e => (
+          <div
+            key={e.id}
+            className="row-item"
+            style={{ gridTemplateColumns: '60px 140px 80px 140px 120px 120px 80px', display: 'grid', paddingLeft: '16px', paddingRight: '16px' }}
+          >
+            <span className="mono-12 text-[#9ca3af]">{e.id}</span>
+            <span className="text-xs text-[#6b7280]">{e.timestamp ? new Date(e.timestamp).toLocaleString() : 'N/A'}</span>
+            <span className="mono-10 text-[#5e6ad2]">#{e.report_id}</span>
+            <span className="text-xs text-[#9ca3af] truncate">{e.recipient_agency || 'Internal'}</span>
+            <span className="mono-10 text-[#4b5563]">{trim(e.previous_hash)}</span>
+            <span className="mono-10 text-[#5e6ad2]">{trim(e.current_hash)}</span>
+            <span className={`mono-10 font-semibold ${e.verified === 'verified' ? 'text-[#10b981]' : 'text-[#f97316]'}`}>
+              {e.verified}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* Pagination */}
+      <div className="flex items-center justify-between px-4 py-2 border-t text-xs text-[#6b7280]"
+        style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+        <span>Showing {Math.min(offset + 1, total)}–{Math.min(offset + limit, total)} of {total}</span>
+        <div className="flex gap-2">
+          <button onClick={() => setOffset(Math.max(0, offset - limit))} disabled={offset === 0}
+            className="btn btn-ghost btn-sm"><ChevronLeft className="w-3.5 h-3.5" /></button>
+          <button onClick={() => setOffset(offset + limit)} disabled={offset + limit >= total}
+            className="btn btn-ghost btn-sm"><ChevronRight className="w-3.5 h-3.5" /></button>
+        </div>
       </div>
     </div>
   );
 }
-
-
-
-
-

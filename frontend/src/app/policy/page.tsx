@@ -1,10 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { Card } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
-import { PolicyAuthor } from '@/components/policy/PolicyAuthor';
-import { PolicyList } from '@/components/policy/PolicyList';
-import { PolicyEditor } from '@/components/policy/PolicyEditor';
+import { Badge } from '@/components/ui/Badge';
+import { RefreshCw, Plus } from 'lucide-react';
 
 interface BlockedItem {
   id: number;
@@ -16,245 +13,164 @@ interface BlockedItem {
 }
 
 export default function PolicyPage() {
-  const [blockedItems, setBlockedItems] = useState<BlockedItem[]>([]);
+  const [tab, setTab] = useState<'author' | 'manage'>('author');
+  const [blocked, setBlocked] = useState<BlockedItem[]>([]);
   const [blockedCount, setBlockedCount] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
   const [showEditor, setShowEditor] = useState(false);
-  const [editingPolicy, setEditingPolicy] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<'author' | 'manage'>('author');
+  const [editPolicy, setEditPolicy] = useState<any>(null);
+
+  const fetchBlocked = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/ai/blocked-content/stats', {
+        headers: { Authorization: `Bearer ${token || ''}` },
+      });
+      if (res.ok) {
+        const d = await res.json();
+        setBlockedCount(d.today_count || 0);
+        setBlocked(d.recent_blocks || []);
+      }
+    } catch {}
+  };
 
   useEffect(() => {
-    // Fetch blocked content on mount
-    fetchBlockedContent();
-    
-    // Set up polling for live updates
-    const interval = setInterval(fetchBlockedContent, 5000); // Poll every 5 seconds
+    fetchBlocked();
+    const interval = setInterval(fetchBlocked, 5000);
     return () => clearInterval(interval);
   }, []);
 
-  const fetchBlockedContent = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/ai/blocked-content/stats', {
-        headers: {
-          'Authorization': `Bearer ${token || ''}`
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setBlockedCount(data.today_count || 0);
-        setBlockedItems(data.recent_blocks || []);
-      }
-    } catch (error) {
-      console.error('Error fetching blocked content:', error);
-    }
-  };
-
-  // WebSocket connection for real-time updates
+  // WebSocket
   useEffect(() => {
-    const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-    const wsUrl = apiBase.replace(/^http/, 'ws') + '/ws/blocked-content';
-    const ws = new WebSocket(wsUrl);
-    
-    ws.onmessage = (event) => {
-      const message = JSON.parse(event.data);
-      if (message.type === 'blocked_content') {
-        // Add new blocked item to the list
-        setBlockedItems(prev => [message.data, ...prev].slice(0, 50));
-        setBlockedCount(prev => prev + 1);
-      }
-    };
-
-    ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
-    };
-
-    return () => {
-      ws.close();
-    };
+    try {
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const ws = new WebSocket(apiBase.replace(/^http/, 'ws') + '/ws/blocked-content');
+      ws.onmessage = (e) => {
+        const msg = JSON.parse(e.data);
+        if (msg.type === 'blocked_content') {
+          setBlocked(prev => [msg.data, ...prev].slice(0, 50));
+          setBlockedCount(prev => prev + 1);
+        }
+      };
+      ws.onerror = () => console.warn('WebSocket unavailable');
+      return () => ws.close();
+    } catch { console.warn('WebSocket failed to initialize'); }
   }, []);
 
+  const savePolicy = async (policy: any) => {
+    try {
+      const token = localStorage.getItem('token');
+      const url   = policy.id ? `/api/ai/policies/${policy.id}` : '/api/ai/policies';
+      await fetch(url, {
+        method: policy.id ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token || ''}` },
+        body: JSON.stringify(policy),
+      });
+      setShowEditor(false);
+      setEditPolicy(null);
+    } catch {}
+  };
+
   return (
-    <div className="p-6 min-h-screen max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-text-primary mb-2">
-              Policy Engine
-            </h1>
-            <p className="text-text-secondary text-sm">
-              Natural-language rules, blocked content, and live enforcement
-            </p>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="text-right">
-              <div className="text-2xl font-bold text-red-500">{blockedCount}</div>
-              <div className="text-xs text-text-secondary uppercase tracking-wider">Blocked Today</div>
-            </div>
-            <Button variant="secondary" onClick={fetchBlockedContent}>
-              Refresh
-            </Button>
+    <div className="flex flex-col" style={{ height: 'calc(100vh - 32px)' }}>
+
+      {/* Stat header */}
+      <div className="grid grid-cols-2 border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+        <div className="px-5 py-4 border-r" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+          <div className="text-2xs uppercase tracking-wider font-medium text-[#6b7280] mb-1.5">Blocked Today</div>
+          <div className="text-2xl font-semibold tabular-nums" style={{ color: blockedCount > 0 ? '#ef4444' : '#f3f4f6' }}>
+            {blockedCount}
           </div>
         </div>
-
-        {/* Tabs */}
-        <div className="flex gap-2 mb-6 border-b border-border-subtle">
-          <button
-            onClick={() => setActiveTab('author')}
-            className={`px-4 py-2 text-sm font-semibold uppercase tracking-wider border-b-2 transition-colors ${
-              activeTab === 'author'
-                ? 'border-primary text-primary'
-                : 'border-transparent text-text-secondary hover:text-text-primary'
-            }`}
-          >
-            Policy Author
-          </button>
-          <button
-            onClick={() => setActiveTab('manage')}
-            className={`px-4 py-2 text-sm font-semibold uppercase tracking-wider border-b-2 transition-colors ${
-              activeTab === 'manage'
-                ? 'border-primary text-primary'
-                : 'border-transparent text-text-secondary hover:text-text-primary'
-            }`}
-          >
-            Policy Management
-          </button>
+        <div className="px-5 py-4 flex items-center gap-3">
+          <span className="w-2 h-2 rounded-full bg-[#10b981] animate-pulse" />
+          <span className="text-xs text-[#9ca3af]">WebSocket live feed active</span>
         </div>
+      </div>
 
-        {/* Policy Authoring Section */}
-        {activeTab === 'author' && (
-          <div className="mb-8">
-            <PolicyAuthor />
-          </div>
-        )}
+      {/* Tab bar */}
+      <div className="tab-bar px-4">
+        {(['author', 'manage'] as const).map(t => (
+          <button key={t} onClick={() => setTab(t)} className={`tab ${tab === t ? 'active' : ''} capitalize`}>
+            {t === 'author' ? 'Policy Author' : 'Policy Management'}
+          </button>
+        ))}
+        <div className="flex-1" />
+        <div className="flex items-center gap-2 my-auto">
+          <button onClick={fetchBlocked} className="btn btn-ghost btn-sm">
+            <RefreshCw className="w-3 h-3" />
+          </button>
+          {tab === 'manage' && !showEditor && (
+            <button onClick={() => { setEditPolicy(null); setShowEditor(true); }} className="btn btn-primary btn-sm gap-1">
+              <Plus className="w-3 h-3" /> New Policy
+            </button>
+          )}
+        </div>
+      </div>
 
-        {/* Policy Management Section */}
-        {activeTab === 'manage' && (
-          <div className="mb-8">
-            {showEditor ? (
-              <PolicyEditor
-                policy={editingPolicy}
-                onSave={async (policy) => {
-                  try {
-                    const token = localStorage.getItem('token');
-                    const url = policy.id
-                      ? `/api/ai/policies/${policy.id}`
-                      : '/api/ai/policies';
-                    
-                    const response = await fetch(url, {
-                      method: policy.id ? 'PUT' : 'POST',
-                      headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token || ''}`
-                      },
-                      body: JSON.stringify(policy)
-                    });
+      {/* Tab content */}
+      <div className="flex-1 overflow-auto scrollbar-thin">
+        <div className="p-4 max-w-4xl">
 
-                    if (response.ok) {
-                      setShowEditor(false);
-                      setEditingPolicy(null);
-                    }
-                  } catch (error) {
-                    console.error('Error saving policy:', error);
-                  }
-                }}
-                onCancel={() => {
-                  setShowEditor(false);
-                  setEditingPolicy(null);
-                }}
+          {tab === 'author' && (
+            <div className="card">
+              <p className="text-2xs uppercase tracking-wider text-[#6b7280] mb-3 font-medium">Natural Language Policy Author</p>
+              <textarea 
+                className="textarea" 
+                rows={6} 
+                placeholder="Describe your policy in natural language... e.g., 'Block any post about election fraud with AI score above 0.7'"
               />
-            ) : (
-              <>
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-lg font-semibold">Policies</h2>
-                  <Button
-                    variant="primary"
-                    onClick={() => {
-                      setEditingPolicy(null);
-                      setShowEditor(true);
-                    }}
-                  >
-                    Create New Policy
-                  </Button>
-                </div>
-                <PolicyList
-                  onEdit={(policy) => {
-                    setEditingPolicy(policy);
-                    setShowEditor(true);
-                  }}
-                  onDelete={(id) => {
-                    console.log('Policy deleted:', id);
-                  }}
-                  onToggleActive={(id, isActive) => {
-                    console.log('Policy toggled:', id, isActive);
-                  }}
-                />
-              </>
-            )}
-          </div>
-        )}
+              <div className="flex gap-2 mt-3">
+                <button className="btn btn-primary">Translate to DSL</button>
+                <button className="btn btn-secondary">Clear</button>
+              </div>
+            </div>
+          )}
 
-        {/* Live Block Log */}
-        <Card className="p-6">
-          <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest text-primary mb-4">
-            <span className="text-xl">📋</span> Live Block Log
-          </h3>
-          <div className="space-y-3 max-h-96 overflow-y-auto">
-            {blockedItems.length === 0 ? (
-              <div className="text-center py-8 text-text-secondary">
-                <div className="text-4xl mb-2">🔍</div>
-                <div>No content blocked yet</div>
-                <div className="text-xs mt-1">Blocked items will appear here in real-time</div>
+          {tab === 'manage' && (
+            <div className="card">
+              <p className="text-xs text-[#6b7280]">Policy list will appear here. Create policies using the Author tab.</p>
+            </div>
+          )}
+
+          {/* Live block log */}
+          <div className="mt-6">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-2xs uppercase tracking-wider text-[#6b7280] font-medium">Live Block Log</span>
+              {blocked.length > 0 && <Badge variant="critical">{blocked.length}</Badge>}
+            </div>
+
+            {blocked.length === 0 ? (
+              <div
+                className="rounded-lg px-4 py-8 text-center text-sm text-[#6b7280]"
+                style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.05)' }}
+              >
+                No content blocked yet — blocked items will appear here in real-time
               </div>
             ) : (
-              blockedItems.map((item) => (
-                <div
-                  key={item.id}
-                  className="bg-bg-primary border border-border-subtle rounded p-4 hover:border-red-500/50 transition-colors"
-                >
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs font-bold text-red-500 uppercase">
-                          {item.action_taken}
-                        </span>
-                        <span className="text-xs text-text-secondary">
-                          by {item.policy_name}
-                        </span>
-                        {item.source_platform && (
-                          <span className="text-xs text-text-muted">
-                            • {item.source_platform}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-sm text-text-primary line-clamp-2">
-                        {item.content_preview}
-                      </p>
+              <div className="space-y-1">
+                {blocked.map(item => (
+                  <div
+                    key={item.id}
+                    className="rounded-md px-4 py-2.5 flex items-start gap-3 text-xs"
+                    style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.05)' }}
+                  >
+                    <span className="mono-10 font-semibold text-[#ef4444] uppercase mt-0.5 shrink-0">{item.action_taken}</span>
+                    <div className="flex-1 min-w-0">
+                      <span className="text-[#9ca3af]">by </span>
+                      <span className="text-[#f3f4f6]">{item.policy_name}</span>
+                      {item.source_platform && <span className="text-[#6b7280] ml-2">· {item.source_platform}</span>}
+                      <p className="text-[#6b7280] truncate mt-0.5">{item.content_preview}</p>
                     </div>
-                    <div className="text-xs text-text-secondary ml-4">
+                    <span className="mono-10 text-[#4b5563] shrink-0">
                       {new Date(item.blocked_at).toLocaleTimeString()}
-                    </div>
+                    </span>
                   </div>
-                </div>
-              ))
+                ))}
+              </div>
             )}
           </div>
-        </Card>
-
-        {/* Active Policies Section */}
-        <Card className="p-6 mt-6">
-          <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest text-primary mb-4">
-            <span className="text-xl">⚡</span> Active Policies
-          </h3>
-          <div className="text-text-secondary text-sm">
-            {/* TODO: Fetch and display active policies */}
-            <div className="text-center py-4">
-              No active policies. Create one above to start blocking threats.
-            </div>
-          </div>
-        </Card>
+        </div>
+      </div>
     </div>
   );
 }
-

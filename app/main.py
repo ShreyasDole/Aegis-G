@@ -9,6 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from app.routers import system, auth, admin, ai, analyst, websocket, graph, threats, sharing, detection, forensics, worker, scan_core
 from app.middleware import AuthorizationMiddleware
 from app.middleware.audit import AuditMiddleware
+from app.config import settings, validate_production_settings
 import logging
 
 # Configure logging
@@ -19,6 +20,16 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan events — runs on startup and shutdown"""
+    # ── Step 0: Validate production settings ───────────────────────────────
+    # BUG FIX: fail fast with a clear error message if critical env vars
+    # (DATABASE_URL, SECRET_KEY, GEMINI_API_KEY) are missing or insecure.
+    # This is a no-op in development (ENVIRONMENT=development).
+    try:
+        validate_production_settings()
+    except RuntimeError as e:
+        logger.critical(f"Startup aborted due to configuration error: {e}")
+        raise
+
     # ── Step 1: Ensure all database tables exist ───────────────────────────
     # Import all models so they're registered with Base.metadata, then
     # create any missing tables. This is idempotent (safe on every restart)
@@ -65,10 +76,12 @@ app = FastAPI(
 )
 
 # CORS Configuration
+# BUG FIX: use settings.CORS_ORIGINS instead of "*" so production deployments
+# (Railway backend + Vercel frontend) are locked to specific origins.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Update for production
-    allow_credentials=False,
+    allow_origins=settings.CORS_ORIGINS,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )

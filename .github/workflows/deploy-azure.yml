@@ -1,0 +1,66 @@
+name: 🚀 Deploy to Azure Container Apps
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - 'requirements.txt'
+      - 'Dockerfile.azure'
+      - 'scripts/entrypoint.sh'
+  workflow_dispatch:    # allow manual trigger from GitHub UI
+
+env:
+  RESOURCE_GROUP: aegis-rg
+  ACR_NAME: aegisregistry
+  CONTAINER_APP_NAME: aegis-backend
+  CONTAINER_APP_ENV: aegis-env
+  IMAGE_NAME: aegis-backend
+
+jobs:
+  deploy:
+    name: Build & Deploy Backend
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── Checkout ──────────────────────────────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── Azure Login ───────────────────────────────────────────────────────
+      # Requires AZURE_CREDENTIALS secret in GitHub → Settings → Secrets
+      # Create with: az ad sp create-for-rbac --name aegis-github-actions \
+      #   --role contributor --scopes /subscriptions/SUB_ID/resourceGroups/aegis-rg \
+      #   --sdk-auth
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      # ── Build & Push via ACR Tasks (no Docker daemon needed on runner) ────
+      - name: Build & Push image to ACR
+        run: |
+          az acr build \
+            --registry ${{ env.ACR_NAME }} \
+            --image ${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            --image ${{ env.IMAGE_NAME }}:latest \
+            --file Dockerfile.azure \
+            .
+
+      # ── Deploy to Container Apps ──────────────────────────────────────────
+      - name: Deploy to Azure Container Apps
+        uses: azure/container-apps-deploy-action@v2
+        with:
+          resourceGroup: ${{ env.RESOURCE_GROUP }}
+          containerAppName: ${{ env.CONTAINER_APP_NAME }}
+          imageToDeploy: ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+      # ── Print live URL ────────────────────────────────────────────────────
+      - name: Get deployment URL
+        run: |
+          URL=$(az containerapp show \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --query "properties.configuration.ingress.fqdn" -o tsv)
+          echo "✅ Live at: https://$URL"
+          echo "::notice title=Deployed::https://$URL"

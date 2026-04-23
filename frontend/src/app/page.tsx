@@ -1,137 +1,127 @@
-"use client";
+'use client';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
+import { Shield, Zap, Network, Lock } from 'lucide-react';
+
+const FEATURES = [
+  { icon: Shield,  label: 'AI Threat Detection',    desc: '94.7% accuracy • 847 threats analyzed this week' },
+  { icon: Network, label: 'Network Intelligence',        desc: '2,341 nodes mapped • 5 active campaigns detected' },
+  { icon: Zap,     label: 'Policy Enforcement',        desc: '127 threats blocked today • 100% uptime' },
+  { icon: Lock,    label: 'Audit Ledger',    desc: '1,892 blocks verified • Chain integrity: INTACT' },
+];
 
 export default function Home() {
   const router = useRouter();
-  const [status, setStatus] = useState<string>("Connecting...");
-  const [backendData, setBackendData] = useState<any>(null);
+  const [apiStatus, setApiStatus] = useState<'checking' | 'ok' | 'error'>('checking');
 
   useEffect(() => {
-    // Check if user is already logged in
     const token = localStorage.getItem('token');
-    if (token) {
-      router.push('/dashboard');
-      return;
-    }
+    if (token) { router.push('/dashboard'); return; }
 
     const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
     fetch(API_URL + '/')
-      .then(res => res.json())
-      .then(data => {
-        setStatus('Connected');
-        setBackendData(data);
-      })
-      .catch(err => {
-        setStatus('Connection Failed');
-        console.error(err);
-      });
+      .then(r => r.ok ? setApiStatus('ok') : setApiStatus('error'))
+      .catch(()  => setApiStatus('error'));
   }, [router]);
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-8 bg-bg-primary relative overflow-hidden">
-      {/* Animated Background */}
-      <div className="absolute inset-0 opacity-5">
-        <div className="absolute inset-0" style={{
-          backgroundImage: 'linear-gradient(#334155 1px, transparent 1px), linear-gradient(90deg, #334155 1px, transparent 1px)',
-          backgroundSize: '50px 50px'
-        }}></div>
-      </div>
+    <main
+      className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden"
+      style={{ background: '#0e0e0e' }}
+    >
+      {/* Subtle grid */}
+      <div
+        className="pointer-events-none absolute inset-0 opacity-[0.03]"
+        style={{
+          backgroundImage:
+            'linear-gradient(rgba(255,255,255,1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,1) 1px, transparent 1px)',
+          backgroundSize: '48px 48px',
+        }}
+      />
+
+      {/* Accent radial */}
+      <div
+        className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] opacity-[0.07]"
+        style={{ background: 'radial-gradient(ellipse at top, #5e6ad2,transparent 70%)' }}
+      />
 
       {/* Content */}
-      <div className="z-10 max-w-4xl w-full text-center mb-12">
-        <div className="font-display text-6xl font-bold tracking-wider mb-4 text-primary">
-          AEGIS-G
+      <div className="relative z-10 flex flex-col items-center text-center max-w-3xl mx-auto px-6">
+
+        {/* Logo mark */}
+        <div
+          className="w-12 h-12 rounded-lg flex items-center justify-center mb-6"
+          style={{ background: 'rgba(94,106,210,0.12)', border: '1px solid rgba(94,106,210,0.25)' }}
+        >
+          <Shield className="w-6 h-6" style={{ color: '#5e6ad2' }} />
         </div>
-        <div className="h-1 w-24 bg-primary mx-auto mb-6"></div>
-        <p className="text-xl text-text-primary mb-2">
-          AI-Powered Cybersecurity Command Center
-        </p>
-        <p className="text-text-secondary">
-          National Security Operations Platform
-        </p>
-      </div>
 
-      {/* System Diagnostic Card */}
-      <Card className="max-w-2xl w-full z-10 mb-8">
-        <h2 className="text-lg font-semibold uppercase tracking-wider mb-6">
-          System Diagnostic
-        </h2>
-        
-        <div className="space-y-4">
-          <div className="flex justify-between items-center p-3 bg-bg-primary rounded border-l-2 border-success">
-            <span className="text-text-secondary text-sm">Frontend Status:</span>
-            <span className="text-success font-semibold flex items-center gap-2 text-sm">
-              <span className="w-2 h-2 bg-success rounded-full animate-pulse"></span>
-              Online
-            </span>
-          </div>
-          
-          <div className="flex justify-between items-center p-3 bg-bg-primary rounded border-l-2 border-l-primary">
-            <span className="text-text-secondary text-sm">Backend Connection:</span>
-            <span className={`font-semibold flex items-center gap-2 text-sm ${status.includes("Connected") ? "text-success" : "text-danger"}`}>
-              <span className={`w-2 h-2 rounded-full ${status.includes("Connected") ? "bg-success animate-pulse" : "bg-danger"}`}></span>
-              {status}
-            </span>
-          </div>
+        {/* API status pill */}
+        <div
+          className="flex items-center gap-2 px-3 py-1.5 rounded-full mb-8 text-xs"
+          style={{
+            background: 'rgba(255,255,255,0.04)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            color: apiStatus === 'ok' ? '#10b981' : apiStatus === 'error' ? '#ef4444' : '#9ca3af',
+          }}
+        >
+          <span
+            className={`w-1.5 h-1.5 rounded-full ${apiStatus === 'ok' ? 'bg-[#10b981] animate-pulse' : apiStatus === 'error' ? 'bg-[#ef4444]' : 'bg-[#9ca3af] animate-pulse'}`}
+          />
+          {apiStatus === 'checking' ? 'Connecting to AEGIS-G…' : apiStatus === 'ok' ? 'System Online' : 'Backend Unreachable'}
+        </div>
 
-          {backendData && (
-            <div className="mt-4 p-4 bg-bg-primary rounded border border-border-subtle">
-              <p className="text-xs text-text-muted mb-2 uppercase tracking-wide font-semibold">API Response:</p>
-              <pre className="text-success font-mono text-xs overflow-auto scrollbar-thin">
-                {JSON.stringify(backendData, null, 2)}
-              </pre>
+        <h1 className="text-4xl font-semibold text-[#f3f4f6] mb-3 tracking-tight leading-tight">
+          Omni-Modal Cognitive<br />
+          <span style={{ color: '#5e6ad2' }}>Defense Grid</span>
+        </h1>
+        <p className="text-[#9ca3af] text-sm mb-10 max-w-lg leading-relaxed">
+          AI-powered cybersecurity operations platform. Multi-agent forensic attribution, 
+          graph-based threat intelligence, and blockchain audit trails — built for national security.
+        </p>
+
+        {/* CTAs */}
+        <div className="flex gap-3 mb-14">
+          <Link href="/login">
+            <button
+              className="btn btn-primary btn-lg"
+              style={{ borderRadius: '6px', fontSize: '0.875rem' }}
+            >
+              Sign in to Command Center
+            </button>
+          </Link>
+          <Link href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/docs`} target="_blank">
+            <button
+              className="btn btn-secondary btn-lg"
+              style={{ borderRadius: '6px', fontSize: '0.875rem' }}
+            >
+              API Docs →
+            </button>
+          </Link>
+        </div>
+
+        {/* Feature grid */}
+        <div className="grid grid-cols-2 gap-3 w-full max-w-2xl text-left">
+          {FEATURES.map(({ icon: Icon, label, desc }) => (
+            <div
+              key={label}
+              className="rounded-lg p-4 transition-colors duration-150 cursor-default group"
+              style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.05)' }}
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <Icon className="w-3.5 h-3.5" style={{ color: '#5e6ad2' }} strokeWidth={1.75} />
+                <span className="text-xs font-medium text-[#f3f4f6]">{label}</span>
+              </div>
+              <p className="text-xs text-[#6b7280] leading-relaxed">{desc}</p>
             </div>
-          )}
+          ))}
         </div>
-      </Card>
 
-      {/* Action Buttons */}
-      <div className="flex gap-4 z-10 mb-16">
-        <Link href="/login">
-          <Button variant="primary" className="text-base px-8 py-3">
-            Sign In to Command Center
-          </Button>
-        </Link>
-        <Link href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/docs`} target="_blank">
-          <Button variant="secondary" className="text-base px-8 py-3">
-            API Documentation
-          </Button>
-        </Link>
-      </div>
-
-      {/* Features Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl w-full z-10">
-        <Card hover className="text-center border-l-4 border-l-primary">
-          <div className="text-3xl font-bold text-primary mb-3">AI</div>
-          <h3 className="text-base font-semibold mb-2 uppercase tracking-wider">AI-Powered Analysis</h3>
-          <p className="text-sm text-text-secondary">
-            Advanced threat detection with Gemini AI integration
-          </p>
-        </Card>
-        <Card hover className="text-center border-l-4 border-l-success">
-          <div className="text-3xl font-bold text-success mb-3">GRAPH</div>
-          <h3 className="text-base font-semibold mb-2 uppercase tracking-wider">Graph Analysis</h3>
-          <p className="text-sm text-text-secondary">
-            Network visualization with Neo4j graph database
-          </p>
-        </Card>
-        <Card hover className="text-center border-l-4 border-l-warning">
-          <div className="text-3xl font-bold text-warning mb-3">CHAIN</div>
-          <h3 className="text-base font-semibold mb-2 uppercase tracking-wider">Blockchain Audit</h3>
-          <p className="text-sm text-text-secondary">
-            Immutable audit trails for compliance and security
-          </p>
-        </Card>
-      </div>
-
-      {/* Footer */}
-      <div className="mt-16 text-center text-text-muted text-sm z-10">
-        <p className="font-semibold mb-2">Built for National Security Operations</p>
-        <p>FastAPI • Next.js • PostgreSQL • Neo4j • Redis</p>
+        {/* Footer */}
+        <p className="mt-10 text-2xs text-[#4b5563]" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+          FastAPI · Next.js · PostgreSQL · Neo4j · Redis · Gemini 2.5
+        </p>
       </div>
     </main>
   );

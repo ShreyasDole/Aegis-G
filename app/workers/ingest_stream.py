@@ -8,7 +8,7 @@ import json
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 from app.services.gemini.client import GeminiClient
-from app.services.graph.neo4j import Neo4jService
+from app.services.graph.neo4j import neo4j_service as _neo4j_singleton  # SafeNeo4jService
 from app.services.ai.policy_guardian import policy_guardian
 import hashlib
 
@@ -21,7 +21,8 @@ class StreamIngestWorker:
     
     def __init__(self, db_session=None):
         self.gemini_client = GeminiClient()
-        self.neo4j_service = Neo4jService()
+        # BUG FIX: use safe singleton — never crash if Neo4j is unavailable
+        self.neo4j_service = _neo4j_singleton
         self.processing_queue: asyncio.Queue = asyncio.Queue()
         self.is_running = False
         self.db_session = db_session  # For accessing active policies
@@ -154,7 +155,7 @@ class StreamIngestWorker:
                 }
             
             # Step 4: If malicious, create graph nodes (only if not blocked)
-            if analysis.get("risk_score", 0) > 0.6:
+            if analysis.get("risk_score", 0) > 0.6 and self.neo4j_service.enabled:
                 await self.neo4j_service.create_node({
                     "id": f"user_{username}",
                     "label": username,

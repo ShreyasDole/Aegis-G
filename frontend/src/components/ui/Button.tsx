@@ -1,33 +1,52 @@
 import React from 'react';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'danger' | 'ai';
-  children: React.ReactNode;
+  variant?: 'primary' | 'secondary' | 'ghost' | 'danger' | 'new';
+  size?: 'sm' | 'md' | 'lg';
   icon?: React.ReactNode;
+  children?: React.ReactNode;
+  loading?: boolean;
 }
 
-export const Button: React.FC<ButtonProps> = ({ 
-  variant = 'primary', 
-  children, 
+export function Button({
+  variant = 'secondary',
+  size = 'md',
   icon,
+  children,
+  loading,
   className = '',
-  ...props 
-}) => {
-  const variantClasses = {
-    primary: 'btn-primary',
+  disabled,
+  ...props
+}: ButtonProps) {
+  const variantClass = {
+    primary:   'btn-primary',
     secondary: 'btn-secondary',
-    danger: 'btn-danger',
-    ai: 'btn-ai',
-  };
+    ghost:     'btn-ghost',
+    danger:    'btn-danger',
+    new:       'btn-new',
+  }[variant];
+
+  const sizeClass = {
+    sm: 'btn-sm',
+    md: 'btn-md',
+    lg: 'btn-lg',
+  }[size];
 
   return (
-    <button 
-      className={`${variantClasses[variant]} ${className}`}
+    <button
+      className={`btn ${variantClass} ${sizeClass} ${className}`}
+      disabled={disabled || loading}
       {...props}
     >
-      {icon && <span>{icon}</span>}
+      {loading ? (
+        <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+        </svg>
+      ) : icon ? (
+        <span className="shrink-0">{icon}</span>
+      ) : null}
       {children}
     </button>
   );
-};
-
+}
