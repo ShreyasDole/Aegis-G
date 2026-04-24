@@ -77,6 +77,9 @@ class ThreatOrchestrator:
                 mime_type = payload.get("mime_type")
                 forensics_data = await self.gemini_client.detect_multimodal_content(content, media_bytes, mime_type)
             except Exception as e:
+                import os
+                if os.getenv("RAILWAY_ENVIRONMENT_NAME"):
+                    raise Exception(f"Failed to use Gemini Inference. Local PyTorch fallback is disabled on Railway free tier to prevent OOM. Please configure GEMINI_API_KEY. Error: {e}")
                 logger.error(f"Gemini failed, falling back to local: {e}")
                 mode = "local" # Fallback to local
                 
