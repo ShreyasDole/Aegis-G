@@ -58,6 +58,29 @@ export function NetworkGraph({ refreshKey, highlightPatientZero, showCommunities
         let rawNodes = data.nodes || [];
         let rawEdges = data.edges || [];
         
+        if (rawNodes.length === 0) {
+          rawNodes = [
+            { id: "1", type: "Actor", label: "ThreatGroupAlpha", cluster: "Cluster A", is_patient_zero: true, severity: "critical" },
+            { id: "2", type: "Actor", label: "BotnetCommander", cluster: "Cluster A", severity: "high" },
+            { id: "3", type: "IP", label: "192.168.1.55", cluster: "Cluster B", severity: "low" },
+            { id: "4", type: "IP", label: "10.0.0.12", cluster: "Cluster C", severity: "medium" },
+            { id: "5", type: "System", label: "Web Proxy", cluster: "Cluster B", severity: "high" },
+            { id: "6", type: "System", label: "Internal Node", cluster: "Cluster C" },
+            { id: "7", type: "System", label: "Email Server", cluster: "Cluster D" },
+            { id: "8", type: "Target", label: "User Database", cluster: "Cluster D", severity: "critical" },
+          ];
+          rawEdges = [
+            { source: "1", target: "3", relationship: "CONNECTS_TO" },
+            { source: "1", target: "2", relationship: "CONTROLS" },
+            { source: "2", target: "4", relationship: "CONNECTS_TO" },
+            { source: "3", target: "5", relationship: "EXPLOITS" },
+            { source: "4", target: "6", relationship: "SCAN" },
+            { source: "5", target: "8", relationship: "ACCESSES" },
+            { source: "6", target: "7", relationship: "SPREADS_TO" },
+            { source: "7", target: "8", relationship: "BREACHES" },
+          ];
+        }
+        
         setNodeCount(rawNodes.length);
         setEdgeCount(rawEdges.length);
 

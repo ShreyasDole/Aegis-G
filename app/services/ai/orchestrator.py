@@ -66,54 +66,42 @@ class ThreatOrchestrator:
         content_hash = hashlib.sha256(content.encode()).hexdigest()
 
         # ---------------------------------------------------------
-        # PHASE 1 – FORENSIC ANALYSIS (local mode preferred)
+        # PHASE 1 – FORENSIC ANALYSIS
         # ---------------------------------------------------------
         logger.info(f"🔍 Agent 1 Scanning ({mode} mode)...")
-        if mode == "local":
+        forensics_data = None
+        
+        if mode == "cloud" or mode == "gemini":
+            try:
+                media_bytes = payload.get("media_bytes")
+                mime_type = payload.get("mime_type")
+                forensics_data = await self.gemini_client.detect_multimodal_content(content, media_bytes, mime_type)
+            except Exception as e:
+                logger.error(f"Gemini failed, falling back to local: {e}")
+                mode = "local" # Fallback to local
+                
+        if mode == "local" or not forensics_data:
             denoised = self.denoiser.normalize(content)
             if self.onnx_attributor:
                 try:
                     attribution = self.onnx_attributor.predict(denoised)
                 except Exception as e:
-                    logger.warning(
-                        f"ONNX inference failed ({e}), falling back to PyTorch model"
-                    )
+                    logger.warning(f"ONNX inference failed ({e}), falling back to PyTorch model")
                     attribution = self.attributor.predict(denoised)
             else:
                 attribution = self.attributor.predict(denoised)
-            risk_score = max(attribution.values())
+            risk_score = float(max(attribution.values()) if attribution else 0.0)
             forensics_data = {
                 "risk_score": risk_score,
-                "is_ai_generated": any(
-                    attribution.get(model, 0) > 0.5 for model in ["gpt-4", "claude-3", "llama-3"]
-                ),
+                "is_ai_generated": any(attribution.get(model, 0) > 0.5 for model in ["gpt-4", "claude-3", "llama-3"]),
                 "confidence": risk_score,
-                "detected_model": max(attribution, key=attribution.get),
+                "detected_model": max(attribution, key=attribution.get) if attribution else "unknown",
                 "attribution": attribution,
                 "denoised_text": denoised,
                 "explainability": await token_explainer.explain(denoised, risk_score),
             }
-        else:
-            # Cloud fallback – use Gemini, then local fallback if needed
-            try:
-                forensics_data = await self.gemini_client.detect_ai_content(content)
-            except Exception as e:
-                logger.error(f"Gemini failed, falling back to local: {e}")
-                denoised = self.denoiser.normalize(content)
-                attribution = self.attributor.predict(denoised)
-                risk_score = max(attribution.values())
-                forensics_data = {
-                    "risk_score": risk_score,
-                    "is_ai_generated": any(
-                        attribution.get(model, 0) > 0.5 for model in ["gpt-4", "claude-3", "llama-3"]
-                    ),
-                    "confidence": risk_score,
-                    "detected_model": max(attribution, key=attribution.get),
-                    "attribution": attribution,
-                    "denoised_text": denoised,
-                    "explainability": await token_explainer.explain(denoised, risk_score),
-                }
-        risk_score = forensics_data.get("risk_score", 0.0)
+
+        risk_score = float(forensics_data.get("risk_score", 0.0))
         logger.info(f"📊 Agent 1 results: Risk={risk_score:.2f}")
 
         # RAG Memory Context — generate real embedding and query pgvector ANN

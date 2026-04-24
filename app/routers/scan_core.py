@@ -18,6 +18,7 @@ from app.models.database import get_db
 from app.services.ai.orchestrator import orchestrator
 from app.services.ai.intent_classifier import classify_intent
 from app.services.ai.image_classifier import image_classifier
+from app.services.ai.audio_classifier import audio_classifier
 
 router = APIRouter()
 
@@ -141,79 +142,67 @@ async def scan_with_image(
     result = {
         "text_analysis": None,
         "image_analysis": None,
+        "audio_analysis": None,
         "combined_risk": 0.0,
         "timestamp": datetime.utcnow()
     }
     
-    # Analyze text if provided
-    if content and len(content.strip()) > 0:
-        intent = classify_intent(content)
-        
-        if intent == "chat":
-            # Return chatbot response
-            response_text = CHAT_RESPONSES.get(content.lower().strip(), CHAT_RESPONSES["default"])
-            result["text_analysis"] = {
-                "recommendation": response_text,
-                "is_chat": True
-            }
-        else:
-            # Full NLP analysis - pass db to record scan in analytics dashboard
-            mode = (request.headers.get("X-Inference-Mode") or "local").lower()
-            payload = {
-                "content": content,
-                "source_platform": source_platform,
-                "username": username,
-            }
-            try:
-                # Pass real DB session so it saves to PGVector
-                text_result = await orchestrator.process_incoming_threat(payload, db, mode=mode)
-                result["text_analysis"] = {
-                    "risk_score": text_result.get("risk_score", 0.0),
-                    "is_ai_generated": text_result.get("is_ai_generated", False),
-                    "detected_model": text_result.get("detected_model", ""),
-                    "recommendation": text_result.get("recommendation", ""),
-                    "attribution": text_result.get("attribution", {}),
-                    "explainability": text_result.get("explainability", []),
-                    "rag_memory": text_result.get("rag_memory", []),
-                }
-            except Exception as e:
-                result["text_analysis"] = {"error": str(e), "risk_score": 0.0}
-    
-    # Analyze image if provided
+    intent = classify_intent(content or "")
+    if intent == "chat" and not image:
+        response_text = CHAT_RESPONSES.get((content or "").lower().strip(), CHAT_RESPONSES["default"])
+        result["text_analysis"] = {
+            "recommendation": response_text,
+            "is_chat": True,
+            "risk_score": 0.0
+        }
+        return result
+    # Full NLP & Multimodal Analysis
+    media_bytes = None
+    mime_type = None
     if image:
-        try:
-            image_bytes = await image.read()
-            img_result = image_classifier.analyze(image_bytes)
-            result["image_analysis"] = {
-                "is_ai_generated": img_result.get("is_ai_generated", False),
-                "confidence": img_result.get("confidence", 0.0),
-                "details": img_result.get("details", ""),
-                "artifacts": img_result.get("artifacts", []),
-                "dimensions": img_result.get("dimensions", {}),
-                "has_exif": img_result.get("has_exif", False),
-                "filename": image.filename,
-                "size": len(image_bytes),
-            }
-        except Exception as e:
-            result["image_analysis"] = {"error": str(e), "confidence": 0.0}
+        media_bytes = await image.read()
+        mime_type = image.content_type or "image/jpeg"
+        # Audio extensions
+        if (image.filename or "").lower().endswith(('.mp3', '.wav', '.ogg', '.m4a')):
+            mime_type = "audio/mp3"
+            
+    mode = (request.headers.get("X-Inference-Mode") or "cloud").lower()
+    payload = {
+        "content": content,
+        "source_platform": source_platform,
+        "username": username,
+        "media_bytes": media_bytes,
+        "mime_type": mime_type
+    }
     
-    # Calculate combined risk
-    text_risk = result["text_analysis"].get("risk_score", 0.0) if result["text_analysis"] and not result["text_analysis"].get("is_chat") else 0.0
-    image_risk = result["image_analysis"].get("confidence", 0.0) if result["image_analysis"] and result["image_analysis"].get("is_ai_generated") else 0.0
-    
-    # Weighted combination (text more important than image)
-    if text_risk > 0 and image_risk > 0:
-        result["combined_risk"] = (text_risk * 0.7) + (image_risk * 0.3)
-    else:
-        result["combined_risk"] = max(text_risk, image_risk)
-    
-    result["is_ai_generated"] = result["combined_risk"] >= 0.4
-    result["recommendation"] = _get_recommendation(result["combined_risk"], result["text_analysis"], result["image_analysis"])
+    try:
+        # Pass real DB session so it saves to PGVector & Neo4j via Orchestrator
+        text_result = await orchestrator.process_incoming_threat(payload, db, mode="cloud")
+        
+        # Populate the parent UI variables mapping
+        result["combined_risk"] = text_result.get("risk_score", 0.0)
+        result["is_ai_generated"] = text_result.get("is_ai_generated", False)
+        result["recommendation"] = text_result.get("recommendation", "Review content")
+        
+        # The frontend maps ALL explanations from `data.text_analysis`. Let's populate it here
+        # so frontend parses image/audio/text outputs seamlessly
+        result["text_analysis"] = {
+            "risk_score": text_result.get("risk_score", 0.0),
+            "is_ai_generated": text_result.get("is_ai_generated", False),
+            "detected_model": text_result.get("detected_model", ""),
+            "recommendation": text_result.get("recommendation", ""),
+            "attribution": text_result.get("attribution", {}),
+            "explainability": text_result.get("explainability", []),
+            "rag_memory": text_result.get("rag_memory", []),
+        }
+    except Exception as e:
+        import traceback
+        result["text_analysis"] = {"error": str(e), "traceback": traceback.format_exc(), "risk_score": 0.0}
     
     return result
 
 
-def _get_recommendation(risk: float, text_analysis: dict, image_analysis: dict) -> str:
+def _get_recommendation(risk: float, text_analysis: dict, image_analysis: dict, audio_analysis: dict = None) -> str:
     """Generate recommendation based on combined analysis"""
     if text_analysis and text_analysis.get("is_chat"):
         return text_analysis.get("recommendation", "")
@@ -228,6 +217,8 @@ def _get_recommendation(risk: float, text_analysis: dict, image_analysis: dict) 
         parts.append("Image appears AI-generated")
     if text_analysis and text_analysis.get("is_ai_generated"):
         parts.append("Text appears AI-generated")
+    if audio_analysis and audio_analysis.get("is_ai_generated"):
+        parts.append("Audio appears AI-generated")
     
     if parts:
         return f"LOW RISK: {', '.join(parts)}"

@@ -49,3 +49,15 @@ numpy>=1.26.0
 aiohttp>=3.9.0
 python-dotenv>=1.0.0
 pillow>=10.0.0
+
+# Missing ML Dependencies that caused Railway crash
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch>=2.0.0
+transformers>=4.35.0
+sentence-transformers>=2.2.2
+onnxruntime>=1.16.0
+shap>=0.43.0
+tiktoken>=0.7.0
+
+blobfile
+regex
