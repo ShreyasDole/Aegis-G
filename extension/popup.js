@@ -1,5 +1,5 @@
 // Extension state
-let apiUrl = 'http://localhost:8000';
+let apiUrl = 'https://aegis-backend.up.railway.app';
 let apiToken = '';
 let pendingImage = null;
 
@@ -61,8 +61,9 @@ async function loadSettings() {
     const result = await chrome.storage.sync.get(['apiUrl', 'apiToken']);
     if (result.apiUrl) {
       apiUrl = result.apiUrl;
-      apiUrlInput.value = apiUrl;
     }
+    apiUrlInput.value = apiUrl; // Ensure UI always displays current URL
+    
     if (result.apiToken) {
       apiToken = result.apiToken;
       apiTokenInput.value = apiToken;
@@ -74,7 +75,7 @@ async function loadSettings() {
 
 // Save settings
 async function saveSettings() {
-  apiUrl = apiUrlInput.value.trim() || 'http://localhost:8000';
+  apiUrl = apiUrlInput.value.trim() || 'https://aegis-backend.up.railway.app';
   apiToken = apiTokenInput.value.trim();
 
   try {
