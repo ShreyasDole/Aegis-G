@@ -57,3 +57,4 @@ transformers>=4.35.0
 sentence-transformers>=2.2.2
 onnxruntime>=1.16.0
 shap>=0.43.0
+tiktoken==0.5.2
