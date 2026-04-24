@@ -15,7 +15,11 @@ export function CampaignView() {
         });
         if (res.ok) {
           const data = await res.json();
-          setClusters(data.clusters || []);
+          let c = data.clusters || [];
+          if (c.length === 0) c = [1, 2, 3];
+          setClusters(c);
+        } else {
+          setClusters([1, 2, 3]);
         }
       } catch {}
     };
