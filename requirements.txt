@@ -58,3 +58,6 @@ sentence-transformers>=2.2.2
 onnxruntime>=1.16.0
 shap>=0.43.0
 tiktoken==0.5.2
+
+blobfile==2.1.1
+regex==2023.12.25
