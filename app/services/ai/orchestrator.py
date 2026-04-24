@@ -93,10 +93,11 @@ class ThreatOrchestrator:
                 "denoised_text": denoised,
                 "explainability": await token_explainer.explain(denoised, risk_score),
             }
-        else:
-            # Cloud fallback – use Gemini, then local fallback if needed
+            # Cloud fallback – use Gemini natively, then local fallback if needed
             try:
-                forensics_data = await self.gemini_client.detect_ai_content(content)
+                media_bytes = payload.get("media_bytes")
+                mime_type = payload.get("mime_type")
+                forensics_data = await self.gemini_client.detect_multimodal_content(content, media_bytes, mime_type)
             except Exception as e:
                 logger.error(f"Gemini failed, falling back to local: {e}")
                 denoised = self.denoiser.normalize(content)
