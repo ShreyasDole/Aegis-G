@@ -523,7 +523,7 @@ export default function ScansPage() {
             >
               <Paperclip className="w-4 h-4" />
             </button>
-            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onFileChange} />
+            <input ref={fileRef} type="file" accept="image/*, audio/*" className="hidden" onChange={onFileChange} />
 
             {/* Textarea */}
             <textarea
