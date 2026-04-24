@@ -273,7 +273,7 @@ export default function ScansPage() {
     setPendingImage(null);
 
     try {
-      const mode    = localStorage.getItem('inference-mode') || 'local';
+      const mode    = localStorage.getItem('inference-mode') || 'cloud';
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
       const token   = localStorage.getItem('token');
       const headers: Record<string, string> = {
