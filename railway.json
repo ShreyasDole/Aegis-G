@@ -4,7 +4,6 @@
   "deploy": {
     "startCommand": "gunicorn app.main:app -k uvicorn.workers.UvicornWorker -b 0.0.0.0:$PORT --workers 1 --timeout 120",
     "restartPolicyType": "ON_FAILURE",
-    "restartPolicyMaxRetries": 10,
-    "branch": "fix/phase4"
+    "restartPolicyMaxRetries": 10
   }
 }
