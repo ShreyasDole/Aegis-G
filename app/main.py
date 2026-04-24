@@ -3,6 +3,8 @@ Aegis-G: Cognitive Shield Command Center
 FastAPI Application Entry Point
 """
 from contextlib import asynccontextmanager
+import os
+os.environ["HF_HOME"] = "/tmp/hf_clean_v2"
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
