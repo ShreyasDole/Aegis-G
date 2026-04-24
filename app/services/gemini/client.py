@@ -65,7 +65,17 @@ class GeminiClient:
 
         prompt = f"""
         Analyze this content for signs of AI generation (text generation artifacts, deepfake imaging/artifacts, or synthetic audio TTS signatures).
-        Provide a highly accurate forensic risk score, model attribution (e.g. gpt-4, claude-3, midjourney, elevenlabs), and return specific tokens or features that triggered the risk score in the explainability list (with word and importance).
+        Provide a highly accurate forensic risk score, model attribution, and explainability features.
+        
+        You MUST output strict JSON exactly matching this format:
+        {{
+            "is_ai_generated": true/false,
+            "risk_score": 0.85,
+            "detected_model": "gpt-4",
+            "recommendation": "Review",
+            "attribution": {{"gpt-4": 0.85, "claude-3": 0.1, "llama-3": 0.05}},
+            "explainability": [{{"word": "example", "importance": 0.9}}]
+        }}
         
         Text context: {text or 'None'}
         """
@@ -83,7 +93,6 @@ class GeminiClient:
                 contents=contents,
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
-                    response_schema=ForensicAnalysisSchema,
                     temperature=0.1
                 )
             )
