@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Backend: create venv and install deps (avoids externally-managed-environment)
-COPY app/requirements.txt /workspace/requirements.txt
+COPY requirements.txt /workspace/requirements.txt
 RUN python3 -m venv /workspace/venv \
     && /workspace/venv/bin/pip install --no-cache-dir -r /workspace/requirements.txt
 
